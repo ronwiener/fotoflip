@@ -1,0 +1,155 @@
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  font-family: Arial, sans-serif;
+}
+
+.app {
+  padding: 20px;
+}
+
+/* CONTROLS */
+
+.controls {
+  display: flex;
+  gap: 10px;
+  margin: 10px 0 20px;
+  flex-wrap: wrap;
+}
+
+button {
+  padding: 8px 14px;
+  font-size: 14px;
+  cursor: pointer;
+  border: none;
+  border-radius: 6px;
+}
+
+button.export {
+  background: #0077ff;
+  color: #fff;
+  margin: 5px;
+}
+
+button.clearGallery {
+  background: #c62828;
+  color: #fff;
+  margin: 5px;
+}
+
+/* GRID */
+
+.gallery {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+  gap: 24px;
+  width: 100%;
+}
+
+/* CARD */
+
+.card-wrapper {
+  height: 260px;
+  perspective: 1000px;
+}
+
+.card {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  transform-style: preserve-3d;
+  transition: transform 0.6s;
+  cursor: pointer;
+}
+
+.card.flipped {
+  transform: rotateY(180deg);
+}
+
+/* CARD FACES */
+
+.card-face {
+  position: absolute;
+  inset: 0;
+  backface-visibility: hidden;
+  border: 1px solid #ccc;
+  border-radius: 12px;
+  overflow: hidden;
+  background: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* FRONT FACE IMAGE */
+
+.card-front img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+  max-width: 100%;
+  max-height: 100%;
+  border-radius: 12px;
+}
+
+/* BACK FACE */
+
+.card-back {
+  transform: rotateY(180deg);
+  padding: 12px;
+  display: flex;
+  align-items: stretch;
+}
+
+/* NOTES TEXTAREA */
+
+textarea {
+  width: 100%;
+  min-height: 40px;
+  max-height: 100%;
+  border: none;
+  resize: none;
+  outline: none;
+  font-size: 14px;
+  overflow-y: auto;
+}
+
+.card-front {
+  pointer-events: auto;
+}
+
+.card-back {
+  display: flex;
+  flex-direction: column;
+  padding: 12px;
+}
+
+.card.flipped .card-front {
+  pointer-events: none;
+}
+
+.card.flipped .card-back {
+  pointer-events: auto;
+}
+
+.notes-container {
+  width: 100%;
+  height: 100%;
+  padding: 12px;
+  cursor: pointer;
+}
+
+.notes-area {
+  flex: 1;
+  overflow-y: auto;
+}
+
+.back-button {
+  border: 1px solid black;
+  background: brown;
+  color: aliceblue;
+}
