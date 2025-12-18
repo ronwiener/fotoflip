@@ -1,7 +1,16 @@
 import { useEffect, useRef, useState } from "react";
-import JSZip from "jszip";
 import { useImageDB } from "./hooks/useImageDB";
 import "./styles.css";
+
+import {
+  loadItems,
+  saveItems,
+  loadFolders,
+  saveFolders,
+  filterItems,
+  exportGalleryZip,
+  importGalleryZip,
+} from "./helpers/galleryHelpers";
 
 export default function App() {
   const imageInputRef = useRef(null);
@@ -9,36 +18,24 @@ export default function App() {
   const { saveImage, getImageURL, getImageBlob } = useImageDB();
 
   /* ---------- STATE ---------- */
-  const [items, setItems] = useState(() => {
-    const saved = localStorage.getItem("gallery-items");
-    if (!saved) return [];
-    const parsed = JSON.parse(saved);
 
-    // Remove old blob URLs from previous sessions
-    return parsed.map((item) => ({ ...item, imageURL: null }));
-  });
-
-  const [folders, setFolders] = useState(() => {
-    const saved = localStorage.getItem("gallery-folders");
-    return saved ? JSON.parse(saved) : ["All"];
-  });
-  const [activeFolder, setActiveFolder] = useState("All");
+  const [items, setItems] = useState(loadItems);
+  const [folders, setFolders] = useState(loadFolders);
+  const [activeFolder, setActiveFolder] = useState("Select Folder");
   const [search, setSearch] = useState("");
   const [zoomImage, setZoomImage] = useState(null);
   const [noteZoomItem, setNoteZoomItem] = useState(null);
   const [noteDraft, setNoteDraft] = useState("");
 
   /* ---------- PERSIST ---------- */
+
   const persistItems = (next) => {
     setItems(next);
-    // Save without imageURL
-    localStorage.setItem(
-      "gallery-items",
-      JSON.stringify(next.map(({ imageURL, ...rest }) => rest))
-    );
+    saveItems(next);
   };
 
   /* ---------- UPLOAD IMAGES ---------- */
+
   const handleUpload = async (e) => {
     const files = Array.from(e.target.files);
     const newItems = [];
@@ -47,7 +44,6 @@ export default function App() {
       const imageId = crypto.randomUUID();
       await saveImage(imageId, file);
 
-      // Create object URL immediately for front display
       const imageURL = URL.createObjectURL(file);
 
       newItems.push({
@@ -72,25 +68,24 @@ export default function App() {
   };
 
   /* ---------- LOAD IMAGES FROM INDEXEDDB ---------- */
+
   useEffect(() => {
     let cancelled = false;
 
     const loadImages = async () => {
-      const updatedItems = await Promise.all(
+      const updated = await Promise.all(
         items.map(async (item) => {
           if (item.imageURL) return item;
-
           try {
             const url = await getImageURL(item.imageId);
             return url ? { ...item, imageURL: url } : item;
-          } catch (err) {
-            console.error("Failed to load image from IndexedDB:", err);
+          } catch {
             return item;
           }
         })
       );
 
-      if (!cancelled) setItems(updatedItems);
+      if (!cancelled) setItems(updated);
     };
 
     loadImages();
@@ -102,6 +97,7 @@ export default function App() {
   }, []);
 
   /* ---------- CARD ACTIONS ---------- */
+
   const toggleFlip = (id) => {
     persistItems(
       items.map((item) =>
@@ -128,15 +124,11 @@ export default function App() {
   };
 
   /* ---------- FILTER ---------- */
-  const visibleItems = items.filter((item) => {
-    const folderMatch = activeFolder === "All" || item.folder === activeFolder;
-    const searchMatch =
-      item.notes.toLowerCase().includes(search.toLowerCase()) ||
-      item.tags.some((t) => t.toLowerCase().includes(search.toLowerCase()));
-    return folderMatch && searchMatch;
-  });
 
-  /*-----------Folder <create---------->*/
+  const visibleItems = filterItems(items, activeFolder, search);
+
+  /* ---------- FOLDERS ---------- */
+
   const addFolder = () => {
     const name = prompt("New folder name:");
     if (!name) return;
@@ -146,68 +138,28 @@ export default function App() {
 
     const updated = [...folders, trimmed];
     setFolders(updated);
-    localStorage.setItem("gallery-folders", JSON.stringify(updated));
+    saveFolders(updated);
   };
 
   /* ---------- ZIP EXPORT ---------- */
+
   const exportZip = async () => {
-    const zip = new JSZip();
-    const meta = [];
-
-    for (const item of items) {
-      const blob = await getImageBlob(item.imageId);
-      if (!blob) continue;
-
-      const path = item.folder ? `${item.folder}/` : "";
-      zip.folder(path).file(`${item.id}.jpg`, blob);
-
-      meta.push({
-        id: item.id,
-        notes: item.notes,
-        tags: item.tags,
-        folder: item.folder,
-        flipped: item.flipped,
-        filename: `${item.id}.jpg`,
-      });
-    }
-
-    zip.file("gallery.json", JSON.stringify(meta, null, 2));
-
-    const out = await zip.generateAsync({ type: "blob" });
+    const blob = await exportGalleryZip(items, getImageBlob);
     const a = document.createElement("a");
-    a.href = URL.createObjectURL(out);
+    a.href = URL.createObjectURL(blob);
     a.download = "gallery.zip";
     a.click();
   };
 
   /* ---------- ZIP IMPORT ---------- */
+
   const importZip = async (e) => {
     const file = e.target.files[0];
     if (!file) return;
 
-    const zip = await JSZip.loadAsync(file);
-    const meta = JSON.parse(await zip.file("gallery.json").async("string"));
-
-    const imported = [];
-
-    for (const m of meta) {
-      const imgFile = zip.file(
-        m.folder ? `${m.folder}/${m.filename}` : m.filename
-      );
-      if (!imgFile) continue;
-
-      const blob = await imgFile.async("blob");
-      const imageId = crypto.randomUUID();
-      await saveImage(imageId, blob);
-
-      imported.push({
-        ...m,
-        imageId,
-        imageURL: null,
-      });
-    }
-
+    const imported = await importGalleryZip(file, saveImage);
     persistItems([...items, ...imported]);
+
     if (zipInputRef.current) zipInputRef.current.value = "";
   };
 
@@ -287,6 +239,7 @@ export default function App() {
                   >
                     🔍
                   </button>
+
                   {item.folder && (
                     <div className="folder-badge">📁 {item.folder}</div>
                   )}
@@ -301,6 +254,7 @@ export default function App() {
                       placeholder="Write notes here..."
                       onClick={(e) => e.stopPropagation()}
                     />
+
                     <div className="notes-actions">
                       <button
                         className="back-zoom-btn"
@@ -329,14 +283,14 @@ export default function App() {
         </div>
       </main>
 
-      {/* FRONT IMAGE ZOOM MODAL */}
+      {/* IMAGE ZOOM */}
       {zoomImage && (
         <div className="zoom-overlay" onClick={() => setZoomImage(null)}>
           <img src={zoomImage} alt="Zoomed" />
         </div>
       )}
 
-      {/* NOTES ZOOM MODAL */}
+      {/* NOTES ZOOM */}
       {noteZoomItem && (
         <div className="notes-zoom-overlay">
           <div className="notes-zoom-panel">
