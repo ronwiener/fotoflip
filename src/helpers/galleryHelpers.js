@@ -41,15 +41,14 @@ export function saveFolders(folders) {
 
 export function filterItems(items, activeFolder, search) {
   const query = search.toLowerCase();
-
   return items.filter((item) => {
+    // If we are in "Select Folder", only show items with NO folder
     const folderMatch =
-      activeFolder === "Select Folder" || item.folder === activeFolder;
+      activeFolder === "Select Folder"
+        ? !item.folder || item.folder === ""
+        : item.folder === activeFolder;
 
-    const searchMatch =
-      item.notes.toLowerCase().includes(query) ||
-      item.tags.some((t) => t.toLowerCase().includes(query));
-
+    const searchMatch = item.notes.toLowerCase().includes(query);
     return folderMatch && searchMatch;
   });
 }

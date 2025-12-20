@@ -4,208 +4,293 @@
 
 body {
   margin: 0;
-  font-family: Arial, sans-serif;
+  font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+  background-color: #f9f9f9;
+  color: #333;
 }
 
 .app {
-  padding: 20px;
+  display: flex;
+  min-height: 100vh;
 }
 
-/* CONTROLS */
+/* SIDEBAR & FOLDERS */
+.sidebar {
+  width: 200px;
+  background: #fff;
+  border-right: 1px solid #e0e0e0;
+  padding: 20px;
+  position: sticky;
+  top: 0;
+  height: 100vh;
+}
+
+.sidebar-heading {
+  font-size: 0.85rem;
+  font-weight: bold;
+  color: #666;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  padding: 10px 15px;
+  margin-top: 10px;
+  pointer-events: none; /* Ensures it cannot be interacted with */
+}
+
+.sidebar h3 {
+  margin-top: 2;
+  font-size: 1.1rem;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  text-align: center;
+}
+
+.sidebar button {
+  display: block;
+  width: 100%;
+  margin-bottom: 8px;
+  padding: 10px 12px;
+  background: #f0f0f0;
+  border: 1px solid transparent;
+  cursor: pointer;
+  text-align: left;
+  border-radius: 8px;
+  transition: all 0.2s ease;
+  font-weight: 500;
+}
+
+.sidebar button.active {
+  background: #0077ff;
+  color: white;
+}
+
+/* The "Drop Zone" Highlight */
+.sidebar button.drag-over {
+  background-color: #4caf50 !important;
+  color: white !important;
+  transform: scale(1.05);
+  border: 2px dashed #ffffff;
+  box-shadow: 0 4px 12px rgba(76, 175, 80, 0.3);
+}
+
+.add-folder-btn {
+  margin-top: 15px;
+  background: none;
+  border: 1px dashed #ccc;
+  color: #888;
+  text-align: center;
+}
+
+.add-folder-btn:hover {
+  border-color: #0077ff;
+  color: #0077ff;
+}
+
+/* Container for the folder button and the delete 'x' */
+.folder-item {
+  display: flex;
+  align-items: center;
+  margin-bottom: 8px;
+  border-radius: 8px;
+  transition: all 0.2s ease;
+  background: #f0f0f0;
+  border: 1px solid transparent;
+  overflow: hidden;
+}
+
+.folder-item.active {
+  background: #0077ff;
+  color: white;
+}
+
+/* The delete 'x' styling */
+.delete-folder-btn {
+  padding: 0 12px;
+  cursor: pointer;
+  font-size: 1.2rem;
+  color: #ccc;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  height: 100%;
+}
+
+.delete-folder-btn:hover {
+  color: #ff4d4d;
+  background: #ff4d4d1a;
+}
+
+/* Make the actual folder button fill the remaining space */
+.folder-item button {
+  flex: 1;
+  margin-bottom: 0 !important; /* Override your previous margin */
+  background: transparent !important;
+  border: none !important;
+}
+
+/* MAIN CONTENT */
+.gallery-heading {
+  margin: 0 0 20px 0; /* Adds space below the heading */
+  padding-left: 10px; /* Optional: adjust if your gallery has side padding */
+  font-size: 2.5rem;
+  color: #333;
+  text-align: center; /* Ensures it stays left-aligned within the main area */
+}
+
+main {
+  padding: 20px; /* Gives the entire gallery area some breathing room */
+  flex: 1; /* Ensures the gallery area takes up the remaining space next to the sidebar */
+}
 
 .controls {
   display: flex;
-  gap: 10px;
-  margin: 10px 0 20px;
+  gap: 12px;
+  margin-bottom: 30px;
+  align-items: center;
   flex-wrap: wrap;
 }
 
-button {
-  padding: 8px 14px;
-  font-size: 14px;
-  cursor: pointer;
-  border: none;
+.controls input[type="text"] {
+  padding: 8px 12px;
+  border: 1px solid #ddd;
   border-radius: 6px;
+  flex: 1;
+  min-width: 200px;
 }
 
-button.export {
-  background: #0077ff;
-  color: #fff;
-  margin: 5px;
-}
-
-button.clearGallery {
-  background: #c62828;
-  color: #fff;
-  margin: 5px;
-}
-
-/* GRID */
-
+/* GALLERY GRID */
 .gallery {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
-  gap: 24px;
-  width: 100%;
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  gap: 25px;
 }
 
-/* CARD */
-
+/* CARD ARCHITECTURE */
 .card-wrapper {
   position: relative;
   aspect-ratio: 3/4;
   perspective: 1000px;
+  touch-action: none; /* Required for mobile DnD */
 }
 
 .card {
-  position: absolute;
-  inset: 0;
+  position: relative;
   width: 100%;
   height: 100%;
   transform-style: preserve-3d;
-  transition: transform 0.6s;
-  cursor: pointer;
+  transition: transform 0.6s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .card.flipped {
   transform: rotateY(180deg);
 }
 
-/* CARD FACES */
-
 .card-face {
   position: absolute;
   inset: 0;
   backface-visibility: hidden;
-  border: 1px solid #ccc;
   border-radius: 12px;
   overflow: hidden;
   background: white;
-  display: flex;
-  align-items: stretch;
-  justify-content: stretch;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+  border: 1px solid #eee;
 }
 
-/* FRONT FACE IMAGE */
-
-/* BACK FACE */
+.card-front img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
 
 .card-back {
   transform: rotateY(180deg);
-  padding: 12px;
-}
-
-/* NOTES TEXTAREA */
-
-textarea {
-  width: 100%;
-  min-height: 40px;
-  max-height: 100%;
-  border: none;
-  resize: none;
-  outline: none;
-  font-size: 14px;
-  overflow-y: auto;
-}
-
-.card.flipped .card-front {
-  pointer-events: none;
-}
-
-.card.flipped .card-back {
-  pointer-events: auto;
-}
-
-.notes-container {
-  width: 100%;
-  height: 100%;
-  padding: 12px;
-  cursor: pointer;
-}
-
-.notes-area {
-  flex: 1;
-  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  padding: 15px;
+  background: #fff;
 }
 
 .notes-content {
   display: flex;
   flex-direction: column;
   height: 100%;
-  flex: 1;
 }
 
-.notes-content textarea {
+textarea {
   flex: 1;
-  width: 100%;
   border: none;
   resize: none;
   outline: none;
-  font-size: 14px;
-  margin-bottom: 10px;
-  padding: 6px;
+  font-family: inherit;
+  font-size: 0.9rem;
+  line-height: 1.4;
+}
+
+/* BUTTONS & OVERLAYS */
+.zoom-btn,
+.back-zoom-btn {
+  position: absolute;
+  background: rgba(255, 255, 255, 0.9);
+  border: none;
+  border-radius: 50%;
+  width: 32px;
+  height: 32px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+}
+
+.zoom-btn {
+  top: 8px;
+  right: 8px;
+}
+.back-zoom-btn {
+  bottom: 8px;
+  right: 8px;
+}
+
+.folder-badge {
+  position: absolute;
+  bottom: 8px;
+  left: 8px;
+  background: rgba(0, 0, 0, 0.6);
+  color: white;
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-size: 0.7rem;
 }
 
 .back-button {
-  align-self: center;
-  padding: 6px 14px;
-  margin-top: auto;
-  background: brown;
+  background: #666;
   color: white;
-  border-radius: 6px;
-  cursor: pointer;
-  border-top: 1px solid #ddd;
-}
-
-.layout {
-  display: flex;
-  gap: 20px;
-}
-
-.sidebar {
-  width: 180px;
-  border-right: 1px solid #ddd;
-  padding-right: 12px;
-}
-
-.sidebar h3 {
-  margin-top: 0;
-}
-
-.sidebar button {
-  display: block;
-  width: 100%;
-  margin-bottom: 6px;
-  padding: 6px 8px;
-  background: #f5f5f5;
-  border: none;
-  cursor: pointer;
-  text-align: left;
-}
-
-.sidebar button.active {
-  background: #333;
-  color: white;
-}
-
-.add-folder {
-  display: flex;
-  gap: 6px;
   margin-top: 10px;
+  font-size: 0.8rem;
 }
 
-.add-folder input {
-  flex: 1;
+/* DRAG OVERLAY SPECIFIC STYLE */
+.card-overlay {
+  width: 180px; /* Match grid item size */
+  aspect-ratio: 3/4;
+  pointer-events: none; /* Crucial so we don't block the droppable target */
+  z-index: 9999;
 }
 
+.card-overlay .card {
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
+  transform: scale(1.05); /* Slight lift effect */
+}
+
+/* MODALS */
 .zoom-overlay {
   position: fixed;
   inset: 0;
-  background: rgba(0, 0, 0, 0.8);
+  background: rgba(0, 0, 0, 0.9);
   display: flex;
   justify-content: center;
   align-items: center;
-  z-index: 1000;
+  z-index: 10000;
   cursor: zoom-out;
 }
 
@@ -213,148 +298,88 @@ textarea {
   max-width: 90%;
   max-height: 90%;
   border-radius: 8px;
-  box-shadow: 0 0 20px black;
-}
-
-.top-controls {
-  display: flex;
-  gap: 10px;
-  margin-bottom: 12px;
-  flex-wrap: wrap;
-}
-
-.top-controls input[type="file"] {
-  margin-right: 6px;
-}
-
-.top-controls input[type="text"] {
-  flex: 1;
-  padding: 6px;
-}
-
-.tags {
-  margin-top: 6px;
-  display: flex;
-  flex-wrap: wrap;
-  gap: 4px;
-}
-
-.tag {
-  background: #007bff;
-  color: white;
-  padding: 2px 6px;
-  border-radius: 4px;
-  font-size: 12px;
-}
-
-.folder-node {
-  margin-left: 12px;
-}
-
-.folder-item {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  margin-bottom: 4px;
-}
-
-.folder-item.active .folder-name {
-  font-weight: bold;
-  color: #007bff;
-}
-
-.folder-name {
-  cursor: pointer;
-}
-
-.add-folder-btn {
-  margin-top: 8px;
-  font-size: 0.9rem;
-  opacity: 0.85;
-}
-
-.collapse-btn,
-.add-btn {
-  font-size: 10px;
-  padding: 0 4px;
-  cursor: pointer;
-}
-
-.card-front {
-  display: flex;
-  width: 100%;
-  height: 100%;
-}
-
-.card-front img {
-  flex: 1;
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-  display: block;
-}
-
-.image-placeholder {
-  width: 100%;
-  height: 100%;
-  background: #eee;
-}
-
-.zoom-btn {
-  position: absolute;
-  top: 6px;
-  right: 6px;
-  z-index: 2;
-  background: aliceblue;
-  color: white;
-  border: none;
-  border-radius: 50%;
-  cursor: pointer;
-}
-
-.back-zoom-btn {
-  position: absolute;
-  bottom: 6px;
-  right: 6px;
-  z-index: 2;
-  background: aliceblue;
-  color: white;
-  border: none;
-  border-radius: 50%;
-  cursor: pointer;
-}
-
-.notes-actions {
-  display: flex;
-  justify-content: space-between;
-  gap: 8px;
-  margin-top: auto;
 }
 
 .notes-zoom-overlay {
   position: fixed;
   inset: 0;
-  background: rgba(0, 0, 0, 0.75);
+  background: rgba(0, 0, 0, 0.85); /* Darker background like image zoom */
   display: flex;
   justify-content: center;
   align-items: center;
-  z-index: 3000;
+  z-index: 10000;
 }
 
 .notes-zoom-panel {
   background: white;
-  width: 80%;
-  max-width: 800px;
-  height: 70%;
+  width: 60%; /* Large width */
+  height: 60%; /* Large height */
+  padding: 30px;
+  border-radius: 12px;
   display: flex;
   flex-direction: column;
-  padding: 16px;
-  border-radius: 10px;
+  box-shadow: 0 0 30px rgba(0, 0, 0, 0.5);
 }
 
 .notes-zoom-panel textarea {
-  flex: 1;
-  width: 100%;
-  resize: none;
-  font-size: 16px;
+  font-size: 1.5rem; /* Much larger text for "Zoom" effect */
+  line-height: 1.6;
+}
+
+/* --- TRASH ZONE PERMANENT RED LOOK --- */
+
+.trash-zone {
+  margin-top: auto;
+  padding: 15px;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  border: 2px solid #ef5350; /* Changed to red border by default */
+  transition: all 0.3s ease;
+  font-size: 0.95rem;
+  background: #fff5f5; /* Light red background */
+  color: #d32f2f; /* Red text */
+}
+
+/* Force the icon to stay red permanently */
+.trash-icon {
+  fill: #ff1744 !important; /* Permanent Red */
+  color: #ff1744 !important; /* Permanent Red */
+  width: 24px;
+  height: 24px;
+  transition: transform 0.2s ease;
+}
+
+/* When dragging an item OVER the trash */
+.trash-over {
+  background: #ffebee !important;
+  border: 2px solid #b71c1c !important; /* Darker red border */
+  transform: scale(1.05);
+  box-shadow: 0 4px 12px rgba(211, 47, 47, 0.2);
+}
+
+/* Trigger the shake when hovering with an item */
+.trash-over .trash-icon {
+  animation: shake-trash 0.2s infinite linear !important;
+}
+
+/* Animation Keyframes (Keep these at the bottom) */
+@keyframes shake-trash {
+  0% {
+    transform: rotate(0deg);
+  }
+  25% {
+    transform: rotate(10deg);
+  }
+  50% {
+    transform: rotate(0deg);
+  }
+  75% {
+    transform: rotate(-10deg);
+  }
+  100% {
+    transform: rotate(0deg);
+  }
 }
