@@ -8,6 +8,7 @@ import {
   useDraggable,
   useDroppable,
 } from "@dnd-kit/core";
+import { snapCenterToCursor } from "@dnd-kit/modifiers";
 import { useImageDB } from "./hooks/useImageDB";
 import "./styles.css";
 
@@ -50,7 +51,9 @@ function FolderButton({ f, activeFolder, setActiveFolder, onDelete }) {
         {f}
       </button>
       <span
+        className="delete-folder-btn"
         style={{ cursor: "pointer", padding: "0 5px", fontWeight: "bold" }}
+        title="Delete Folder"
         onClick={(e) => {
           e.stopPropagation(); // Prevents clicking the folder when hitting delete
           onDelete(f);
@@ -66,15 +69,15 @@ function FolderButton({ f, activeFolder, setActiveFolder, onDelete }) {
 function GalleryDropZone({ activeFolder, setActiveFolder }) {
   const { isOver, setNodeRef } = useDroppable({ id: "Select Folder" });
   const style = {
-    backgroundColor: isOver ? "#e3f2fd" : "#fff",
-    border: isOver ? "2px dashed #0077ff" : "1px solid #ddd",
+    backgroundColor: isOver ? "aliceblue" : "aliceblue",
+    border: isOver ? "4px solid black" : "4px solid black",
     padding: "10px",
     marginBottom: "20px",
     borderRadius: "8px",
     textAlign: "center",
     cursor: "pointer",
     fontWeight: activeFolder === "Select Folder" ? "bold" : "normal",
-    color: activeFolder === "Select Folder" ? "#0077ff" : "#333",
+    color: activeFolder === "Select Folder" ? "#173251FF" : "#173251FF",
   };
   return (
     <div
@@ -307,6 +310,7 @@ export default function App() {
     >
       <div className="app">
         <aside className="sidebar">
+          {" "}
           <GalleryDropZone
             activeFolder={activeFolder}
             setActiveFolder={setActiveFolder}
@@ -345,7 +349,7 @@ export default function App() {
         </aside>
 
         <main>
-          <h1 className="gallery-heading">Image Gallery</h1>
+          <h1 className="gallery-heading">Photo</h1>
           <div className="controls">
             <input
               ref={imageInputRef}
@@ -448,15 +452,12 @@ export default function App() {
           </div>
         </main>
 
-        <DragOverlay>
+        <DragOverlay modifiers={[snapCenterToCursor]}>
           {activeDragItem && (
-            <div
-              className="card-overlay"
-              style={{ width: "40px", opacity: "0.8", pointerEvents: "none" }}
-            >
+            <div className="card-overlay">
               <div className="card">
                 <div className="card-face card-front">
-                  <img src={activeDragItem.imageURL} alt="" />
+                  <img src={activeDragItem.imageURL} alt="Dragging" />
                 </div>
               </div>
             </div>
