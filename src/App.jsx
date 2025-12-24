@@ -49,14 +49,15 @@ function FolderButton({ f, activeFolder, setActiveFolder, onDelete }) {
   );
 }
 
-function TrashDropZone({ selectedCount, onBulkDelete }) {
+function TrashDropZone({ selectedCount, onBulkDelete, isDropping }) {
   const { isOver, setNodeRef } = useDroppable({ id: "TRASH_BIN" });
   return (
     <div
       ref={setNodeRef}
-      className={`trash-zone ${isOver ? "trash-over" : ""} ${
-        selectedCount > 0 ? "has-selection" : ""
-      }`}
+      className={`trash-zone 
+        ${isOver ? "trash-over" : ""} 
+        ${selectedCount > 0 ? "has-selection" : ""} 
+        ${isDropping ? "trash-dropped" : ""}`}
       onClick={(e) => {
         e.stopPropagation();
         if (selectedCount > 0) onBulkDelete();
@@ -174,10 +175,16 @@ export default function App() {
   const [selectedIds, setSelectedIds] = useState(new Set());
   const [zoomData, setZoomData] = useState(null);
   const [activeDragItem, setActiveDragItem] = useState(null);
+  const [isDropping, setIsDropping] = useState(false);
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 10 } })
   );
+
+  const triggerTrashAnimation = () => {
+    setIsDropping(true);
+    setTimeout(() => setIsDropping(false), 300);
+  };
 
   const persistItems = (newItems) => {
     setItems(newItems);
@@ -231,13 +238,13 @@ export default function App() {
     setActiveDragItem(null);
     if (!over) return;
 
-    // Determine which IDs are being moved
     const draggedIds = selectedIds.has(active.id)
       ? Array.from(selectedIds)
       : [active.id];
 
     if (over.id === "TRASH_BIN") {
       if (window.confirm(`Delete ${draggedIds.length} item(s)?`)) {
+        triggerTrashAnimation();
         for (let id of draggedIds) {
           const item = items.find((i) => i.id === id);
           if (item) await deleteImage(item.imageId);
@@ -248,14 +255,13 @@ export default function App() {
       return;
     }
 
-    // Moving to folder
     const targetFolder = over.id === "Select Folder" ? "" : over.id;
     persistItems(
       items.map((i) =>
         draggedIds.includes(i.id) ? { ...i, folder: targetFolder } : i
       )
     );
-    setSelectedIds(new Set()); // Clear selection after move
+    setSelectedIds(new Set());
   };
 
   const visibleItems = useMemo(
@@ -311,9 +317,11 @@ export default function App() {
           </button>
 
           <TrashDropZone
+            isDropping={isDropping}
             selectedCount={selectedIds.size}
             onBulkDelete={async () => {
               if (window.confirm(`Delete ${selectedIds.size} items?`)) {
+                triggerTrashAnimation();
                 for (let id of selectedIds) {
                   const item = items.find((i) => i.id === id);
                   if (item) await deleteImage(item.imageId);

@@ -77,7 +77,6 @@ html {
   padding-right: 10px;
 }
 
-/* Separation for Delete Button */
 .delete-folder-btn {
   background: #ffeded;
   color: #ff4444;
@@ -91,7 +90,7 @@ html {
   cursor: pointer;
   font-size: 1.2rem;
   transition: 0.2s;
-  margin-left: 10px; /* Force separation */
+  margin-left: 10px;
 }
 .delete-folder-btn:hover {
   background: #ff4444;
@@ -122,7 +121,8 @@ main {
   border-bottom: 1px solid #eee;
   padding-bottom: 15px;
 }
-.controls input[type="text"] {
+.controls input[type="text"],
+.controls input[placeholder="Search notes..."] {
   flex: 1;
   padding: 8px 12px;
   border: 1px solid #ddd;
@@ -267,11 +267,12 @@ main {
 /* DRAG PREVIEW & MULTI-BADGE */
 .card-drag-preview {
   position: relative;
-  width: 120px;
-  height: 160px;
+  width: 80px; /* SIZE OF THE DRAGGED IMAGE */
+  height: 106px;
   pointer-events: none;
   box-shadow: 0 10px 20px rgba(0, 0, 0, 0.3);
   opacity: 0.9;
+  z-index: 9999;
 }
 .drag-count-badge {
   position: absolute;
@@ -307,12 +308,43 @@ main {
   border: 2px solid #ff4444;
   transform: scale(1.05);
 }
+
 .has-selection {
   background: #ff4444 !important;
   color: white !important;
   animation: pulse 1.5s infinite;
   border-style: solid;
 }
+
+/* DROPPED ANIMATION */
+.trash-dropped {
+  animation: bin-pop 0.3s ease-in-out !important;
+  background: #ff1111 !important;
+  color: white !important;
+  z-index: 10;
+}
+
+@keyframes bin-pop {
+  0% {
+    transform: scale(1) rotate(0deg);
+  }
+  20% {
+    transform: scale(1.3) rotate(-10deg); /* Intense grow + tilt left */
+  }
+  40% {
+    transform: scale(1.3) rotate(10deg); /* Stay big + tilt right */
+  }
+  60% {
+    transform: scale(1.3) rotate(-10deg); /* Stay big + tilt left again */
+  }
+  80% {
+    transform: scale(0.9) rotate(0deg); /* Slight "squish" back */
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
 @keyframes pulse {
   0% {
     transform: scale(1);
