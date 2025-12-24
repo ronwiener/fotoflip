@@ -1,398 +1,363 @@
 * {
   box-sizing: border-box;
 }
-
-body {
+body,
+html {
   margin: 0;
+  padding: 0;
   font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
-  background-color: #f9f9f9;
-  color: #333;
+  background: #f9f9f9;
+  height: 100vh;
+  overflow: hidden;
 }
 
 .app {
   display: flex;
-  min-height: 100vh;
+  width: 100vw;
+  height: 100vh;
 }
 
-/* SIDEBAR & FOLDERS */
+/* SIDEBAR */
 .sidebar {
-  width: 200px;
-  background: #fff;
-  border-right: 1px solid #e0e0e0;
+  width: 240px;
+  background: white;
+  border-right: 1px solid #ddd;
   padding: 20px;
-  position: sticky;
-  top: 0;
-  height: 100vh;
   display: flex;
   flex-direction: column;
+  flex-shrink: 0;
+}
+.folder-list {
+  flex: 1;
+  overflow-y: auto;
+  margin: 10px 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
 }
 
-.sidebar-heading {
-  font-size: 0.85rem;
-  font-weight: bold;
-  color: #666;
-  text-transform: uppercase;
-  letter-spacing: 1px;
-  padding: 10px 15px;
-  margin-top: 10px;
-  pointer-events: none;
-}
-
-.sidebar h3 {
-  margin-top: 2px;
-  font-size: 1.1rem;
-  text-transform: uppercase;
-  letter-spacing: 1px;
-  text-align: center;
-}
-
-.sidebar button {
-  display: block;
-  width: 100%;
-  margin-bottom: 8px;
-  padding: 10px 12px;
-  background: #f0f0f0;
-  border: 1px solid transparent;
-  cursor: pointer;
-  text-align: left;
+.main-gallery-btn,
+.folder-item,
+.add-folder-btn {
+  padding: 12px;
   border-radius: 8px;
-  transition: all 0.2s ease;
-  font-weight: 500;
+  cursor: pointer;
+  background: #f5f5f5;
+  border: none;
+  text-align: left;
+  transition: 0.2s;
+  font-size: 0.95rem;
 }
 
-.sidebar button.active {
-  background: #0077ff;
+.active {
+  background: #0077ff !important;
   color: white;
 }
 
-.sidebar button.drag-over {
-  background-color: #4caf50 !important;
-  color: white !important;
-  transform: scale(1.05);
-  border: 2px dashed #ffffff;
-  box-shadow: 0 4px 12px rgba(76, 175, 80, 0.3);
-}
-
-.add-folder-btn {
-  margin-top: 15px;
-  background: none;
-  border: 1px dashed #ccc;
-  color: #888;
-  text-align: center;
-}
-
-.add-folder-btn:hover {
-  border-color: #0077ff;
-  color: #0077ff;
+/* Folder Hover States */
+.folder-hover-active {
+  background: #e3f2fd !important;
+  border: 2px solid #2196f3 !important;
+  transform: translateX(5px);
 }
 
 .folder-item {
   display: flex;
+  justify-content: space-between;
   align-items: center;
-  margin-bottom: 8px;
-  border-radius: 8px;
-  transition: all 0.2s ease;
-  background: #f0f0f0;
-  border: 1px solid transparent;
-  overflow: hidden;
-  gap: 12px;
+  position: relative;
+}
+.folder-name-btn {
+  background: none;
+  border: none;
+  color: inherit;
+  flex: 1;
+  text-align: left;
+  cursor: pointer;
+  padding-right: 10px;
 }
 
-.folder-item.active {
-  background: #0077ff;
-  color: white;
-}
-
+/* Separation for Delete Button */
 .delete-folder-btn {
-  padding: 0 12px;
+  background: #ffeded;
+  color: #ff4444;
+  border: 1px solid #ffcccc;
+  border-radius: 4px;
+  width: 24px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   cursor: pointer;
   font-size: 1.2rem;
-  color: #ccc;
-  transition: all 0.2s ease;
-  display: flex;
-  align-items: center;
-  height: 100%;
-  min-width: 40px;
-  justify-content: center;
+  transition: 0.2s;
+  margin-left: 10px; /* Force separation */
 }
-
 .delete-folder-btn:hover {
-  color: #ff4d4d;
-  background: rgba(255, 77, 77, 0.1); /* Subtle red glow on hover */
+  background: #ff4444;
+  color: white;
+  border-color: #ff4444;
 }
 
-.folder-item button {
-  flex: 1;
-  padding-left: 12px;
-  margin-bottom: 0 !important;
-  background: transparent !important;
-  border: none !important;
-}
-
-/* MAIN CONTENT */
-.gallery-heading {
-  margin: 0 0 20px 0;
-  padding-left: 10px;
-  font-size: 2.5rem;
-  color: rgb(41, 41, 114);
+.add-folder-btn {
+  background: #fff;
+  border: 1px dashed #ccc;
+  margin-bottom: 10px;
   text-align: center;
+  font-weight: bold;
 }
 
+/* MAIN & GRID */
 main {
-  padding: 20px;
   flex: 1;
+  overflow-y: auto;
+  padding: 30px;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
 }
-
 .controls {
   display: flex;
-  gap: 12px;
-  margin-bottom: 30px;
-  align-items: center;
-  flex-wrap: wrap;
+  gap: 15px;
+  border-bottom: 1px solid #eee;
+  padding-bottom: 15px;
 }
-
 .controls input[type="text"] {
+  flex: 1;
   padding: 8px 12px;
   border: 1px solid #ddd;
   border-radius: 6px;
-  flex: 1;
-  min-width: 200px;
 }
-
-/* GALLERY GRID */
 .gallery {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
   gap: 25px;
+  align-content: start;
 }
 
-/* CARD ARCHITECTURE - THE CORE FIX */
+/* CARD */
 .card-wrapper {
   position: relative;
   aspect-ratio: 3/4;
   perspective: 1000px;
-  touch-action: none;
+  cursor: pointer;
 }
-
 .card {
-  position: relative;
   width: 100%;
   height: 100%;
   transform-style: preserve-3d;
   transition: transform 0.6s cubic-bezier(0.4, 0, 0.2, 1);
 }
-
-.card.flipped {
+.flipped {
   transform: rotateY(180deg);
 }
-
 .card-face {
-  position: absolute; /* REQUIRED: Places front and back on top of each other */
-  inset: 0; /* REQUIRED: Spans full card size */
-  backface-visibility: hidden; /* REQUIRED: Hides the side not facing the user */
+  position: absolute;
+  inset: 0;
+  backface-visibility: hidden;
+  border-radius: 12px;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+  background: white;
+  overflow: hidden;
   display: flex;
   flex-direction: column;
-  overflow: hidden;
-  background-color: #fff;
-  border-radius: 12px;
-  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
 }
-
-.card-front img {
+.card-back {
+  transform: rotateY(180deg);
+  padding: 15px;
+}
+.drag-handle {
+  width: 100%;
+  height: 100%;
+  cursor: grab;
+}
+.drag-handle:active {
+  cursor: grabbing;
+}
+.card-face img {
   width: 100%;
   height: 100%;
   object-fit: cover;
-  display: block;
-}
-
-.card-back {
-  transform: rotateY(180deg); /* Flips the back side away initially */
-  padding: 15px;
-  background: #fff;
-}
-
-.notes-content {
-  display: flex;
-  flex-direction: column;
-  height: 100%;
-}
-
-textarea {
-  flex: 1;
-  border: none;
-  resize: none;
-  outline: none;
-  font-family: inherit;
-  font-size: 0.9rem;
-  line-height: 1.4;
-}
-
-/* BUTTONS & OVERLAYS */
-.zoom-btn,
-.back-zoom-btn {
-  position: absolute;
-  background: rgba(255, 255, 255, 0.9);
-  border: none;
-  border-radius: 50%;
-  width: 32px;
-  height: 32px;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
-  z-index: 10;
-}
-
-.zoom-btn {
-  top: 8px;
-  right: 8px;
-}
-.back-zoom-btn {
-  bottom: 8px;
-  right: 8px;
-}
-
-.folder-badge {
-  position: absolute;
-  bottom: 8px;
-  left: 8px;
-  background: rgba(0, 0, 0, 0.6);
-  color: white;
-  padding: 2px 8px;
-  border-radius: 4px;
-  font-size: 0.7rem;
-}
-
-.back-button {
-  background: #666;
-  color: white;
-  margin-top: 10px;
-  font-size: 0.8rem;
-  border: none;
-  border-radius: 4px;
-  padding: 5px;
-  cursor: pointer;
-}
-
-/* DRAG OVERLAY FIXES */
-.card-overlay {
-  width: 180px;
-  height: 240px;
   pointer-events: none;
-  z-index: 9999;
+}
+
+/* SELECTION */
+.selected .card {
+  box-shadow: 0 0 0 4px #0077ff;
+}
+.selected::after {
+  content: "✓";
+  position: absolute;
+  top: 10px;
+  left: 10px;
+  background: #0077ff;
+  color: white;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
   display: flex;
   align-items: center;
   justify-content: center;
+  z-index: 5;
+  pointer-events: none;
+  font-weight: bold;
 }
 
-.card-overlay .card-face {
-  position: relative !important; /* Reset position for the drag ghost */
-  transform: scale(0.4) !important;
-  transform-origin: center center;
-  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
-  opacity: 0.9;
-  border-radius: 12px;
+/* ZOOM & OVERLAY */
+.zoom-btn {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  z-index: 10;
+  border: none;
+  background: rgba(255, 255, 255, 0.8);
+  border-radius: 50%;
+  padding: 8px;
+  cursor: pointer;
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
 }
-
-/* Ensures the back side never renders in the overlay */
-.card-overlay .card-back {
-  display: none !important;
-}
-
-/* MODALS */
 .zoom-overlay {
   position: fixed;
   inset: 0;
   background: rgba(0, 0, 0, 0.9);
+  z-index: 1000;
   display: flex;
-  justify-content: center;
   align-items: center;
-  z-index: 10000;
+  justify-content: center;
   cursor: zoom-out;
 }
-
 .zoom-overlay img {
   max-width: 90%;
   max-height: 90%;
-  border-radius: 8px;
+  border-radius: 4px;
 }
 
-.notes-zoom-overlay {
-  position: fixed;
-  inset: 0;
-  background: rgba(0, 0, 0, 0.85);
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  z-index: 10000;
-}
-
-.notes-zoom-panel {
+.zoomed-notes-box {
   background: white;
-  width: 60%;
-  height: 60%;
-  padding: 30px;
+  width: 80%;
+  max-width: 600px;
+  height: 50%;
   border-radius: 12px;
+  padding: 25px;
   display: flex;
   flex-direction: column;
-  box-shadow: 0 0 30px rgba(0, 0, 0, 0.5);
+  gap: 15px;
+  cursor: default;
+}
+.zoomed-notes-box textarea {
+  flex: 1;
+  font-size: 1.1rem;
+  padding: 15px;
+  border-radius: 8px;
+  border: 1px solid #ddd;
+  resize: none;
+  outline: none;
+  line-height: 1.5;
+}
+.close-zoom-btn {
+  padding: 10px;
+  background: #0077ff;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  font-weight: bold;
 }
 
-.notes-zoom-panel textarea {
-  font-size: 1.5rem;
-  line-height: 1.6;
+/* DRAG PREVIEW & MULTI-BADGE */
+.card-drag-preview {
+  position: relative;
+  width: 120px;
+  height: 160px;
+  pointer-events: none;
+  box-shadow: 0 10px 20px rgba(0, 0, 0, 0.3);
+  opacity: 0.9;
+}
+.drag-count-badge {
+  position: absolute;
+  top: -10px;
+  right: -10px;
+  background: #ff4444;
+  color: white;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: bold;
+  border: 2px solid white;
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
 }
 
-/* TRASH ZONE */
+/* TRASH */
 .trash-zone {
   margin-top: auto;
   padding: 15px;
   border-radius: 12px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-  border: 2px solid #ef5350;
-  transition: all 0.3s ease;
-  font-size: 0.95rem;
-  background: #fff5f5;
-  color: #d32f2f;
+  border: 2px dashed #ff4444;
+  color: #ff4444;
+  text-align: center;
+  cursor: pointer;
+  transition: 0.3s;
+  font-weight: bold;
 }
-
-.trash-icon {
-  fill: #ff1744 !important;
-  color: #ff1744 !important;
-  width: 24px;
-  height: 24px;
-  transition: transform 0.2s ease;
-}
-
 .trash-over {
-  background: #ffebee !important;
-  border: 2px solid #b71c1c !important;
+  background: #fff1f1;
+  border: 2px solid #ff4444;
   transform: scale(1.05);
-  box-shadow: 0 4px 12px rgba(211, 47, 47, 0.2);
 }
-
-.trash-over .trash-icon {
-  animation: shake-trash 0.2s infinite linear !important;
+.has-selection {
+  background: #ff4444 !important;
+  color: white !important;
+  animation: pulse 1.5s infinite;
+  border-style: solid;
 }
-
-@keyframes shake-trash {
+@keyframes pulse {
   0% {
-    transform: rotate(0deg);
-  }
-  25% {
-    transform: rotate(10deg);
+    transform: scale(1);
   }
   50% {
-    transform: rotate(0deg);
-  }
-  75% {
-    transform: rotate(-10deg);
+    transform: scale(1.03);
   }
   100% {
-    transform: rotate(0deg);
+    transform: scale(1);
   }
+}
+
+/* NOTES CARD UI */
+.notes-content {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  gap: 10px;
+}
+.notes-content textarea {
+  flex: 1;
+  border: 1px solid #eee;
+  border-radius: 6px;
+  padding: 10px;
+  resize: none;
+  font-size: 0.9rem;
+}
+.notes-actions {
+  display: flex;
+  gap: 8px;
+}
+.back-zoom-btn,
+.back-button {
+  flex: 1;
+  padding: 8px;
+  border-radius: 6px;
+  cursor: pointer;
+  border: none;
+  font-size: 0.85rem;
+}
+.back-zoom-btn {
+  background: #f0f0f0;
+}
+.back-button {
+  background: #0077ff;
+  color: white;
+  font-weight: bold;
 }

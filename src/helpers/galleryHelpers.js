@@ -5,10 +5,14 @@ import JSZip from "jszip";
 export function loadItems() {
   const saved = localStorage.getItem("gallery-items");
   if (!saved) return [];
-  const parsed = JSON.parse(saved);
-
-  // Remove stale blob URLs
-  return parsed.map((item) => ({ ...item, imageURL: null }));
+  try {
+    const parsed = JSON.parse(saved);
+    // Remove stale blob URLs so they can be regenerated from IndexedDB
+    return parsed.map((item) => ({ ...item, imageURL: null }));
+  } catch (e) {
+    console.error("Failed to parse gallery items", e);
+    return [];
+  }
 }
 
 export function saveItems(items) {
@@ -26,11 +30,15 @@ const FOLDER_ALIASES = {
 
 export function loadFolders() {
   const saved = localStorage.getItem("gallery-folders");
-  if (!saved) return ["SFolder Groups"];
+  // Fix: Removed the 'S' typo from "Folder Groups"
+  if (!saved) return ["Folder Groups"];
 
-  const folders = JSON.parse(saved);
-
-  return folders.map((f) => FOLDER_ALIASES[f] ?? f);
+  try {
+    const folders = JSON.parse(saved);
+    return folders.map((f) => FOLDER_ALIASES[f] ?? f);
+  } catch (e) {
+    return ["Folder Groups"];
+  }
 }
 
 export function saveFolders(folders) {
@@ -40,15 +48,18 @@ export function saveFolders(folders) {
 /* ---------- FILTERING ---------- */
 
 export function filterItems(items, activeFolder, search) {
+  if (!items) return [];
   const query = search.toLowerCase();
+
   return items.filter((item) => {
-    // If we are in "Select Folder", only show items with NO folder
+    // Logic: If activeFolder is "Select Folder", show items with no folder/empty string
+    // Otherwise, show items matching the specific folder name
     const folderMatch =
       activeFolder === "Select Folder"
         ? !item.folder || item.folder === ""
         : item.folder === activeFolder;
 
-    const searchMatch = item.notes.toLowerCase().includes(query);
+    const searchMatch = (item.notes || "").toLowerCase().includes(query);
     return folderMatch && searchMatch;
   });
 }
@@ -63,8 +74,10 @@ export async function exportGalleryZip(items, getImageBlob) {
     const blob = await getImageBlob(item.imageId);
     if (!blob) continue;
 
+    // We store files in folders within the ZIP for organization
     const path = item.folder ? `${item.folder}/` : "";
-    zip.folder(path).file(`${item.id}.jpg`, blob);
+    const filename = `${item.id}.jpg`;
+    zip.file(`${path}${filename}`, blob);
 
     meta.push({
       id: item.id,
@@ -72,40 +85,47 @@ export async function exportGalleryZip(items, getImageBlob) {
       tags: item.tags,
       folder: item.folder,
       flipped: item.flipped,
-      filename: `${item.id}.jpg`,
+      filename: filename,
     });
   }
 
   zip.file("gallery.json", JSON.stringify(meta, null, 2));
-
-  const out = await zip.generateAsync({ type: "blob" });
-  return out;
+  return await zip.generateAsync({ type: "blob" });
 }
 
-/* ---------- ZIP IMPORT ---------- */
+/* ---------- ZIP IMPORT (Fixed Version) ---------- */
 
 export async function importGalleryZip(file, saveImage) {
-  const zip = await JSZip.loadAsync(file);
-  const meta = JSON.parse(await zip.file("gallery.json").async("string"));
+  try {
+    const zip = await JSZip.loadAsync(file);
+    const metaFile = zip.file("gallery.json");
+    if (!metaFile) return [];
 
-  const imported = [];
+    const meta = JSON.parse(await metaFile.async("string"));
+    const imported = [];
 
-  for (const m of meta) {
-    const imgFile = zip.file(
-      m.folder ? `${m.folder}/${m.filename}` : m.filename
-    );
-    if (!imgFile) continue;
+    for (const m of meta) {
+      // Correctly locate the file inside the zip folders
+      const zipPath = m.folder ? `${m.folder}/${m.filename}` : m.filename;
+      const imgFile = zip.file(zipPath);
 
-    const blob = await imgFile.async("blob");
-    const imageId = crypto.randomUUID();
-    await saveImage(imageId, blob);
+      if (!imgFile) continue;
 
-    imported.push({
-      ...m,
-      imageId,
-      imageURL: null,
-    });
+      const blob = await imgFile.async("blob");
+      // Create a fresh ID for IndexedDB
+      const imageId = crypto.randomUUID();
+      await saveImage(imageId, blob);
+
+      imported.push({
+        ...m,
+        id: crypto.randomUUID(), // New unique ID for this app instance
+        imageId,
+        imageURL: null, // Will be populated by the URL creator in App.jsx
+      });
+    }
+    return imported;
+  } catch (e) {
+    console.error("Zip import failed", e);
+    return [];
   }
-
-  return imported;
 }
