@@ -348,6 +348,11 @@ export default function App() {
         </aside>
 
         <main>
+          <div>
+            <h1>
+              Photo <span className="flip-text">Flip</span>
+            </h1>
+          </div>
           <div className="controls">
             <input
               type="file"
@@ -376,6 +381,7 @@ export default function App() {
               }}
             />
             <input
+              type="text"
               placeholder="Search notes..."
               onChange={(e) => setSearch(e.target.value)}
             />

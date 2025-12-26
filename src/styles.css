@@ -176,18 +176,68 @@ main {
   gap: 20px;
 }
 
+h1 {
+  display: flex;
+  gap: 10px;
+  text-align: left;
+  margin: 0;
+}
+
+.flip-text {
+  display: inline-block;
+  perspective: 1000px;
+  animation: text-flip 4s infinite ease-in-out;
+  color: #0077ff;
+}
+
+@keyframes text-flip {
+  0%,
+  80% {
+    transform: rotateY(0deg);
+  }
+  90% {
+    transform: rotateY(180deg);
+  }
+  100% {
+    transform: rotateY(360deg);
+  }
+}
+
 .controls {
   display: flex;
   gap: 15px;
   border-bottom: 1px solid #eee;
   padding-bottom: 15px;
+  align-items: center;
+  /* This ensures the container wraps if the screen is too small */
+  flex-wrap: wrap;
 }
 
+/* 1. Fix the file input width */
+.controls input[type="file"] {
+  flex: 0 0 auto;
+  max-width: 200px;
+}
+
+/* 2. The Search Input Logic */
 .controls input[placeholder="Search notes..."] {
+  /* Starts at 150px, but grows to fill space (flex-grow: 1) */
   flex: 1;
+  min-width: 60px;
+  max-width: 400px; /* Limits how far it stretches on huge screens */
+
   padding: 8px 12px;
   border: 1px solid #ddd;
   border-radius: 6px;
+  transition: all 0.3s ease;
+}
+
+/* 3. Visual feedback when typing or clicking */
+.controls input[placeholder="Search notes..."]:focus {
+  outline: none;
+  border-color: #0077ff;
+  max-width: 600px; /* Expands slightly when focused */
+  box-shadow: 0 0 5px rgba(0, 119, 255, 0.2);
 }
 
 .gallery {
