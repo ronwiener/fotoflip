@@ -146,7 +146,7 @@ function DraggableCard({
           <div className="notes-content">
             <textarea
               value={item.notes}
-              placeholder="Notes..."
+              placeholder="Zoom in to write notes here..."
               onClick={(e) => e.stopPropagation()}
               onChange={(e) => updateNotes(item.id, e.target.value)}
             />
@@ -158,7 +158,7 @@ function DraggableCard({
                   onZoom({ type: "notes", content: item.notes, id: item.id });
                 }}
               >
-                🔍 Expand
+                🔍 Zoom
               </button>
               <button
                 className="back-button"
@@ -167,7 +167,7 @@ function DraggableCard({
                   onFlip(item.id);
                 }}
               >
-                Done
+                Flip
               </button>
             </div>
           </div>
@@ -453,10 +453,3 @@ export default function App() {
     </DndContext>
   );
 }
-
-/*
-1.  need to clear file name after upload of files, it appears next to upload box
-2.  mobile ready
-3.  need to be able to move images out of file and into main gallery
-
-*/

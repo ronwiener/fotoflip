@@ -1,6 +1,8 @@
+/* ---------- GLOBAL STYLES ---------- */
 * {
   box-sizing: border-box;
 }
+
 body,
 html {
   margin: 0;
@@ -17,7 +19,7 @@ html {
   height: 100vh;
 }
 
-/* SIDEBAR */
+/* ---------- SIDEBAR ---------- */
 .sidebar {
   width: 240px;
   background: white;
@@ -27,6 +29,7 @@ html {
   flex-direction: column;
   flex-shrink: 0;
 }
+
 .folder-list {
   flex: 1;
   overflow-y: auto;
@@ -36,62 +39,71 @@ html {
   gap: 8px;
 }
 
+/* Base Button Styles */
 .main-gallery-btn,
 .folder-item,
 .add-folder-btn {
-  padding: 12px;
   border-radius: 8px;
   cursor: pointer;
   background: #f5f5f5;
   border: none;
-  text-align: left;
   transition: 0.2s;
+}
+
+.main-gallery-btn {
+  padding: 12px;
+  text-align: left;
   font-size: 0.95rem;
+  margin-bottom: 5px;
+  width: 100%;
 }
 
 .active {
   background: #0077ff !important;
-  color: white;
+  color: white !important;
 }
 
-/* Folder Hover States */
-.folder-hover-active {
-  background: #e3f2fd !important;
-  border: 2px solid #2196f3 !important;
-  transform: translateX(5px);
-}
-
+/* Folder Item Layout */
 .folder-item {
   display: flex;
-  justify-content: space-between;
   align-items: center;
-  position: relative;
+  justify-content: space-between;
+  padding: 0 12px;
+  min-height: 45px;
 }
+
 .folder-name-btn {
   background: none;
   border: none;
-  color: inherit;
   flex: 1;
+  color: inherit;
   text-align: left;
   cursor: pointer;
-  padding-right: 10px;
+  padding: 12px 0;
+  font-size: 0.95rem;
+  margin-right: 15px;
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .delete-folder-btn {
+  flex-shrink: 0;
+  width: 24px;
+  height: 24px;
   background: #ffeded;
   color: #ff4444;
   border: 1px solid #ffcccc;
-  border-radius: 4px;
-  width: 24px;
-  height: 24px;
+  border-radius: 6px;
   display: flex;
   align-items: center;
   justify-content: center;
   cursor: pointer;
-  font-size: 1.2rem;
+  font-size: 1.1rem;
   transition: 0.2s;
-  margin-left: 10px;
 }
+
 .delete-folder-btn:hover {
   background: #ff4444;
   color: white;
@@ -102,11 +114,59 @@ html {
   background: #fff;
   border: 1px dashed #ccc;
   margin-bottom: 10px;
+  padding: 12px;
   text-align: center;
   font-weight: bold;
 }
 
-/* MAIN & GRID */
+/* Folder Hover States for Dragging */
+.folder-hover-active {
+  background: #e3f2fd !important;
+  border: 2px solid #2196f3 !important;
+  transform: translateX(5px);
+}
+
+/* ---------- TRASH (Permanently Red) ---------- */
+.trash-zone {
+  margin-top: auto;
+  padding: 15px;
+  border-radius: 12px;
+  border: 2px solid #ff4444 !important;
+  background-color: #fff1f1 !important;
+  color: #ff4444 !important;
+  text-align: center;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  font-weight: bold;
+  touch-action: none;
+}
+
+.trash-zone span {
+  color: #ff4444;
+}
+
+.trash-zone:hover,
+.trash-zone.trash-over,
+.trash-zone.has-selection {
+  background-color: #ff4444 !important;
+  color: white !important;
+  border-color: #d32f2f !important;
+}
+
+.trash-zone:hover span,
+.trash-zone.trash-over span,
+.trash-zone.has-selection span {
+  color: white !important;
+}
+
+.trash-dropped {
+  animation: bin-pop 0.3s ease-in-out !important;
+  background: #ff1111 !important;
+  color: white !important;
+  z-index: 10;
+}
+
+/* ---------- MAIN & GRID ---------- */
 main {
   flex: 1;
   overflow-y: auto;
@@ -115,19 +175,21 @@ main {
   flex-direction: column;
   gap: 20px;
 }
+
 .controls {
   display: flex;
   gap: 15px;
   border-bottom: 1px solid #eee;
   padding-bottom: 15px;
 }
-.controls input[type="text"],
+
 .controls input[placeholder="Search notes..."] {
   flex: 1;
   padding: 8px 12px;
   border: 1px solid #ddd;
   border-radius: 6px;
 }
+
 .gallery {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
@@ -135,22 +197,26 @@ main {
   align-content: start;
 }
 
-/* CARD */
+/* ---------- CARDS ---------- */
 .card-wrapper {
   position: relative;
   aspect-ratio: 3/4;
   perspective: 1000px;
   cursor: pointer;
+  touch-action: none;
 }
+
 .card {
   width: 100%;
   height: 100%;
   transform-style: preserve-3d;
   transition: transform 0.6s cubic-bezier(0.4, 0, 0.2, 1);
 }
+
 .flipped {
   transform: rotateY(180deg);
 }
+
 .card-face {
   position: absolute;
   inset: 0;
@@ -162,18 +228,22 @@ main {
   display: flex;
   flex-direction: column;
 }
+
 .card-back {
   transform: rotateY(180deg);
   padding: 15px;
 }
+
 .drag-handle {
   width: 100%;
   height: 100%;
   cursor: grab;
 }
+
 .drag-handle:active {
   cursor: grabbing;
 }
+
 .card-face img {
   width: 100%;
   height: 100%;
@@ -181,10 +251,10 @@ main {
   pointer-events: none;
 }
 
-/* SELECTION */
 .selected .card {
   box-shadow: 0 0 0 4px #0077ff;
 }
+
 .selected::after {
   content: "✓";
   position: absolute;
@@ -203,7 +273,7 @@ main {
   font-weight: bold;
 }
 
-/* ZOOM & OVERLAY */
+/* ---------- ZOOM & OVERLAY ---------- */
 .zoom-btn {
   position: absolute;
   top: 10px;
@@ -216,6 +286,7 @@ main {
   cursor: pointer;
   box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
 }
+
 .zoom-overlay {
   position: fixed;
   inset: 0;
@@ -226,6 +297,7 @@ main {
   justify-content: center;
   cursor: zoom-out;
 }
+
 .zoom-overlay img {
   max-width: 90%;
   max-height: 90%;
@@ -244,6 +316,7 @@ main {
   gap: 15px;
   cursor: default;
 }
+
 .zoomed-notes-box textarea {
   flex: 1;
   font-size: 1.1rem;
@@ -254,6 +327,7 @@ main {
   outline: none;
   line-height: 1.5;
 }
+
 .close-zoom-btn {
   padding: 10px;
   background: #0077ff;
@@ -264,16 +338,17 @@ main {
   font-weight: bold;
 }
 
-/* DRAG PREVIEW & MULTI-BADGE */
+/* ---------- DRAG PREVIEW ---------- */
 .card-drag-preview {
   position: relative;
-  width: 80px; /* SIZE OF THE DRAGGED IMAGE */
+  width: 80px;
   height: 106px;
   pointer-events: none;
   box-shadow: 0 10px 20px rgba(0, 0, 0, 0.3);
   opacity: 0.9;
   z-index: 9999;
 }
+
 .drag-count-badge {
   position: absolute;
   top: -10px;
@@ -291,54 +366,22 @@ main {
   box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
 }
 
-/* TRASH */
-.trash-zone {
-  margin-top: auto;
-  padding: 15px;
-  border-radius: 12px;
-  border: 2px dashed #ff4444;
-  color: #ff4444;
-  text-align: center;
-  cursor: pointer;
-  transition: 0.3s;
-  font-weight: bold;
-}
-.trash-over {
-  background: #fff1f1;
-  border: 2px solid #ff4444;
-  transform: scale(1.05);
-}
-
-.has-selection {
-  background: #ff4444 !important;
-  color: white !important;
-  animation: pulse 1.5s infinite;
-  border-style: solid;
-}
-
-/* DROPPED ANIMATION */
-.trash-dropped {
-  animation: bin-pop 0.3s ease-in-out !important;
-  background: #ff1111 !important;
-  color: white !important;
-  z-index: 10;
-}
-
+/* ---------- ANIMATIONS ---------- */
 @keyframes bin-pop {
   0% {
     transform: scale(1) rotate(0deg);
   }
   20% {
-    transform: scale(1.3) rotate(-10deg); /* Intense grow + tilt left */
+    transform: scale(1.3) rotate(-10deg);
   }
   40% {
-    transform: scale(1.3) rotate(10deg); /* Stay big + tilt right */
+    transform: scale(1.3) rotate(10deg);
   }
   60% {
-    transform: scale(1.3) rotate(-10deg); /* Stay big + tilt left again */
+    transform: scale(1.3) rotate(-10deg);
   }
   80% {
-    transform: scale(0.9) rotate(0deg); /* Slight "squish" back */
+    transform: scale(0.9) rotate(0deg);
   }
   100% {
     transform: scale(1);
@@ -357,13 +400,14 @@ main {
   }
 }
 
-/* NOTES CARD UI */
+/* ---------- NOTES CONTENT ---------- */
 .notes-content {
   display: flex;
   flex-direction: column;
   height: 100%;
   gap: 10px;
 }
+
 .notes-content textarea {
   flex: 1;
   border: 1px solid #eee;
@@ -372,10 +416,12 @@ main {
   resize: none;
   font-size: 0.9rem;
 }
+
 .notes-actions {
   display: flex;
   gap: 8px;
 }
+
 .back-zoom-btn,
 .back-button {
   flex: 1;
@@ -385,6 +431,7 @@ main {
   border: none;
   font-size: 0.85rem;
 }
+
 .back-zoom-btn {
   background: #f0f0f0;
 }
@@ -392,4 +439,51 @@ main {
   background: #0077ff;
   color: white;
   font-weight: bold;
+}
+
+/* ---------- BASIC RESPONSIVENESS ---------- */
+@media (max-width: 768px) {
+  .app {
+    flex-direction: column;
+  }
+
+  .sidebar {
+    width: 100%;
+    height: auto;
+    border-right: none;
+    border-bottom: 1px solid #ddd;
+    padding: 15px;
+  }
+
+  .folder-list {
+    flex-direction: row;
+    overflow-x: auto;
+    padding-bottom: 5px;
+    height: auto;
+    flex: none;
+  }
+
+  .folder-item,
+  .main-gallery-btn,
+  .add-folder-btn {
+    white-space: nowrap;
+    margin-bottom: 0;
+    margin-right: 8px;
+    flex-shrink: 0;
+    width: auto;
+  }
+
+  .trash-zone {
+    margin-top: 10px;
+    padding: 10px;
+  }
+
+  .gallery {
+    grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+    gap: 15px;
+  }
+
+  main {
+    padding: 15px;
+  }
 }
