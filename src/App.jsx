@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useMemo } from "react";
+import React, { useEffect, useState, useMemo, useRef } from "react";
 import {
   DndContext,
   PointerSensor,
@@ -177,6 +177,8 @@ export default function App() {
   const [activeDragItem, setActiveDragItem] = useState(null);
   const [isDropping, setIsDropping] = useState(false);
 
+  const fileInputRef = useRef(null);
+
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 10 } })
   );
@@ -337,6 +339,7 @@ export default function App() {
           <div className="controls">
             <input
               type="file"
+              ref={fileInputRef}
               multiple
               onChange={async (e) => {
                 const files = Array.from(e.target.files);
@@ -354,6 +357,10 @@ export default function App() {
                   });
                 }
                 persistItems([...items, ...newItems]);
+
+                if (fileInputRef.current) {
+                  fileInputRef.current.value = "";
+                }
               }}
             />
             <input
@@ -434,3 +441,10 @@ export default function App() {
     </DndContext>
   );
 }
+
+/*
+1.  need to clear file name after upload of files, it appears next to upload box
+2.  mobile ready
+3.  need to be able to move images out of file and into main gallery
+
+*/
