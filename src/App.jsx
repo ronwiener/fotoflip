@@ -22,6 +22,22 @@ import {
 
 /* ---------- COMPONENTS ---------- */
 
+function MainGalleryDropZone({ activeFolder, setActiveFolder }) {
+  const { isOver, setNodeRef } = useDroppable({ id: "Select Folder" });
+
+  return (
+    <div
+      ref={setNodeRef}
+      className={`main-gallery-btn ${
+        activeFolder === "Select Folder" ? "active" : ""
+      } ${isOver ? "folder-hover-active" : ""}`}
+      onClick={() => setActiveFolder("Select Folder")}
+    >
+      Main Gallery
+    </div>
+  );
+}
+
 function FolderButton({ f, activeFolder, setActiveFolder, onDelete }) {
   const { isOver, setNodeRef } = useDroppable({ id: f });
 
@@ -281,14 +297,10 @@ export default function App() {
     >
       <div className="app">
         <aside className="sidebar">
-          <div
-            className={`main-gallery-btn ${
-              activeFolder === "Select Folder" ? "active" : ""
-            }`}
-            onClick={() => setActiveFolder("Select Folder")}
-          >
-            Main Gallery
-          </div>
+          <MainGalleryDropZone
+            activeFolder={activeFolder}
+            setActiveFolder={setActiveFolder}
+          />
           <div className="folder-list">
             {folders.map((f) =>
               f === "Folder Groups" ? (
