@@ -347,8 +347,8 @@ export default function App() {
           />
         </aside>
 
-        <main>
-          <div>
+        <main className="main">
+          <div className="heading">
             <h1>
               Photo <span className="flip-text">Flip</span>
             </h1>

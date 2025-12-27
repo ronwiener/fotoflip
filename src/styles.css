@@ -8,7 +8,7 @@ html {
   margin: 0;
   padding: 0;
   font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
-  background: #f9f9f9;
+  background: aliceblue;
   height: 100vh;
   overflow: hidden;
 }
@@ -170,10 +170,11 @@ html {
 main {
   flex: 1;
   overflow-y: auto;
-  padding: 30px;
+  /* Remove padding from here */
+  padding: 0;
   display: flex;
   flex-direction: column;
-  gap: 20px;
+  gap: 0; /* Changed to 0 to avoid gaps between colored sections */
 }
 
 h1 {
@@ -181,6 +182,17 @@ h1 {
   gap: 10px;
   text-align: left;
   margin: 0;
+}
+
+/* Heading and Controls */
+.heading,
+.controls {
+  background-color: aliceblue;
+  padding: 20px 30px; /* Restoring the padding lost from 'main' */
+}
+
+.heading {
+  padding-top: 30px;
 }
 
 .flip-text {
@@ -240,7 +252,11 @@ h1 {
   box-shadow: 0 0 5px rgba(0, 119, 255, 0.2);
 }
 
+/* Gallery Section */
 .gallery {
+  background-color: #524d4d4f; /* Black background */
+  flex: 1; /* Ensures the black covers the rest of the page height */
+  padding: 30px;
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
   gap: 25px;
