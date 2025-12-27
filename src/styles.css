@@ -1,4 +1,4 @@
-/* ---------- GLOBAL STYLES ---------- */
+/* ---------- RESET & BASE ---------- */
 * {
   box-sizing: border-box;
 }
@@ -19,7 +19,7 @@ html {
   height: 100vh;
 }
 
-/* ---------- SIDEBAR ---------- */
+/* ---------- SIDEBAR (DESKTOP) ---------- */
 .sidebar {
   width: 240px;
   background: white;
@@ -28,6 +28,14 @@ html {
   display: flex;
   flex-direction: column;
   flex-shrink: 0;
+  z-index: 100;
+}
+
+.sidebar-top-content {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
 }
 
 .folder-list {
@@ -39,7 +47,13 @@ html {
   gap: 8px;
 }
 
-/* Base Button Styles */
+/* Visual Feedback for Drops */
+.folder-hover-active {
+  background-color: #e0f0ff !important;
+  border: 2px dashed #0077ff !important;
+  transform: scale(1.02);
+}
+
 .main-gallery-btn,
 .folder-item,
 .add-folder-btn {
@@ -48,6 +62,7 @@ html {
   background: #f5f5f5;
   border: none;
   transition: 0.2s;
+  touch-action: none;
 }
 
 .main-gallery-btn {
@@ -63,7 +78,6 @@ html {
   color: white !important;
 }
 
-/* Folder Item Layout */
 .folder-item {
   display: flex;
   align-items: center;
@@ -82,7 +96,6 @@ html {
   padding: 12px 0;
   font-size: 0.95rem;
   margin-right: 15px;
-  display: block;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -100,14 +113,6 @@ html {
   align-items: center;
   justify-content: center;
   cursor: pointer;
-  font-size: 1.1rem;
-  transition: 0.2s;
-}
-
-.delete-folder-btn:hover {
-  background: #ff4444;
-  color: white;
-  border-color: #ff4444;
 }
 
 .add-folder-btn {
@@ -119,21 +124,14 @@ html {
   font-weight: bold;
 }
 
-/* Folder Hover States for Dragging */
-.folder-hover-active {
-  background: #e3f2fd !important;
-  border: 2px solid #2196f3 !important;
-  transform: translateX(5px);
-}
-
-/* ---------- TRASH (Permanently Red) ---------- */
+/* ---------- TRASH ZONE ---------- */
 .trash-zone {
   margin-top: auto;
   padding: 15px;
   border-radius: 12px;
-  border: 2px solid #ff4444 !important;
-  background-color: #fff1f1 !important;
-  color: #ff4444 !important;
+  border: 2px solid #ff4444;
+  background-color: #fff1f1;
+  color: #ff4444;
   text-align: center;
   cursor: pointer;
   transition: all 0.2s ease;
@@ -141,68 +139,40 @@ html {
   touch-action: none;
 }
 
-.trash-zone span {
-  color: #ff4444;
-}
-
-.trash-zone:hover,
-.trash-zone.trash-over,
-.trash-zone.has-selection {
+.trash-zone.trash-over {
   background-color: #ff4444 !important;
   color: white !important;
-  border-color: #d32f2f !important;
 }
 
-.trash-zone:hover span,
-.trash-zone.trash-over span,
-.trash-zone.has-selection span {
-  color: white !important;
-}
-
-.trash-dropped {
-  animation: bin-pop 0.3s ease-in-out !important;
-  background: #ff1111 !important;
-  color: white !important;
-  z-index: 10;
-}
-
-/* ---------- MAIN & GRID ---------- */
-main {
+/* ---------- MAIN CONTENT ---------- */
+.main {
   flex: 1;
   overflow-y: auto;
-  /* Remove padding from here */
-  padding: 0;
   display: flex;
   flex-direction: column;
-  gap: 0; /* Changed to 0 to avoid gaps between colored sections */
 }
 
-h1 {
-  display: flex;
-  gap: 10px;
-  text-align: left;
-  margin: 0;
-}
-
-/* Heading and Controls */
 .heading,
 .controls {
   background-color: aliceblue;
-  padding: 20px 30px; /* Restoring the padding lost from 'main' */
+  padding: 20px 30px;
 }
 
-.heading {
-  padding-top: 30px;
+/* ---------- HEADING & FLIP ANIMATION ---------- */
+.heading h1 {
+  display: flex;
+  align-items: center;
+  gap: 10px;
 }
 
 .flip-text {
+  color: #0077ff; /* Blueish color to match your theme */
   display: inline-block;
   perspective: 1000px;
-  animation: text-flip 4s infinite ease-in-out;
-  color: #0077ff;
+  animation: flip-loop 4s infinite ease-in-out;
 }
 
-@keyframes text-flip {
+@keyframes flip-loop {
   0%,
   80% {
     transform: rotateY(0deg);
@@ -215,47 +185,9 @@ h1 {
   }
 }
 
-.controls {
-  display: flex;
-  gap: 15px;
-  border-bottom: 1px solid #eee;
-  padding-bottom: 15px;
-  align-items: center;
-  /* This ensures the container wraps if the screen is too small */
-  flex-wrap: wrap;
-}
-
-/* 1. Fix the file input width */
-.controls input[type="file"] {
-  flex: 0 0 auto;
-  max-width: 200px;
-}
-
-/* 2. The Search Input Logic */
-.controls input[placeholder="Search notes..."] {
-  /* Starts at 150px, but grows to fill space (flex-grow: 1) */
-  flex: 1;
-  min-width: 60px;
-  max-width: 400px; /* Limits how far it stretches on huge screens */
-
-  padding: 8px 12px;
-  border: 1px solid #ddd;
-  border-radius: 6px;
-  transition: all 0.3s ease;
-}
-
-/* 3. Visual feedback when typing or clicking */
-.controls input[placeholder="Search notes..."]:focus {
-  outline: none;
-  border-color: #0077ff;
-  max-width: 600px; /* Expands slightly when focused */
-  box-shadow: 0 0 5px rgba(0, 119, 255, 0.2);
-}
-
-/* Gallery Section */
 .gallery {
-  background-color: #524d4d4f; /* Black background */
-  flex: 1; /* Ensures the black covers the rest of the page height */
+  background-color: rgba(82, 77, 77, 0.3);
+  flex: 1;
   padding: 30px;
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
@@ -268,7 +200,6 @@ h1 {
   position: relative;
   aspect-ratio: 3/4;
   perspective: 1000px;
-  cursor: pointer;
   touch-action: none;
 }
 
@@ -288,226 +219,168 @@ h1 {
   inset: 0;
   backface-visibility: hidden;
   border-radius: 12px;
-  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
   background: white;
   overflow: hidden;
-  display: flex;
-  flex-direction: column;
-}
-
-.card-back {
-  transform: rotateY(180deg);
-  padding: 15px;
-}
-
-.drag-handle {
-  width: 100%;
-  height: 100%;
-  cursor: grab;
-}
-
-.drag-handle:active {
-  cursor: grabbing;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
 }
 
 .card-face img {
   width: 100%;
   height: 100%;
-  object-fit: cover;
-  pointer-events: none;
+  object-fit: cover; /* Keeps image filled in card */
+}
+
+/* FIX 1: Ensure Zoom Icon is visible and clickable on top of image */
+.zoom-btn {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  z-index: 20;
+  background: rgba(255, 255, 255, 0.85);
+  border: none;
+  border-radius: 50%;
+  width: 32px;
+  height: 32px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+}
+
+.card-back {
+  transform: rotateY(180deg);
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+}
+
+.notes-content {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
+.notes-content textarea {
+  flex: 1;
+  width: 100%;
+  border: 1px solid #eee;
+  border-radius: 4px;
+  padding: 8px;
+  resize: none;
+  margin-bottom: 8px;
+  font-size: 0.9rem;
+}
+
+.notes-actions {
+  display: flex;
+  gap: 5px;
+}
+
+.notes-actions button {
+  flex: 1;
+  padding: 6px;
+  cursor: pointer;
 }
 
 .selected .card {
   box-shadow: 0 0 0 4px #0077ff;
 }
 
-.selected::after {
-  content: "✓";
-  position: absolute;
-  top: 10px;
-  left: 10px;
-  background: #0077ff;
-  color: white;
-  width: 24px;
-  height: 24px;
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 5;
-  pointer-events: none;
-  font-weight: bold;
-}
-
-/* ---------- ZOOM & OVERLAY ---------- */
-.zoom-btn {
-  position: absolute;
-  top: 10px;
-  right: 10px;
-  z-index: 10;
-  border: none;
-  background: rgba(255, 255, 255, 0.8);
-  border-radius: 50%;
-  padding: 8px;
-  cursor: pointer;
-  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
-}
-
-.zoom-overlay {
-  position: fixed;
-  inset: 0;
-  background: rgba(0, 0, 0, 0.9);
-  z-index: 1000;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  cursor: zoom-out;
-}
-
-.zoom-overlay img {
-  max-width: 90%;
-  max-height: 90%;
-  border-radius: 4px;
-}
-
-.zoomed-notes-box {
-  background: white;
-  width: 80%;
-  max-width: 600px;
-  height: 50%;
-  border-radius: 12px;
-  padding: 25px;
-  display: flex;
-  flex-direction: column;
-  gap: 15px;
-  cursor: default;
-}
-
-.zoomed-notes-box textarea {
-  flex: 1;
-  font-size: 1.1rem;
-  padding: 15px;
-  border-radius: 8px;
-  border: 1px solid #ddd;
-  resize: none;
-  outline: none;
-  line-height: 1.5;
-}
-
-.close-zoom-btn {
-  padding: 10px;
-  background: #0077ff;
-  color: white;
-  border: none;
-  border-radius: 6px;
-  cursor: pointer;
-  font-weight: bold;
-}
-
-/* ---------- DRAG PREVIEW ---------- */
+/* ---------- DRAG OVERLAY ---------- */
 .card-drag-preview {
-  position: relative;
-  width: 80px;
-  height: 106px;
+  width: 80px !important;
+  height: 110px !important;
   pointer-events: none;
-  box-shadow: 0 10px 20px rgba(0, 0, 0, 0.3);
-  opacity: 0.9;
-  z-index: 9999;
+  z-index: 999999 !important;
+  position: relative;
+}
+
+.card-drag-preview img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: 8px;
+  border: 2px solid white;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.4);
 }
 
 .drag-count-badge {
   position: absolute;
   top: -10px;
   right: -10px;
-  background: #ff4444;
+  background: #0077ff;
   color: white;
-  width: 28px;
-  height: 28px;
   border-radius: 50%;
+  width: 24px;
+  height: 24px;
   display: flex;
   align-items: center;
   justify-content: center;
+  font-size: 0.8rem;
   font-weight: bold;
-  border: 2px solid white;
-  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
 }
 
-/* ---------- ANIMATIONS ---------- */
-@keyframes bin-pop {
-  0% {
-    transform: scale(1) rotate(0deg);
-  }
-  20% {
-    transform: scale(1.3) rotate(-10deg);
-  }
-  40% {
-    transform: scale(1.3) rotate(10deg);
-  }
-  60% {
-    transform: scale(1.3) rotate(-10deg);
-  }
-  80% {
-    transform: scale(0.9) rotate(0deg);
-  }
-  100% {
-    transform: scale(1);
-  }
+/* ---------- ZOOM OVERLAY ---------- */
+.zoom-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.95);
+  z-index: 2000000; /* Highest priority */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  cursor: zoom-out;
 }
 
-@keyframes pulse {
-  0% {
-    transform: scale(1);
-  }
-  50% {
-    transform: scale(1.03);
-  }
-  100% {
-    transform: scale(1);
-  }
+/* FIX 1: Zoomed image scaling */
+.zoom-overlay img {
+  max-width: 90vw;
+  max-height: 90vh;
+  object-fit: contain; /* Prevents squeezing, shows full image */
+  border-radius: 8px;
+  box-shadow: 0 0 30px rgba(0, 0, 0, 0.5);
 }
 
-/* ---------- NOTES CONTENT ---------- */
-.notes-content {
+/* FIX 2: Full-size zoomed notes */
+.zoomed-notes-box {
+  background: white;
+  width: 95%;
+  max-width: 800px;
+  height: 80%; /* Much larger area */
+  padding: 25px;
+  border-radius: 12px;
   display: flex;
   flex-direction: column;
-  height: 100%;
-  gap: 10px;
+  cursor: default;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5);
 }
 
-.notes-content textarea {
+.zoomed-notes-box textarea {
   flex: 1;
-  border: 1px solid #eee;
-  border-radius: 6px;
-  padding: 10px;
+  width: 100%;
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  padding: 15px;
+  font-size: 1.1rem;
+  line-height: 1.5;
   resize: none;
-  font-size: 0.9rem;
+  outline: none;
 }
 
-.notes-actions {
-  display: flex;
-  gap: 8px;
-}
-
-.back-zoom-btn,
-.back-button {
-  flex: 1;
-  padding: 8px;
-  border-radius: 6px;
-  cursor: pointer;
-  border: none;
-  font-size: 0.85rem;
-}
-
-.back-zoom-btn {
-  background: #f0f0f0;
-}
-.back-button {
+.close-zoom-btn {
+  margin-top: 15px;
+  padding: 12px;
   background: #0077ff;
   color: white;
+  border: none;
+  border-radius: 6px;
   font-weight: bold;
+  cursor: pointer;
 }
 
-/* ---------- BASIC RESPONSIVENESS ---------- */
+/* ---------- MOBILE RESPONSIVE ---------- */
 @media (max-width: 768px) {
   .app {
     flex-direction: column;
@@ -516,40 +389,68 @@ h1 {
   .sidebar {
     width: 100%;
     height: auto;
-    border-right: none;
-    border-bottom: 1px solid #ddd;
-    padding: 15px;
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    padding: 10px;
+    border-top: 1px solid #ddd;
+    z-index: 1000;
+  }
+
+  .sidebar-top-content {
+    flex-direction: row;
+    overflow-x: auto;
+    gap: 10px;
+    padding-bottom: 10px;
   }
 
   .folder-list {
     flex-direction: row;
-    overflow-x: auto;
-    padding-bottom: 5px;
-    height: auto;
-    flex: none;
+    margin: 0;
   }
-
-  .folder-item,
+  .folder-group-label {
+    display: none;
+  }
   .main-gallery-btn,
-  .add-folder-btn {
-    white-space: nowrap;
-    margin-bottom: 0;
-    margin-right: 8px;
-    flex-shrink: 0;
+  .folder-item {
     width: auto;
+    white-space: nowrap;
+    flex-shrink: 0;
   }
 
-  .trash-zone {
-    margin-top: 10px;
-    padding: 10px;
+  .sidebar-actions {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
   }
 
+  .main {
+    padding-bottom: 200px;
+  }
   .gallery {
-    grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+    grid-template-columns: repeat(2, 1fr);
+    padding: 15px;
     gap: 15px;
   }
 
-  main {
-    padding: 15px;
+  .zoomed-notes-box {
+    height: 90%;
+    width: 95%;
   }
+}
+
+/* Animations */
+@keyframes bin-pop {
+  0% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.15);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+.trash-dropped {
+  animation: bin-pop 0.3s ease;
 }

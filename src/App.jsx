@@ -2,6 +2,7 @@ import React, { useEffect, useState, useMemo, useRef } from "react";
 import {
   DndContext,
   PointerSensor,
+  TouchSensor,
   useSensor,
   useSensors,
   DragOverlay,
@@ -24,7 +25,6 @@ import {
 
 function MainGalleryDropZone({ activeFolder, setActiveFolder }) {
   const { isOver, setNodeRef } = useDroppable({ id: "Select Folder" });
-
   return (
     <div
       ref={setNodeRef}
@@ -39,7 +39,21 @@ function MainGalleryDropZone({ activeFolder, setActiveFolder }) {
 }
 
 function FolderButton({ f, activeFolder, setActiveFolder, onDelete }) {
+  // If it's the header label, we still make it droppable to move items back to main
+  const isHeader = f === "Folder Groups";
   const { isOver, setNodeRef } = useDroppable({ id: f });
+
+  if (isHeader) {
+    return (
+      <h3
+        ref={setNodeRef}
+        className={`folder-group-label ${isOver ? "folder-hover-active" : ""}`}
+        style={{ padding: "4px", borderRadius: "4px" }}
+      >
+        {f}
+      </h3>
+    );
+  }
 
   return (
     <div
@@ -57,7 +71,6 @@ function FolderButton({ f, activeFolder, setActiveFolder, onDelete }) {
           e.stopPropagation();
           onDelete(f);
         }}
-        title="Delete Folder"
       >
         &times;
       </button>
@@ -70,19 +83,16 @@ function TrashDropZone({ selectedCount, onBulkDelete, isDropping }) {
   return (
     <div
       ref={setNodeRef}
-      className={`trash-zone 
-        ${isOver ? "trash-over" : ""} 
-        ${selectedCount > 0 ? "has-selection" : ""} 
-        ${isDropping ? "trash-dropped" : ""}`}
+      className={`trash-zone ${isOver ? "trash-over" : ""} ${
+        isDropping ? "trash-dropped" : ""
+      }`}
       onClick={(e) => {
         e.stopPropagation();
         if (selectedCount > 0) onBulkDelete();
       }}
     >
       <span>
-        {selectedCount > 0
-          ? `🗑 Delete Selection (${selectedCount})`
-          : "🗑 Trash"}
+        {selectedCount > 0 ? `🗑 Delete (${selectedCount})` : "🗑 Trash"}
       </span>
     </div>
   );
@@ -97,16 +107,13 @@ function DraggableCard({
   updateNotes,
 }) {
   const { attributes, listeners, setNodeRef, transform, isDragging } =
-    useDraggable({
-      id: item.id,
-    });
+    useDraggable({ id: item.id });
 
   const style = {
     transform: transform
       ? `translate3d(${transform.x}px, ${transform.y}px, 0)`
       : undefined,
-    opacity: isDragging ? 0 : 1,
-    zIndex: isDragging ? 999 : 1,
+    opacity: isDragging ? 0.3 : 1, // Visual ghosting in the gallery while dragging
   };
 
   const handleCardClick = (e) => {
@@ -137,22 +144,25 @@ function DraggableCard({
           >
             🔍
           </button>
-          <div className="drag-handle" {...listeners} {...attributes}>
+          <div
+            className="drag-handle"
+            {...listeners}
+            {...attributes}
+            style={{ height: "100%", width: "100%" }}
+          >
             <img src={item.imageURL} alt="" />
           </div>
         </div>
-
         <div className="card-face card-back">
           <div className="notes-content">
             <textarea
               value={item.notes}
-              placeholder="Zoom in to write notes here..."
               onClick={(e) => e.stopPropagation()}
               onChange={(e) => updateNotes(item.id, e.target.value)}
+              placeholder="Write notes..."
             />
             <div className="notes-actions">
               <button
-                className="back-zoom-btn"
                 onClick={(e) => {
                   e.stopPropagation();
                   onZoom({ type: "notes", content: item.notes, id: item.id });
@@ -161,7 +171,6 @@ function DraggableCard({
                 🔍 Zoom
               </button>
               <button
-                className="back-button"
                 onClick={(e) => {
                   e.stopPropagation();
                   onFlip(item.id);
@@ -181,7 +190,6 @@ function DraggableCard({
 
 export default function App() {
   const { saveImage, getImageURL, deleteImage } = useImageDB();
-
   const [items, setItems] = useState(() => loadItems() || []);
   const [folders, setFolders] = useState(
     () => loadFolders() || ["Folder Groups"]
@@ -192,44 +200,64 @@ export default function App() {
   const [zoomData, setZoomData] = useState(null);
   const [activeDragItem, setActiveDragItem] = useState(null);
   const [isDropping, setIsDropping] = useState(false);
-
   const fileInputRef = useRef(null);
 
   const sensors = useSensors(
-    useSensor(PointerSensor, { activationConstraint: { distance: 10 } })
+    useSensor(PointerSensor, { activationConstraint: { distance: 10 } }),
+    useSensor(TouchSensor, {
+      activationConstraint: { delay: 250, tolerance: 5 },
+    })
   );
-
-  const triggerTrashAnimation = () => {
-    setIsDropping(true);
-    setTimeout(() => setIsDropping(false), 300);
-  };
 
   const persistItems = (newItems) => {
     setItems(newItems);
     saveItems(newItems);
   };
-
-  const updateNotes = (id, notes) => {
+  const updateNotes = (id, notes) =>
     persistItems(items.map((i) => (i.id === id ? { ...i, notes } : i)));
+  const triggerTrashAnimation = () => {
+    setIsDropping(true);
+    setTimeout(() => setIsDropping(false), 300);
   };
 
-  const handleFolderDelete = (folderName) => {
-    if (
-      window.confirm(
-        `Delete "${folderName}"? Images will move to Main Gallery.`
-      )
-    ) {
+  const handleDragEnd = async (event) => {
+    const { active, over } = event;
+    setActiveDragItem(null);
+    if (!over) return;
+
+    const draggedIds = selectedIds.has(active.id)
+      ? Array.from(selectedIds)
+      : [active.id];
+
+    if (over.id === "TRASH_BIN") {
+      if (window.confirm(`Delete ${draggedIds.length} item(s)?`)) {
+        triggerTrashAnimation();
+        for (let id of draggedIds) {
+          const item = items.find((i) => i.id === id);
+          if (item) await deleteImage(item.imageId);
+        }
+        persistItems(items.filter((i) => !draggedIds.includes(i.id)));
+        setSelectedIds(new Set());
+      }
+    } else {
+      // If dropped on "Folder Groups" or "Select Folder", move to Main Gallery (folder: "")
+      const targetFolder =
+        over.id === "Select Folder" || over.id === "Folder Groups"
+          ? ""
+          : over.id;
       persistItems(
-        items.map((item) =>
-          item.folder === folderName ? { ...item, folder: "" } : item
+        items.map((i) =>
+          draggedIds.includes(i.id) ? { ...i, folder: targetFolder } : i
         )
       );
-      const nextFolders = folders.filter((f) => f !== folderName);
-      setFolders(nextFolders);
-      saveFolders(nextFolders);
-      if (activeFolder === folderName) setActiveFolder("Select Folder");
+      setSelectedIds(new Set());
     }
   };
+
+  const visibleItems = useMemo(
+    () => filterItems(items, activeFolder, search) || [],
+    [items, activeFolder, search]
+  );
 
   useEffect(() => {
     let isMounted = true;
@@ -251,42 +279,6 @@ export default function App() {
     };
   }, [items.length]);
 
-  const handleDragEnd = async (event) => {
-    const { active, over } = event;
-    setActiveDragItem(null);
-    if (!over) return;
-
-    const draggedIds = selectedIds.has(active.id)
-      ? Array.from(selectedIds)
-      : [active.id];
-
-    if (over.id === "TRASH_BIN") {
-      if (window.confirm(`Delete ${draggedIds.length} item(s)?`)) {
-        triggerTrashAnimation();
-        for (let id of draggedIds) {
-          const item = items.find((i) => i.id === id);
-          if (item) await deleteImage(item.imageId);
-        }
-        persistItems(items.filter((i) => !draggedIds.includes(i.id)));
-        setSelectedIds(new Set());
-      }
-      return;
-    }
-
-    const targetFolder = over.id === "Select Folder" ? "" : over.id;
-    persistItems(
-      items.map((i) =>
-        draggedIds.includes(i.id) ? { ...i, folder: targetFolder } : i
-      )
-    );
-    setSelectedIds(new Set());
-  };
-
-  const visibleItems = useMemo(
-    () => filterItems(items, activeFolder, search) || [],
-    [items, activeFolder, search]
-  );
-
   return (
     <DndContext
       sensors={sensors}
@@ -297,54 +289,70 @@ export default function App() {
     >
       <div className="app">
         <aside className="sidebar">
-          <MainGalleryDropZone
-            activeFolder={activeFolder}
-            setActiveFolder={setActiveFolder}
-          />
-          <div className="folder-list">
-            {folders.map((f) =>
-              f === "Folder Groups" ? (
-                <h3 key={f}>{f}</h3>
-              ) : (
+          <div className="sidebar-top-content">
+            <MainGalleryDropZone
+              activeFolder={activeFolder}
+              setActiveFolder={setActiveFolder}
+            />
+            <div className="folder-list">
+              {folders.map((f) => (
                 <FolderButton
                   key={f}
                   f={f}
                   activeFolder={activeFolder}
                   setActiveFolder={setActiveFolder}
-                  onDelete={handleFolderDelete}
+                  onDelete={(name) => {
+                    if (
+                      window.confirm(
+                        `Delete "${name}"? Images move to Main Gallery.`
+                      )
+                    ) {
+                      persistItems(
+                        items.map((it) =>
+                          it.folder === name ? { ...it, folder: "" } : it
+                        )
+                      );
+                      const next = folders.filter((fol) => fol !== name);
+                      setFolders(next);
+                      saveFolders(next);
+                      if (activeFolder === name)
+                        setActiveFolder("Select Folder");
+                    }
+                  }}
                 />
-              )
-            )}
+              ))}
+            </div>
           </div>
-          <button
-            className="add-folder-btn"
-            onClick={() => {
-              const n = prompt("Folder Name:");
-              if (n?.trim()) {
-                const next = [...folders, n.trim()];
-                setFolders(next);
-                saveFolders(next);
-              }
-            }}
-          >
-            ➕ New Folder
-          </button>
-
-          <TrashDropZone
-            isDropping={isDropping}
-            selectedCount={selectedIds.size}
-            onBulkDelete={async () => {
-              if (window.confirm(`Delete ${selectedIds.size} items?`)) {
-                triggerTrashAnimation();
-                for (let id of selectedIds) {
-                  const item = items.find((i) => i.id === id);
-                  if (item) await deleteImage(item.imageId);
+          <div className="sidebar-actions">
+            <button
+              className="add-folder-btn"
+              onClick={() => {
+                const n = prompt("Folder Name:");
+                if (n?.trim()) {
+                  const next = [...folders, n.trim()];
+                  setFolders(next);
+                  saveFolders(next);
                 }
-                persistItems(items.filter((i) => !selectedIds.has(i.id)));
-                setSelectedIds(new Set());
-              }
-            }}
-          />
+              }}
+            >
+              ➕ New Folder
+            </button>
+            <TrashDropZone
+              isDropping={isDropping}
+              selectedCount={selectedIds.size}
+              onBulkDelete={async () => {
+                if (window.confirm(`Delete ${selectedIds.size} items?`)) {
+                  triggerTrashAnimation();
+                  for (let id of selectedIds) {
+                    const item = items.find((i) => i.id === id);
+                    if (item) await deleteImage(item.imageId);
+                  }
+                  persistItems(items.filter((i) => !selectedIds.has(i.id)));
+                  setSelectedIds(new Set());
+                }
+              }}
+            />
+          </div>
         </aside>
 
         <main className="main">
@@ -374,10 +382,7 @@ export default function App() {
                   });
                 }
                 persistItems([...items, ...newItems]);
-
-                if (fileInputRef.current) {
-                  fileInputRef.current.value = "";
-                }
+                if (fileInputRef.current) fileInputRef.current.value = "";
               }}
             />
             <input
@@ -393,10 +398,9 @@ export default function App() {
                 item={item}
                 isSelected={selectedIds.has(item.id)}
                 onToggleSelect={(id) => {
-                  const next = new Set(selectedIds);
-                  if (next.has(id)) next.delete(id);
-                  else next.add(id);
-                  setSelectedIds(next);
+                  const n = new Set(selectedIds);
+                  n.has(id) ? n.delete(id) : n.add(id);
+                  setSelectedIds(n);
                 }}
                 onFlip={(id) =>
                   setItems(
@@ -413,23 +417,14 @@ export default function App() {
         </main>
 
         <DragOverlay modifiers={[snapCenterToCursor]}>
-          {activeDragItem ? (
+          {activeDragItem && (
             <div className="card-drag-preview">
-              <img
-                src={activeDragItem.imageURL}
-                alt=""
-                style={{
-                  width: "100%",
-                  height: "100%",
-                  objectFit: "cover",
-                  borderRadius: "8px",
-                }}
-              />
-              {selectedIds.size > 1 && selectedIds.has(activeDragItem.id) && (
+              <img src={activeDragItem.imageURL} alt="" />
+              {selectedIds.size > 1 && (
                 <div className="drag-count-badge">{selectedIds.size}</div>
               )}
             </div>
-          ) : null}
+          )}
         </DragOverlay>
 
         {zoomData && (
