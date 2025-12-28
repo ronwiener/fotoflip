@@ -234,7 +234,7 @@ html {
 .zoom-btn {
   position: absolute;
   top: 10px;
-  right: 10px;
+  margin-left: 5px;
   z-index: 20;
   background: rgba(255, 255, 255, 0.85);
   border: none;
@@ -454,3 +454,8 @@ html {
 .trash-dropped {
   animation: bin-pop 0.3s ease;
 }
+
+/*
+1.  zoom button on the backside is in the upper right hand corner which is the click event to zoom on the front image
+2.  when searching for key words, the images should populate the gallery instead they are in folders and stay there until the folder is clicked on
+*/
