@@ -39,7 +39,6 @@ function MainGalleryDropZone({ activeFolder, setActiveFolder }) {
 }
 
 function FolderButton({ f, activeFolder, setActiveFolder, onDelete }) {
-  // If it's the header label, we still make it droppable to move items back to main
   const isHeader = f === "Folder Groups";
   const { isOver, setNodeRef } = useDroppable({ id: f });
 
@@ -106,22 +105,17 @@ function DraggableCard({
   onZoom,
   updateNotes,
 }) {
-  const { attributes, listeners, setNodeRef, transform, isDragging } =
-    useDraggable({ id: item.id });
-
-  const style = {
-    transform: transform
-      ? `translate3d(${transform.x}px, ${transform.y}px, 0)`
-      : undefined,
-    opacity: isDragging ? 0.3 : 1, // Visual ghosting in the gallery while dragging
-  };
+  const { attributes, listeners, setNodeRef, isDragging } = useDraggable({
+    id: item.id,
+  });
 
   const handleCardClick = (e) => {
+    if (isDragging) return;
     if (e.metaKey || e.ctrlKey || e.shiftKey) {
       e.preventDefault();
       e.stopPropagation();
       onToggleSelect(item.id);
-    } else if (!isSelected && !isDragging) {
+    } else if (!isSelected) {
       onFlip(item.id);
     }
   };
@@ -129,8 +123,9 @@ function DraggableCard({
   return (
     <div
       ref={setNodeRef}
-      style={style}
-      className={`card-wrapper ${isSelected ? "selected" : ""}`}
+      className={`card-wrapper ${isSelected ? "selected" : ""} ${
+        isDragging ? "is-dragging" : ""
+      }`}
       onClick={handleCardClick}
     >
       <div className={`card ${item.flipped ? "flipped" : ""}`}>
@@ -213,8 +208,10 @@ export default function App() {
     setItems(newItems);
     saveItems(newItems);
   };
+
   const updateNotes = (id, notes) =>
     persistItems(items.map((i) => (i.id === id ? { ...i, notes } : i)));
+
   const triggerTrashAnimation = () => {
     setIsDropping(true);
     setTimeout(() => setIsDropping(false), 300);
@@ -240,7 +237,6 @@ export default function App() {
         setSelectedIds(new Set());
       }
     } else {
-      // If dropped on "Folder Groups" or "Select Folder", move to Main Gallery (folder: "")
       const targetFolder =
         over.id === "Select Folder" || over.id === "Folder Groups"
           ? ""
@@ -254,10 +250,14 @@ export default function App() {
     }
   };
 
-  const visibleItems = useMemo(
-    () => filterItems(items, activeFolder, search) || [],
-    [items, activeFolder, search]
-  );
+  const visibleItems = useMemo(() => {
+    if (search.trim()) {
+      return items.filter((item) =>
+        item.notes.toLowerCase().includes(search.toLowerCase())
+      );
+    }
+    return filterItems(items, activeFolder, "");
+  }, [items, activeFolder, search]);
 
   useEffect(() => {
     let isMounted = true;
@@ -362,34 +362,48 @@ export default function App() {
             </h1>
           </div>
           <div className="controls">
-            <input
-              type="file"
-              ref={fileInputRef}
-              multiple
-              onChange={async (e) => {
-                const files = Array.from(e.target.files);
-                const newItems = [];
-                for (const file of files) {
-                  const id = crypto.randomUUID();
-                  await saveImage(id, file);
-                  newItems.push({
-                    id: crypto.randomUUID(),
-                    imageId: id,
-                    imageURL: URL.createObjectURL(file),
-                    notes: "",
-                    folder: "",
-                    flipped: false,
-                  });
-                }
-                persistItems([...items, ...newItems]);
-                if (fileInputRef.current) fileInputRef.current.value = "";
-              }}
-            />
-            <input
-              type="text"
-              placeholder="Search notes..."
-              onChange={(e) => setSearch(e.target.value)}
-            />
+            <div className="upload-section">
+              <input
+                type="file"
+                ref={fileInputRef}
+                multiple
+                onChange={async (e) => {
+                  const files = Array.from(e.target.files);
+                  const newItems = [];
+                  for (const file of files) {
+                    const id = crypto.randomUUID();
+                    await saveImage(id, file);
+                    newItems.push({
+                      id: crypto.randomUUID(),
+                      imageId: id,
+                      imageURL: URL.createObjectURL(file),
+                      notes: "",
+                      folder: "",
+                      flipped: false,
+                    });
+                  }
+                  persistItems([...items, ...newItems]);
+                  if (fileInputRef.current) fileInputRef.current.value = "";
+                }}
+              />
+            </div>
+            <div className="search-container">
+              <input
+                type="text"
+                className="search-input"
+                placeholder="Search all folders with key word(s)..."
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+              />
+              {search && (
+                <button
+                  className="clear-search-btn"
+                  onClick={() => setSearch("")}
+                >
+                  Return
+                </button>
+              )}
+            </div>
           </div>
           <div className="gallery">
             {visibleItems.map((item) => (

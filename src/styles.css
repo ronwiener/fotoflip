@@ -47,7 +47,6 @@ html {
   gap: 8px;
 }
 
-/* Visual Feedback for Drops */
 .folder-hover-active {
   background-color: #e0f0ff !important;
   border: 2px dashed #0077ff !important;
@@ -155,18 +154,73 @@ html {
 .heading,
 .controls {
   background-color: aliceblue;
-  padding: 20px 30px;
+  padding: 15px 30px;
 }
 
-/* ---------- HEADING & FLIP ANIMATION ---------- */
+.controls {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+}
+
+/* Search Input Styling */
+.search-container {
+  position: relative;
+  flex: 1;
+  max-width: 400px;
+}
+
+.search-input {
+  width: 100%;
+  padding: 10px 40px 10px 15px;
+  border: 1px solid #ccc;
+  border-radius: 20px;
+  outline: none;
+  font-size: 0.95rem;
+}
+
+.clear-search-btn {
+  position: absolute;
+  right: 5px; /* Pull it slightly closer to the edge */
+  top: 50%;
+  transform: translateY(-50%);
+  background: #ce3434;
+  border: none;
+  border-radius: 15px; /* Rounded corners instead of a circle */
+  padding: 4px 12px; /* Vertical and horizontal space for text */
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+  font-size: 0.85rem; /* Slightly smaller font to fit well in the bar */
+  font-weight: 500;
+  transition: background 0.2s;
+}
+
+.clear-search-btn:hover {
+  background: #a32828; /* Darker red on hover */
+}
+
+/* Ensure the input has enough padding on the right so text doesn't hide under the button */
+.search-input {
+  width: 100%;
+  padding: 10px 80px 10px 15px; /* Increased right padding to 80px */
+  border: 1px solid #ccc;
+  border-radius: 20px;
+  outline: none;
+  font-size: 0.95rem;
+}
+
 .heading h1 {
   display: flex;
   align-items: center;
   gap: 10px;
+  margin: 0 0 10px 0;
 }
 
 .flip-text {
-  color: #0077ff; /* Blueish color to match your theme */
+  color: #0077ff;
   display: inline-block;
   perspective: 1000px;
   animation: flip-loop 4s infinite ease-in-out;
@@ -203,6 +257,11 @@ html {
   touch-action: none;
 }
 
+/* No Ghosting: hides the card in place when dragging */
+.is-dragging {
+  visibility: hidden;
+}
+
 .card {
   width: 100%;
   height: 100%;
@@ -227,14 +286,13 @@ html {
 .card-face img {
   width: 100%;
   height: 100%;
-  object-fit: cover; /* Keeps image filled in card */
+  object-fit: cover;
 }
 
-/* FIX 1: Ensure Zoom Icon is visible and clickable on top of image */
 .zoom-btn {
   position: absolute;
   top: 10px;
-  margin-left: 5px;
+  left: 10px;
   z-index: 20;
   background: rgba(255, 255, 255, 0.85);
   border: none;
@@ -290,10 +348,10 @@ html {
 /* ---------- DRAG OVERLAY ---------- */
 .card-drag-preview {
   width: 80px !important;
-  height: 110px !important;
+  aspect-ratio: 3/4;
   pointer-events: none;
   z-index: 999999 !important;
-  position: relative;
+  opacity: 0.9;
 }
 
 .card-drag-preview img {
@@ -307,8 +365,8 @@ html {
 
 .drag-count-badge {
   position: absolute;
-  top: -10px;
-  right: -10px;
+  top: -8px;
+  right: -8px;
   background: #0077ff;
   color: white;
   border-radius: 50%;
@@ -319,54 +377,44 @@ html {
   justify-content: center;
   font-size: 0.8rem;
   font-weight: bold;
+  border: 2px solid white;
 }
 
 /* ---------- ZOOM OVERLAY ---------- */
 .zoom-overlay {
   position: fixed;
   inset: 0;
-  background: rgba(0, 0, 0, 0.95);
-  z-index: 2000000; /* Highest priority */
+  background: rgba(0, 0, 0, 0.9);
+  z-index: 2000;
   display: flex;
   align-items: center;
   justify-content: center;
   padding: 20px;
-  cursor: zoom-out;
 }
 
-/* FIX 1: Zoomed image scaling */
 .zoom-overlay img {
   max-width: 90vw;
   max-height: 90vh;
-  object-fit: contain; /* Prevents squeezing, shows full image */
-  border-radius: 8px;
-  box-shadow: 0 0 30px rgba(0, 0, 0, 0.5);
+  object-fit: contain;
 }
 
-/* FIX 2: Full-size zoomed notes */
 .zoomed-notes-box {
   background: white;
   width: 95%;
   max-width: 800px;
-  height: 80%; /* Much larger area */
+  height: 80%;
   padding: 25px;
   border-radius: 12px;
   display: flex;
   flex-direction: column;
-  cursor: default;
-  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5);
 }
 
 .zoomed-notes-box textarea {
   flex: 1;
   width: 100%;
-  border: 1px solid #ddd;
-  border-radius: 8px;
   padding: 15px;
   font-size: 1.1rem;
-  line-height: 1.5;
   resize: none;
-  outline: none;
 }
 
 .close-zoom-btn {
@@ -385,77 +433,22 @@ html {
   .app {
     flex-direction: column;
   }
-
   .sidebar {
     width: 100%;
-    height: auto;
     position: fixed;
     bottom: 0;
     left: 0;
-    padding: 10px;
-    border-top: 1px solid #ddd;
     z-index: 1000;
   }
-
-  .sidebar-top-content {
-    flex-direction: row;
-    overflow-x: auto;
-    gap: 10px;
-    padding-bottom: 10px;
-  }
-
-  .folder-list {
-    flex-direction: row;
-    margin: 0;
-  }
-  .folder-group-label {
-    display: none;
-  }
-  .main-gallery-btn,
-  .folder-item {
-    width: auto;
-    white-space: nowrap;
-    flex-shrink: 0;
-  }
-
-  .sidebar-actions {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 10px;
-  }
-
   .main {
-    padding-bottom: 200px;
+    padding-bottom: 180px;
   }
-  .gallery {
-    grid-template-columns: repeat(2, 1fr);
-    padding: 15px;
-    gap: 15px;
+  .controls {
+    flex-direction: column;
+    gap: 10px;
+    align-items: stretch;
   }
-
-  .zoomed-notes-box {
-    height: 90%;
-    width: 95%;
+  .search-container {
+    max-width: none;
   }
 }
-
-/* Animations */
-@keyframes bin-pop {
-  0% {
-    transform: scale(1);
-  }
-  50% {
-    transform: scale(1.15);
-  }
-  100% {
-    transform: scale(1);
-  }
-}
-.trash-dropped {
-  animation: bin-pop 0.3s ease;
-}
-
-/*
-1.  zoom button on the backside is in the upper right hand corner which is the click event to zoom on the front image
-2.  when searching for key words, the images should populate the gallery instead they are in folders and stay there until the folder is clicked on
-*/
