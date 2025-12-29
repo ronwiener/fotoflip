@@ -28,12 +28,12 @@ function MainGalleryDropZone({ activeFolder, setActiveFolder }) {
   return (
     <div
       ref={setNodeRef}
-      className={`main-gallery-btn ${
+      className={`nav-btn main-gallery-btn ${
         activeFolder === "Select Folder" ? "active" : ""
       } ${isOver ? "folder-hover-active" : ""}`}
       onClick={() => setActiveFolder("Select Folder")}
     >
-      Main Gallery
+      Main
     </div>
   );
 }
@@ -42,17 +42,7 @@ function FolderButton({ f, activeFolder, setActiveFolder, onDelete }) {
   const isHeader = f === "Folder Groups";
   const { isOver, setNodeRef } = useDroppable({ id: f });
 
-  if (isHeader) {
-    return (
-      <h3
-        ref={setNodeRef}
-        className={`folder-group-label ${isOver ? "folder-hover-active" : ""}`}
-        style={{ padding: "4px", borderRadius: "4px" }}
-      >
-        {f}
-      </h3>
-    );
-  }
+  if (isHeader) return null;
 
   return (
     <div
@@ -90,9 +80,7 @@ function TrashDropZone({ selectedCount, onBulkDelete, isDropping }) {
         if (selectedCount > 0) onBulkDelete();
       }}
     >
-      <span>
-        {selectedCount > 0 ? `🗑 Delete (${selectedCount})` : "🗑 Trash"}
-      </span>
+      <span>{selectedCount > 0 ? `🗑 (${selectedCount})` : "🗑"}</span>
     </div>
   );
 }
@@ -180,8 +168,6 @@ function DraggableCard({
     </div>
   );
 }
-
-/* ---------- MAIN APP ---------- */
 
 export default function App() {
   const { saveImage, getImageURL, deleteImage } = useImageDB();
@@ -289,43 +275,40 @@ export default function App() {
     >
       <div className="app">
         <aside className="sidebar">
-          <div className="sidebar-top-content">
+          <div className="sidebar-scroll-container">
             <MainGalleryDropZone
               activeFolder={activeFolder}
               setActiveFolder={setActiveFolder}
             />
-            <div className="folder-list">
-              {folders.map((f) => (
-                <FolderButton
-                  key={f}
-                  f={f}
-                  activeFolder={activeFolder}
-                  setActiveFolder={setActiveFolder}
-                  onDelete={(name) => {
-                    if (
-                      window.confirm(
-                        `Delete "${name}"? Images move to Main Gallery.`
+            {folders.map((f) => (
+              <FolderButton
+                key={f}
+                f={f}
+                activeFolder={activeFolder}
+                setActiveFolder={setActiveFolder}
+                onDelete={(name) => {
+                  if (
+                    window.confirm(
+                      `Delete "${name}"? Images move to Main Gallery.`
+                    )
+                  ) {
+                    persistItems(
+                      items.map((it) =>
+                        it.folder === name ? { ...it, folder: "" } : it
                       )
-                    ) {
-                      persistItems(
-                        items.map((it) =>
-                          it.folder === name ? { ...it, folder: "" } : it
-                        )
-                      );
-                      const next = folders.filter((fol) => fol !== name);
-                      setFolders(next);
-                      saveFolders(next);
-                      if (activeFolder === name)
-                        setActiveFolder("Select Folder");
-                    }
-                  }}
-                />
-              ))}
-            </div>
+                    );
+                    const next = folders.filter((fol) => fol !== name);
+                    setFolders(next);
+                    saveFolders(next);
+                    if (activeFolder === name) setActiveFolder("Select Folder");
+                  }
+                }}
+              />
+            ))}
           </div>
-          <div className="sidebar-actions">
+          <div className="sidebar-static-actions">
             <button
-              className="add-folder-btn"
+              className="nav-btn add-folder-btn"
               onClick={() => {
                 const n = prompt("Folder Name:");
                 if (n?.trim()) {
@@ -347,7 +330,7 @@ export default function App() {
                     const item = items.find((i) => i.id === id);
                     if (item) await deleteImage(item.imageId);
                   }
-                  persistItems(items.filter((i) => !selectedIds.has(i.id)));
+                  persistItems(items.filter((i) => !selectedIds.has(id)));
                   setSelectedIds(new Set());
                 }
               }}
@@ -362,36 +345,34 @@ export default function App() {
             </h1>
           </div>
           <div className="controls">
-            <div className="upload-section">
-              <input
-                type="file"
-                ref={fileInputRef}
-                multiple
-                onChange={async (e) => {
-                  const files = Array.from(e.target.files);
-                  const newItems = [];
-                  for (const file of files) {
-                    const id = crypto.randomUUID();
-                    await saveImage(id, file);
-                    newItems.push({
-                      id: crypto.randomUUID(),
-                      imageId: id,
-                      imageURL: URL.createObjectURL(file),
-                      notes: "",
-                      folder: "",
-                      flipped: false,
-                    });
-                  }
-                  persistItems([...items, ...newItems]);
-                  if (fileInputRef.current) fileInputRef.current.value = "";
-                }}
-              />
-            </div>
+            <input
+              type="file"
+              ref={fileInputRef}
+              multiple
+              onChange={async (e) => {
+                const files = Array.from(e.target.files);
+                const newItems = [];
+                for (const file of files) {
+                  const id = crypto.randomUUID();
+                  await saveImage(id, file);
+                  newItems.push({
+                    id: crypto.randomUUID(),
+                    imageId: id,
+                    imageURL: URL.createObjectURL(file),
+                    notes: "",
+                    folder: "",
+                    flipped: false,
+                  });
+                }
+                persistItems([...items, ...newItems]);
+                if (fileInputRef.current) fileInputRef.current.value = "";
+              }}
+            />
             <div className="search-container">
               <input
                 type="text"
                 className="search-input"
-                placeholder="Search all folders with key word(s)..."
+                placeholder="Search..."
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
               />
@@ -460,7 +441,7 @@ export default function App() {
                 </button>
               </div>
             ) : (
-              <img src={zoomData.url} alt="" />
+              <img src={zoomData.url} alt="" className="zoomed-image" />
             )}
           </div>
         )}
