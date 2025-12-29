@@ -39,10 +39,8 @@ function MainGalleryDropZone({ activeFolder, setActiveFolder }) {
 }
 
 function FolderButton({ f, activeFolder, setActiveFolder, onDelete }) {
-  const isHeader = f === "Folder Groups";
   const { isOver, setNodeRef } = useDroppable({ id: f });
-
-  if (isHeader) return null;
+  if (f === "Folder Groups") return null;
 
   return (
     <div
@@ -80,7 +78,7 @@ function TrashDropZone({ selectedCount, onBulkDelete, isDropping }) {
         if (selectedCount > 0) onBulkDelete();
       }}
     >
-      <span>{selectedCount > 0 ? `🗑 (${selectedCount})` : "🗑"}</span>
+      <span>{selectedCount > 0 ? `🗑 (${selectedCount})` : "🗑 Trash"}</span>
     </div>
   );
 }
@@ -101,7 +99,6 @@ function DraggableCard({
     if (isDragging) return;
     if (e.metaKey || e.ctrlKey || e.shiftKey) {
       e.preventDefault();
-      e.stopPropagation();
       onToggleSelect(item.id);
     } else if (!isSelected) {
       onFlip(item.id);
@@ -133,7 +130,11 @@ function DraggableCard({
             {...attributes}
             style={{ height: "100%", width: "100%" }}
           >
-            <img src={item.imageURL} alt="" />
+            {item.imageURL ? (
+              <img src={item.imageURL} alt="" />
+            ) : (
+              <div className="image-loading-placeholder" />
+            )}
           </div>
         </div>
         <div className="card-face card-back">
@@ -172,9 +173,7 @@ function DraggableCard({
 export default function App() {
   const { saveImage, getImageURL, deleteImage } = useImageDB();
   const [items, setItems] = useState(() => loadItems() || []);
-  const [folders, setFolders] = useState(
-    () => loadFolders() || ["Folder Groups"]
-  );
+  const [folders, setFolders] = useState(() => loadFolders() || []);
   const [activeFolder, setActiveFolder] = useState("Select Folder");
   const [search, setSearch] = useState("");
   const [selectedIds, setSelectedIds] = useState(new Set());
@@ -190,6 +189,26 @@ export default function App() {
     })
   );
 
+  useEffect(() => {
+    let isMounted = true;
+    const syncUrls = async () => {
+      const updatedItems = await Promise.all(
+        items.map(async (item) => {
+          if (item.imageId) {
+            const url = await getImageURL(item.imageId);
+            return { ...item, imageURL: url };
+          }
+          return item;
+        })
+      );
+      if (isMounted) setItems(updatedItems);
+    };
+    if (items.length > 0) syncUrls();
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
   const persistItems = (newItems) => {
     setItems(newItems);
     saveItems(newItems);
@@ -201,6 +220,18 @@ export default function App() {
   const triggerTrashAnimation = () => {
     setIsDropping(true);
     setTimeout(() => setIsDropping(false), 300);
+  };
+
+  const handleBulkDelete = async () => {
+    if (window.confirm(`Delete ${selectedIds.size} items?`)) {
+      triggerTrashAnimation();
+      for (let id of selectedIds) {
+        const item = items.find((i) => i.id === id);
+        if (item) await deleteImage(item.imageId);
+      }
+      persistItems(items.filter((i) => !selectedIds.has(i.id)));
+      setSelectedIds(new Set());
+    }
   };
 
   const handleDragEnd = async (event) => {
@@ -223,10 +254,7 @@ export default function App() {
         setSelectedIds(new Set());
       }
     } else {
-      const targetFolder =
-        over.id === "Select Folder" || over.id === "Folder Groups"
-          ? ""
-          : over.id;
+      const targetFolder = over.id === "Select Folder" ? "" : over.id;
       persistItems(
         items.map((i) =>
           draggedIds.includes(i.id) ? { ...i, folder: targetFolder } : i
@@ -244,26 +272,6 @@ export default function App() {
     }
     return filterItems(items, activeFolder, "");
   }, [items, activeFolder, search]);
-
-  useEffect(() => {
-    let isMounted = true;
-    const syncUrls = async () => {
-      const updatedItems = await Promise.all(
-        items.map(async (item) => {
-          if (!item.imageURL && item.imageId) {
-            const url = await getImageURL(item.imageId);
-            return { ...item, imageURL: url };
-          }
-          return item;
-        })
-      );
-      if (isMounted) setItems(updatedItems);
-    };
-    syncUrls();
-    return () => {
-      isMounted = false;
-    };
-  }, [items.length]);
 
   return (
     <DndContext
@@ -287,30 +295,26 @@ export default function App() {
                 activeFolder={activeFolder}
                 setActiveFolder={setActiveFolder}
                 onDelete={(name) => {
-                  if (
-                    window.confirm(
-                      `Delete "${name}"? Images move to Main Gallery.`
-                    )
-                  ) {
+                  if (window.confirm(`Delete "${name}"?`)) {
+                    const next = folders.filter((fol) => fol !== name);
+                    setFolders(next);
+                    saveFolders(next);
                     persistItems(
                       items.map((it) =>
                         it.folder === name ? { ...it, folder: "" } : it
                       )
                     );
-                    const next = folders.filter((fol) => fol !== name);
-                    setFolders(next);
-                    saveFolders(next);
-                    if (activeFolder === name) setActiveFolder("Select Folder");
                   }
                 }}
               />
             ))}
           </div>
+
           <div className="sidebar-static-actions">
             <button
               className="nav-btn add-folder-btn"
               onClick={() => {
-                const n = prompt("Folder Name:");
+                const n = prompt("New Folder Name:");
                 if (n?.trim()) {
                   const next = [...folders, n.trim()];
                   setFolders(next);
@@ -318,22 +322,12 @@ export default function App() {
                 }
               }}
             >
-              ➕ New Folder
+              ➕ Folder
             </button>
             <TrashDropZone
               isDropping={isDropping}
               selectedCount={selectedIds.size}
-              onBulkDelete={async () => {
-                if (window.confirm(`Delete ${selectedIds.size} items?`)) {
-                  triggerTrashAnimation();
-                  for (let id of selectedIds) {
-                    const item = items.find((i) => i.id === id);
-                    if (item) await deleteImage(item.imageId);
-                  }
-                  persistItems(items.filter((i) => !selectedIds.has(id)));
-                  setSelectedIds(new Set());
-                }
-              }}
+              onBulkDelete={handleBulkDelete}
             />
           </div>
         </aside>
@@ -360,7 +354,8 @@ export default function App() {
                     imageId: id,
                     imageURL: URL.createObjectURL(file),
                     notes: "",
-                    folder: "",
+                    folder:
+                      activeFolder === "Select Folder" ? "" : activeFolder,
                     flipped: false,
                   });
                 }
