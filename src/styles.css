@@ -144,7 +144,6 @@ html {
   display: flex;
   flex-direction: column;
   background: aliceblue;
-  /* Smooth momentum scrolling for iOS */
   -webkit-overflow-scrolling: touch;
 }
 
@@ -232,7 +231,7 @@ html {
   position: relative;
   aspect-ratio: 3/4;
   perspective: 1200px;
-  /* CRITICAL: Allow vertical scrolling gestures to pass through the card */
+  /* Allows scrolling on the wrapper/background */
   touch-action: pan-y;
 }
 
@@ -303,6 +302,9 @@ html {
   width: 100%;
   height: 100%;
   cursor: grab;
+  /* CRITICAL: The drag handle itself must NOT allow browser panning */
+  /* so the DND library can intercept the touch movement */
+  touch-action: none;
 }
 
 .notes-content {
@@ -439,20 +441,23 @@ html {
 
   .gallery {
     grid-template-columns: repeat(2, 1fr);
-    /* Increased padding and gap to create more "Safe Scroll" area between images */
     padding: 15px;
-    gap: 24px 16px;
-    padding: 20px 15px;
+    /* Use gap to create gutters for scrolling */
+    gap: 30px 16px;
     align-content: start;
-    padding-bottom: 220px !important;
+    padding-bottom: 240px !important;
   }
 
   .card-wrapper {
-    max-height: 200px;
+    max-height: 180px;
     width: 100%;
-    /* Ensure card doesn't eat the scroll intent */
+    /* The wrapper allows scrolling (pan-y) */
     touch-action: pan-y;
-    margin-bottom: 8px;
+  }
+
+  .drag-handle {
+    /* The image/handle blocks scrolling so it can be dragged */
+    touch-action: none;
   }
 
   .sidebar-scroll-container {
