@@ -12,7 +12,8 @@ html {
   height: 100vh;
   width: 100vw;
   overflow: hidden;
-  overscroll-behavior-y: contain;
+  /* Prevents pull-to-refresh on mobile while allowing safe area use */
+  overscroll-behavior: none;
 }
 
 .app {
@@ -21,6 +22,9 @@ html {
   height: 100vh;
   flex-direction: row;
   overflow: hidden;
+  /* Handles horizontal safe areas for phones in landscape */
+  padding-left: env(safe-area-inset-left);
+  padding-right: env(safe-area-inset-right);
 }
 
 /* ---------- SIDEBAR (DESKTOP) ---------- */
@@ -44,99 +48,6 @@ html {
   margin-bottom: 10px;
 }
 
-.sidebar-static-actions {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-}
-
-.folder-hover-active {
-  background-color: #e0f0ff !important;
-  border: 2px dashed #0077ff !important;
-  transform: scale(1.02);
-}
-
-.nav-btn,
-.folder-item {
-  border-radius: 8px;
-  cursor: pointer;
-  background: #f5f5f5;
-  border: 2px solid transparent;
-  transition: all 0.2s ease;
-  touch-action: none;
-  font-size: 0.9rem;
-}
-
-.main-gallery-btn {
-  padding: 12px;
-  text-align: center;
-  font-size: 0.9rem;
-  font-weight: 600;
-  width: 100%;
-}
-
-.active {
-  background: #0077ff !important;
-  color: white !important;
-}
-
-.folder-item {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 0 10px;
-  min-height: 44px;
-}
-
-.folder-name-btn {
-  background: none;
-  border: none;
-  flex: 1;
-  color: inherit;
-  text-align: left;
-  cursor: pointer;
-  padding: 8px 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.delete-folder-btn {
-  width: 24px;
-  height: 24px;
-  background: #ffeded;
-  color: #ff4444;
-  border: 1px solid #ffcccc;
-  border-radius: 4px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.add-folder-btn {
-  padding: 12px;
-  font-weight: bold;
-  background: #fff;
-  border: 1px dashed #ccc;
-}
-
-.trash-zone {
-  padding: 12px;
-  border-radius: 8px;
-  border: 2px solid #ff4444;
-  background-color: #fff1f1;
-  color: #ff4444;
-  text-align: center;
-  font-weight: bold;
-  transition: all 0.2s ease;
-}
-
-.trash-zone.trash-over {
-  background-color: #ff4444 !important;
-  color: white !important;
-  transform: scale(1.05);
-}
-
 /* ---------- MAIN CONTENT ---------- */
 .main {
   flex: 1;
@@ -145,6 +56,8 @@ html {
   flex-direction: column;
   background: aliceblue;
   -webkit-overflow-scrolling: touch;
+  /* Ensures content doesn't start under the status bar/notch */
+  padding-top: env(safe-area-inset-top);
 }
 
 .heading,
@@ -152,90 +65,23 @@ html {
   padding: 10px 20px;
 }
 
-.heading h1 {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  margin: 0 0 10px 0;
-}
-
-.flip-text {
-  color: #0077ff;
-  display: inline-block;
-  perspective: 1000px;
-  animation: flip-loop 4s infinite ease-in-out;
-}
-
-@keyframes flip-loop {
-  0%,
-  80% {
-    transform: rotateY(0deg);
-  }
-  90% {
-    transform: rotateY(180deg);
-  }
-  100% {
-    transform: rotateY(360deg);
-  }
-}
-
-.controls {
-  display: flex;
-  align-items: center;
-  gap: 15px;
-  flex-wrap: wrap;
-}
-
-.search-container {
-  position: relative;
-  flex: 1;
-  max-width: 300px;
-  min-width: 200px;
-}
-
-.search-input {
-  width: 100%;
-  padding: 8px 75px 8px 12px;
-  border: 1px solid #ccc;
-  border-radius: 20px;
-  font-size: 1rem;
-}
-
-.clear-search-btn {
-  position: absolute;
-  right: 5px;
-  top: 50%;
-  transform: translateY(-50%);
-  background: #ce3434;
-  border: none;
-  border-radius: 12px;
-  padding: 4px 10px;
-  color: white;
-  cursor: pointer;
-  font-size: 0.8rem;
-  z-index: 5;
-}
-
 /* ---------- GALLERY ---------- */
 .gallery {
-  padding: 20px;
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
   gap: 20px;
+  padding: 20px;
   background-color: rgba(0, 0, 0, 0.05);
   flex: 1;
 }
 
-/* ---------- CARDS ---------- */
+/* ---------- CARDS & HANDLES ---------- */
 .card-wrapper {
   position: relative;
   aspect-ratio: 3/4;
   perspective: 1200px;
+  /* Allows the background and card edges to scroll the page */
   touch-action: pan-y;
-}
-
-.is-dragging {
-  visibility: hidden;
 }
 
 .card {
@@ -243,7 +89,6 @@ html {
   height: 100%;
   transform-style: preserve-3d;
   transition: transform 0.6s cubic-bezier(0.4, 0, 0.2, 1);
-  position: relative;
 }
 
 .card.flipped {
@@ -261,17 +106,13 @@ html {
   overflow: hidden;
 }
 
-.card-front {
-  z-index: 2;
-  transform: rotateY(0deg);
-}
-
-.card-back {
-  z-index: 1;
-  transform: rotateY(180deg);
-  padding: 12px;
-  display: flex;
-  flex-direction: column;
+.drag-handle {
+  width: 100%;
+  height: 100%;
+  cursor: grab;
+  /* CRITICAL: Disables browser scrolling on the image 
+     so JavaScript Drag-and-Drop can work */
+  touch-action: none;
 }
 
 .card-face img {
@@ -280,133 +121,10 @@ html {
   object-fit: cover;
 }
 
-.zoom-btn {
-  position: absolute;
-  top: 10px;
-  left: 10px;
-  z-index: 20;
-  width: 36px;
-  height: 36px;
-  border-radius: 50%;
-  background: white;
-  border: none;
-  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.drag-handle {
-  width: 100%;
-  height: 100%;
-  cursor: grab;
-  touch-action: none;
-}
-
-.notes-content {
-  height: 100%;
-  display: flex;
-  flex-direction: column;
-}
-
-.notes-content textarea {
-  flex: 1;
-  margin-bottom: 8px;
-  resize: none;
-  border: 1px solid #ddd;
-  padding: 5px;
-  border-radius: 4px;
-}
-
-.notes-actions {
-  display: flex;
-  gap: 5px;
-}
-
-.notes-actions button {
-  flex: 1;
-  padding: 6px;
-  cursor: pointer;
-  font-size: 0.8rem;
-}
-
-.selected .card-face {
-  border: 4px solid #0077ff;
-}
-
-/* ---------- DRAG OVERLAY ---------- */
-.card-drag-preview {
-  width: 100px !important;
-  aspect-ratio: 3/4;
-  pointer-events: none;
-  z-index: 9999;
-  position: relative;
-}
-
-.card-drag-preview img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-  border-radius: 8px;
-  border: 2px solid white;
-  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.4);
-}
-
-.drag-count-badge {
-  position: absolute;
-  top: -10px;
-  right: -10px;
-  background: #0077ff;
-  color: white;
-  padding: 4px 10px;
-  border-radius: 15px;
-  font-weight: bold;
-  font-size: 0.8rem;
-}
-
-/* ---------- ZOOM OVERLAY ---------- */
-.zoom-overlay {
-  position: fixed;
-  inset: 0;
-  background: rgba(0, 0, 0, 0.9);
-  z-index: 3000;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 20px;
-}
-
-.zoomed-image {
-  max-width: 90vw;
-  max-height: 90vh;
-  object-fit: contain;
-}
-
-.zoomed-notes-box {
-  background: white;
-  width: 95%;
-  max-width: 600px;
-  height: 70%;
-  padding: 20px;
-  border-radius: 12px;
-  display: flex;
-  flex-direction: column;
-}
-
-.zoomed-notes-box textarea {
-  flex: 1;
-  padding: 10px;
-  font-size: 1.1rem;
-  resize: none;
-  margin-bottom: 10px;
-}
-
-/* ---------- MOBILE (iPhone 13 Mini Optimized) ---------- */
+/* ---------- MOBILE OPTIMIZED (iPhone 13 Mini / Modern Smartphones) ---------- */
 @media (max-width: 768px) {
   .app {
     flex-direction: column;
-    height: 100vh;
   }
 
   .sidebar {
@@ -418,124 +136,66 @@ html {
     background: white;
     border-right: none;
     border-top: 1px solid #ddd;
-    padding: 8px 12px calc(8px + env(safe-area-inset-bottom));
     z-index: 2000;
-    display: flex;
-    flex-direction: column;
-    gap: 8px;
-    box-shadow: 0 -4px 10px rgba(0, 0, 0, 0.05);
-    align-items: center;
-  }
-
-  .main {
-    flex: 1;
-    overflow-y: auto;
-    height: 100%;
-    display: flex;
-    flex-direction: column;
-    -webkit-overflow-scrolling: touch;
+    /* SAFE AREA: Adds extra padding for the home indicator bar */
+    padding: 10px 15px calc(10px + env(safe-area-inset-bottom)) 15px;
+    box-shadow: 0 -4px 15px rgba(0, 0, 0, 0.1);
   }
 
   .gallery {
     grid-template-columns: repeat(2, 1fr);
-    /* DRAMATICALLY increased vertical gap for easy scrolling */
+    /* UX: Large 60px vertical gap creates clear "scrolling lanes" */
     gap: 60px 16px;
-    /* Extra padding at the top and massive buffer at the bottom */
-    padding: 40px 15px 300px 15px !important;
+    /* Padding-top: space for heading. Padding-bottom: space to clear the sidebar */
+    padding: 30px 15px 320px 15px !important;
     align-content: start;
   }
 
   .card-wrapper {
     max-height: 180px;
-    width: 100%;
-    touch-action: pan-y;
-    /* Added secondary margin to ensure separation */
-    margin-bottom: 10px;
-  }
-
-  .drag-handle {
-    touch-action: none;
+    /* Secondary safety margin */
+    margin-bottom: 5px;
   }
 
   .sidebar-scroll-container {
-    display: flex;
     flex-direction: row;
-    align-items: center;
-    gap: 8px;
     overflow-x: auto;
     width: 100%;
-    padding-bottom: 10px;
-    mask-image: linear-gradient(to right, black 90%, transparent 100%);
+    padding-bottom: 8px;
+    gap: 10px;
     -webkit-overflow-scrolling: touch;
   }
 
-  /* ... Sidebar Scrollbar Styles ... */
-  .sidebar-scroll-container::-webkit-scrollbar {
-    display: block;
-    height: 4px;
-  }
-  .sidebar-scroll-container::-webkit-scrollbar-track {
-    background: #f0f0f0;
-    border-radius: 10px;
-  }
-  .sidebar-scroll-container::-webkit-scrollbar-thumb {
-    background: #0077ff;
-    border-radius: 10px;
-  }
-
-  .main-gallery-btn {
-    flex: 0 0 auto;
-    min-width: 75px;
-    max-width: 160px;
-    height: 36px;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    padding: 0 12px !important;
-    font-size: 0.85rem;
-    background: #f0f0f0;
-    border-radius: 8px;
-  }
-
-  .folder-item {
-    flex: 0 0 auto;
-    min-width: 90px;
-    height: 36px;
-    padding: 0 8px;
-  }
-
   .sidebar-static-actions {
-    display: flex !important;
     flex-direction: row !important;
-    flex-wrap: nowrap !important;
-    gap: 8px;
     width: 100%;
-    justify-content: center;
-    margin-top: 6px;
-    padding-top: 6px;
+    justify-content: space-between;
+    gap: 10px;
+    padding-top: 10px;
     border-top: 1px solid #eee;
   }
 
   .add-folder-btn,
   .trash-zone {
     flex: 1;
-    height: 32px;
-    font-size: 0.75rem;
-    font-weight: 500;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    border-radius: 6px;
-    border-width: 1px;
-    white-space: nowrap;
+    height: 40px; /* Slightly taller for better thumb accuracy */
+    font-size: 0.8rem;
   }
+}
 
-  .controls {
-    padding: 10px;
-    gap: 10px;
-  }
-  .search-container {
-    max-width: none;
-    flex: 1;
-  }
+/* ---------- SHARED ELEMENTS ---------- */
+.zoom-btn {
+  position: absolute;
+  top: 8px;
+  left: 8px;
+  z-index: 30;
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  background: white;
+  border: none;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
