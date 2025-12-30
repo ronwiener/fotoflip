@@ -406,19 +406,13 @@ html {
 
 /* ---------- MOBILE (iPhone 13 Mini Optimized) ---------- */
 @media (max-width: 768px) {
-  /* Change app flow to column to make room for bottom nav */
   .app {
     flex-direction: column;
     height: 100vh;
   }
 
-  /* 1. PIN SIDEBAR TO BOTTOM */
+  /* PIN SIDEBAR TO BOTTOM */
   .sidebar {
-    /* Ensure the sidebar itself is centering its children */
-    display: flex;
-    flex-direction: column;
-    align-items: center; /* This aligns the 80% wide box to the center */
-    width: 100vw;
     position: fixed;
     bottom: 0;
     left: 0;
@@ -427,23 +421,39 @@ html {
     background: white;
     border-right: none;
     border-top: 1px solid #ddd;
-    padding: 8px 12px calc(8px + env(safe-area-inset-bottom)); /* iOS Notch support */
+    padding: 8px 12px calc(8px + env(safe-area-inset-bottom));
     z-index: 2000;
     display: flex;
     flex-direction: column;
     gap: 8px;
     box-shadow: 0 -4px 10px rgba(0, 0, 0, 0.05);
+    align-items: center;
   }
 
-  /* 2. MAIN SCROLL AREA */
+  /* MAIN SCROLL AREA */
   .main {
     flex: 1;
     overflow-y: auto;
-    padding-bottom: 140px; /* Space so bottom nav doesn't cover images */
+    height: 100%;
+    display: flex;
+    flex-direction: column;
     -webkit-overflow-scrolling: touch;
   }
 
-  /* 3. DYNAMIC FOLDER SCROLLBAR */
+  /* GALLERY SETTINGS - FIXED SCROLLING & SIZING */
+  .gallery {
+    grid-template-columns: repeat(2, 1fr);
+    padding: 10px;
+    gap: 12px;
+    align-content: start; /* Prevents single items from stretching to fill height */
+    padding-bottom: 180px !important; /* Large buffer so items clear the bottom nav */
+  }
+
+  .card-wrapper {
+    max-height: 220px; /* Limits size on large phones */
+    width: 100%;
+  }
+
   .sidebar-scroll-container {
     display: flex;
     flex-direction: row;
@@ -471,9 +481,8 @@ html {
     border-radius: 10px;
   }
 
-  /* 4. BUTTON CENTERING & SIZING */
   .main-gallery-btn {
-    flex: 1 1 auto;
+    flex: 0 0 auto;
     min-width: 75px;
     max-width: 160px;
     height: 36px;
@@ -484,7 +493,6 @@ html {
     font-size: 0.85rem;
     background: #f0f0f0;
     border-radius: 8px;
-    transition: all 0.3s ease;
   }
 
   .folder-item {
@@ -494,16 +502,12 @@ html {
     padding: 0 8px;
   }
 
-  /* 5. BALANCED ACTION BUTTONS */
   .sidebar-static-actions {
     display: flex !important;
     flex-direction: row !important;
     flex-wrap: nowrap !important;
     gap: 8px;
     width: 100%;
-    /* Ensure the sidebar itself is centering its children */
-    margin-left: auto !important;
-    margin-right: auto !important;
     justify-content: center;
     margin-top: 6px;
     padding-top: 6px;
@@ -513,9 +517,7 @@ html {
   .add-folder-btn,
   .trash-zone {
     flex: 1;
-    /* 32px is the sweet spot: small but still a reliable tap target */
     height: 32px;
-
     font-size: 0.75rem;
     font-weight: 500;
     display: flex;
@@ -526,24 +528,6 @@ html {
     white-space: nowrap;
   }
 
-  .trash-zone {
-    border-color: #ff4444;
-    background-color: #fff1f1;
-    color: #ff4444;
-  }
-
-  .add-folder-btn {
-    background: #ffffff;
-    border: 1px solid #ccc;
-    color: #444;
-  }
-
-  /* Ensure the Main/Folder scroll container doesn't feel cramped */
-  .sidebar-scroll-container {
-    padding-bottom: 6px;
-  }
-
-  /* 6. SEARCH & GALLERY TWEAKS */
   .controls {
     padding: 10px;
     gap: 10px;
@@ -552,11 +536,5 @@ html {
   .search-container {
     max-width: none;
     flex: 1;
-  }
-
-  .gallery {
-    grid-template-columns: repeat(2, 1fr); /* 2 items per row on mobile */
-    padding: 10px;
-    gap: 10px;
   }
 }
