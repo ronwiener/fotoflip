@@ -441,7 +441,8 @@ html {
     grid-template-columns: repeat(2, 1fr);
     /* Increased padding and gap to create more "Safe Scroll" area between images */
     padding: 15px;
-    gap: 16px;
+    gap: 24px 16px;
+    padding: 20px 15px;
     align-content: start;
     padding-bottom: 220px !important;
   }
@@ -451,6 +452,7 @@ html {
     width: 100%;
     /* Ensure card doesn't eat the scroll intent */
     touch-action: pan-y;
+    margin-bottom: 8px;
   }
 
   .sidebar-scroll-container {
