@@ -12,7 +12,6 @@ html {
   height: 100vh;
   width: 100vw;
   overflow: hidden;
-  /* Prevents pull-to-refresh interference on mobile */
   overscroll-behavior-y: contain;
 }
 
@@ -51,7 +50,6 @@ html {
   gap: 10px;
 }
 
-/* HOVER FEEDBACK */
 .folder-hover-active {
   background-color: #e0f0ff !important;
   border: 2px dashed #0077ff !important;
@@ -122,7 +120,6 @@ html {
   border: 1px dashed #ccc;
 }
 
-/* TRASH ZONE */
 .trash-zone {
   padding: 12px;
   border-radius: 8px;
@@ -147,6 +144,8 @@ html {
   display: flex;
   flex-direction: column;
   background: aliceblue;
+  /* Smooth momentum scrolling for iOS */
+  -webkit-overflow-scrolling: touch;
 }
 
 .heading,
@@ -188,7 +187,6 @@ html {
   flex-wrap: wrap;
 }
 
-/* ---------- SEARCH & RETURN BUTTON ---------- */
 .search-container {
   position: relative;
   flex: 1;
@@ -234,7 +232,8 @@ html {
   position: relative;
   aspect-ratio: 3/4;
   perspective: 1200px;
-  touch-action: none;
+  /* CRITICAL: Allow vertical scrolling gestures to pass through the card */
+  touch-action: pan-y;
 }
 
 .is-dragging {
@@ -411,7 +410,6 @@ html {
     height: 100vh;
   }
 
-  /* PIN SIDEBAR TO BOTTOM */
   .sidebar {
     position: fixed;
     bottom: 0;
@@ -430,7 +428,6 @@ html {
     align-items: center;
   }
 
-  /* MAIN SCROLL AREA */
   .main {
     flex: 1;
     overflow-y: auto;
@@ -440,18 +437,20 @@ html {
     -webkit-overflow-scrolling: touch;
   }
 
-  /* GALLERY SETTINGS - FIXED SCROLLING & SIZING */
   .gallery {
     grid-template-columns: repeat(2, 1fr);
-    padding: 10px;
-    gap: 12px;
-    align-content: start; /* Prevents single items from stretching to fill height */
-    padding-bottom: 180px !important; /* Large buffer so items clear the bottom nav */
+    /* Increased padding and gap to create more "Safe Scroll" area between images */
+    padding: 15px;
+    gap: 16px;
+    align-content: start;
+    padding-bottom: 220px !important;
   }
 
   .card-wrapper {
-    max-height: 220px; /* Limits size on large phones */
+    max-height: 200px;
     width: 100%;
+    /* Ensure card doesn't eat the scroll intent */
+    touch-action: pan-y;
   }
 
   .sidebar-scroll-container {
