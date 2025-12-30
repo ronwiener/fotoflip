@@ -438,10 +438,10 @@ html {
 
   .gallery {
     grid-template-columns: repeat(2, 1fr);
-    /* row-gap increased to 40px for very clear separation */
-    gap: 40px 16px;
-    /* padding-top ensures images don't touch the top controls */
-    padding: 30px 15px 250px 15px !important;
+    /* DRAMATICALLY increased vertical gap for easy scrolling */
+    gap: 60px 16px;
+    /* Extra padding at the top and massive buffer at the bottom */
+    padding: 40px 15px 300px 15px !important;
     align-content: start;
   }
 
@@ -449,6 +449,8 @@ html {
     max-height: 180px;
     width: 100%;
     touch-action: pan-y;
+    /* Added secondary margin to ensure separation */
+    margin-bottom: 10px;
   }
 
   .drag-handle {
@@ -467,16 +469,15 @@ html {
     -webkit-overflow-scrolling: touch;
   }
 
+  /* ... Sidebar Scrollbar Styles ... */
   .sidebar-scroll-container::-webkit-scrollbar {
     display: block;
     height: 4px;
   }
-
   .sidebar-scroll-container::-webkit-scrollbar-track {
     background: #f0f0f0;
     border-radius: 10px;
   }
-
   .sidebar-scroll-container::-webkit-scrollbar-thumb {
     background: #0077ff;
     border-radius: 10px;
@@ -533,7 +534,6 @@ html {
     padding: 10px;
     gap: 10px;
   }
-
   .search-container {
     max-width: none;
     flex: 1;
