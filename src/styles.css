@@ -12,7 +12,6 @@ html {
   height: 100vh;
   width: 100vw;
   overflow: hidden;
-  /* Prevents pull-to-refresh on mobile while allowing safe area use */
   overscroll-behavior: none;
 }
 
@@ -22,33 +21,9 @@ html {
   height: 100vh;
   flex-direction: row;
   overflow: hidden;
-  /* Handles horizontal safe areas for phones in landscape */
-  padding-left: env(safe-area-inset-left);
-  padding-right: env(safe-area-inset-right);
 }
 
-/* ---------- SIDEBAR (DESKTOP) ---------- */
-.sidebar {
-  width: 240px;
-  background: white;
-  border-right: 1px solid #ddd;
-  padding: 15px;
-  display: flex;
-  flex-direction: column;
-  flex-shrink: 0;
-  z-index: 100;
-}
-
-.sidebar-scroll-container {
-  flex: 1;
-  overflow-y: auto;
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  margin-bottom: 10px;
-}
-
-/* ---------- MAIN CONTENT ---------- */
+/* ---------- MAIN CONTENT & CONTROLS ---------- */
 .main {
   flex: 1;
   overflow-y: auto;
@@ -56,13 +31,28 @@ html {
   flex-direction: column;
   background: aliceblue;
   -webkit-overflow-scrolling: touch;
-  /* Ensures content doesn't start under the status bar/notch */
   padding-top: env(safe-area-inset-top);
 }
 
-.heading,
 .controls {
-  padding: 10px 20px;
+  padding: 15px 20px;
+  display: flex;
+  align-items: center;
+  gap: 15px;
+  flex-wrap: nowrap; /* Keeps search and upload on one line */
+}
+
+.search-container {
+  position: relative;
+  flex: 2; /* Gives search more room */
+}
+
+.search-input {
+  width: 100%;
+  padding: 12px 15px; /* Larger touch target */
+  border: 1px solid #ccc;
+  border-radius: 12px;
+  font-size: 1rem;
 }
 
 /* ---------- GALLERY ---------- */
@@ -71,23 +61,22 @@ html {
   grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
   gap: 20px;
   padding: 20px;
-  background-color: rgba(0, 0, 0, 0.05);
   flex: 1;
 }
 
-/* ---------- CARDS & HANDLES ---------- */
+/* ---------- CARDS (FIXED FLIP) ---------- */
 .card-wrapper {
   position: relative;
   aspect-ratio: 3/4;
   perspective: 1200px;
-  /* Allows the background and card edges to scroll the page */
-  touch-action: pan-y;
+  touch-action: pan-y; /* Allows scrolling */
 }
 
 .card {
   width: 100%;
   height: 100%;
-  transform-style: preserve-3d;
+  position: relative;
+  transform-style: preserve-3d; /* Crucial for flip */
   transition: transform 0.6s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
@@ -106,22 +95,17 @@ html {
   overflow: hidden;
 }
 
+.card-back {
+  transform: rotateY(180deg);
+}
+
 .drag-handle {
   width: 100%;
   height: 100%;
-  cursor: grab;
-  /* CRITICAL: Disables browser scrolling on the image 
-     so JavaScript Drag-and-Drop can work */
-  touch-action: none;
+  touch-action: none; /* Allows Drag and Drop to trigger */
 }
 
-.card-face img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-}
-
-/* ---------- MOBILE OPTIMIZED (iPhone 13 Mini / Modern Smartphones) ---------- */
+/* ---------- MOBILE OPTIMIZED ---------- */
 @media (max-width: 768px) {
   .app {
     flex-direction: column;
@@ -132,70 +116,42 @@ html {
     bottom: 0;
     left: 0;
     width: 100vw;
-    height: auto;
     background: white;
-    border-right: none;
     border-top: 1px solid #ddd;
     z-index: 2000;
-    /* SAFE AREA: Adds extra padding for the home indicator bar */
-    padding: 10px 15px calc(10px + env(safe-area-inset-bottom)) 15px;
-    box-shadow: 0 -4px 15px rgba(0, 0, 0, 0.1);
+    padding: 10px 15px calc(10px + env(safe-area-inset-bottom));
   }
 
   .gallery {
     grid-template-columns: repeat(2, 1fr);
-    /* UX: Large 60px vertical gap creates clear "scrolling lanes" */
-    gap: 60px 16px;
-    /* Padding-top: space for heading. Padding-bottom: space to clear the sidebar */
-    padding: 30px 15px 320px 15px !important;
-    align-content: start;
+    gap: 30px 15px; /* Balanced Gap: 30px vertical is enough for UX */
+    padding: 20px 15px 220px 15px !important;
   }
 
-  .card-wrapper {
-    max-height: 180px;
-    /* Secondary safety margin */
-    margin-bottom: 5px;
-  }
-
-  .sidebar-scroll-container {
-    flex-direction: row;
-    overflow-x: auto;
-    width: 100%;
-    padding-bottom: 8px;
-    gap: 10px;
-    -webkit-overflow-scrolling: touch;
-  }
-
+  /* SIDEBAR BUTTONS ROW */
   .sidebar-static-actions {
-    flex-direction: row !important;
-    width: 100%;
-    justify-content: space-between;
+    display: flex !important;
+    flex-direction: row !important; /* Forces side-by-side */
     gap: 10px;
-    padding-top: 10px;
-    border-top: 1px solid #eee;
+    margin-top: 10px;
   }
 
   .add-folder-btn,
   .trash-zone {
     flex: 1;
-    height: 40px; /* Slightly taller for better thumb accuracy */
-    font-size: 0.8rem;
+    height: 44px; /* Standard mobile tap height */
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.9rem;
+    border-radius: 8px;
   }
-}
 
-/* ---------- SHARED ELEMENTS ---------- */
-.zoom-btn {
-  position: absolute;
-  top: 8px;
-  left: 8px;
-  z-index: 30;
-  width: 34px;
-  height: 34px;
-  border-radius: 50%;
-  background: white;
-  border: none;
-  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
-  display: flex;
-  align-items: center;
-  justify-content: center;
+  .sidebar-scroll-container {
+    display: flex;
+    flex-direction: row;
+    overflow-x: auto;
+    gap: 10px;
+    padding-bottom: 5px;
+  }
 }
