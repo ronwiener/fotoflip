@@ -1,26 +1,9 @@
 import JSZip from "jszip";
+import { supabase } from "../supabaseClient";
 
-/* ---------- LOCAL STORAGE ---------- */
-
-export function loadItems() {
-  const saved = localStorage.getItem("gallery-items");
-  if (!saved) return [];
-  try {
-    const parsed = JSON.parse(saved);
-    // Remove stale blob URLs so they can be regenerated from IndexedDB
-    return parsed.map((item) => ({ ...item, imageURL: null }));
-  } catch (e) {
-    console.error("Failed to parse gallery items", e);
-    return [];
-  }
-}
-
-export function saveItems(items) {
-  localStorage.setItem(
-    "gallery-items",
-    JSON.stringify(items.map(({ imageURL, ...rest }) => rest))
-  );
-}
+/* ---------- FOLDER MANAGEMENT ---------- */
+// These stay in LocalStorage because they are UI preferences
+// (unless you want to create a 'folders' table in Supabase later)
 
 const FOLDER_ALIASES = {
   All: "Folder Groups",
@@ -30,9 +13,7 @@ const FOLDER_ALIASES = {
 
 export function loadFolders() {
   const saved = localStorage.getItem("gallery-folders");
-  // Fix: Removed the 'S' typo from "Folder Groups"
   if (!saved) return ["Folder Groups"];
-
   try {
     const folders = JSON.parse(saved);
     return folders.map((f) => FOLDER_ALIASES[f] ?? f);
@@ -52,80 +33,137 @@ export function filterItems(items, activeFolder, search) {
   const query = search.toLowerCase();
 
   return items.filter((item) => {
-    // Logic: If activeFolder is "Select Folder", show items with no folder/empty string
-    // Otherwise, show items matching the specific folder name
+    // Check if the item matches the active folder
     const folderMatch =
       activeFolder === "Select Folder"
         ? !item.folder || item.folder === ""
         : item.folder === activeFolder;
 
+    // Check if the notes match the search query
     const searchMatch = (item.notes || "").toLowerCase().includes(query);
+
     return folderMatch && searchMatch;
   });
 }
 
-/* ---------- ZIP EXPORT ---------- */
+/* ---------- ZIP EXPORT (Supabase Version) ---------- */
 
-export async function exportGalleryZip(items, getImageBlob) {
+export async function exportGalleryZip(items) {
   const zip = new JSZip();
   const meta = [];
 
   for (const item of items) {
-    const blob = await getImageBlob(item.imageId);
-    if (!blob) continue;
+    try {
+      const response = await fetch(item.imageURL);
+      if (!response.ok) throw new Error("Image download failed");
+      const blob = await response.blob();
 
-    // We store files in folders within the ZIP for organization
-    const path = item.folder ? `${item.folder}/` : "";
-    const filename = `${item.id}.jpg`;
-    zip.file(`${path}${filename}`, blob);
+      // Standardize the filename inside the ZIP
+      const cleanFilename = item.image_path.split("/").pop();
+      const zipPath = item.folder
+        ? `${item.folder}/${cleanFilename}`
+        : cleanFilename;
 
-    meta.push({
-      id: item.id,
-      notes: item.notes,
-      tags: item.tags,
-      folder: item.folder,
-      flipped: item.flipped,
-      filename: filename,
-    });
+      zip.file(zipPath, blob);
+
+      meta.push({
+        notes: item.notes,
+        folder: item.folder,
+        flipped: item.flipped,
+        filename: cleanFilename,
+      });
+    } catch (err) {
+      console.error("Export error for item:", item.id, err);
+    }
   }
 
   zip.file("gallery.json", JSON.stringify(meta, null, 2));
-  return await zip.generateAsync({ type: "blob" });
+  const blob = await zip.generateAsync({ type: "blob" });
+
+  const link = document.createElement("a");
+  link.href = URL.createObjectURL(blob);
+  link.download = `gallery_backup_${
+    new Date().toISOString().split("T")[0]
+  }.zip`;
+  link.click();
 }
 
-/* ---------- ZIP IMPORT (Fixed Version) ---------- */
-
-export async function importGalleryZip(file, saveImage) {
+/* ---------- ZIP IMPORT (With Merge/Duplicate Check) ---------- */
+/* ---------- ZIP IMPORT (With Progress Reporting) ---------- */
+export async function importGalleryZip(file, onProgress) {
   try {
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+    if (!user) throw new Error("User must be logged in to import");
+
     const zip = await JSZip.loadAsync(file);
     const metaFile = zip.file("gallery.json");
     if (!metaFile) return [];
 
     const meta = JSON.parse(await metaFile.async("string"));
-    const imported = [];
+    const total = meta.length;
+    const importedItems = [];
 
-    for (const m of meta) {
-      // Correctly locate the file inside the zip folders
+    // Fetch existing items for the merge/duplicate check
+    const { data: existingItems } = await supabase
+      .from("items")
+      .select("image_path, notes")
+      .eq("user_id", user.id);
+
+    for (let i = 0; i < total; i++) {
+      const m = meta[i];
+
+      // Update the UI: Send current count and total back to App.jsx
+      if (onProgress) onProgress(i + 1, total);
+
       const zipPath = m.folder ? `${m.folder}/${m.filename}` : m.filename;
       const imgFile = zip.file(zipPath);
-
       if (!imgFile) continue;
 
       const blob = await imgFile.async("blob");
-      // Create a fresh ID for IndexedDB
-      const imageId = crypto.randomUUID();
-      await saveImage(imageId, blob);
 
-      imported.push({
-        ...m,
-        id: crypto.randomUUID(), // New unique ID for this app instance
-        imageId,
-        imageURL: null, // Will be populated by the URL creator in App.jsx
-      });
+      // Duplicate Check
+      const isDuplicate = existingItems?.some(
+        (item) => item.image_path.includes(m.filename) && item.notes === m.notes
+      );
+
+      if (isDuplicate) continue;
+
+      // Standard Supabase Upload Logic
+      const fileExt = m.filename.split(".").pop();
+      const storagePath = `${user.id}/${crypto.randomUUID()}.${fileExt}`;
+
+      const { error: uploadError } = await supabase.storage
+        .from("gallery")
+        .upload(storagePath, blob);
+
+      if (uploadError) continue;
+
+      const { data: dbData, error: dbError } = await supabase
+        .from("items")
+        .insert([
+          {
+            image_path: storagePath,
+            user_id: user.id,
+            notes: m.notes || "",
+            folder: m.folder || "",
+            flipped: m.flipped || false,
+          },
+        ])
+        .select();
+
+      if (!dbError && dbData) {
+        const { data: urlData } = supabase.storage
+          .from("gallery")
+          .getPublicUrl(storagePath);
+        importedItems.push({ ...dbData[0], imageURL: urlData.publicUrl });
+      }
     }
-    return imported;
+
+    return importedItems;
   } catch (e) {
-    console.error("Zip import failed", e);
-    return [];
+    console.error("Zip import failed:", e);
+    throw e;
   }
 }

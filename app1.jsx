@@ -235,7 +235,6 @@ export default function App() {
   const [activeDragItem, setActiveDragItem] = useState(null);
   const [isDropping, setIsDropping] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
-  const [importProgress, setImportProgress] = useState("");
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
@@ -302,12 +301,7 @@ export default function App() {
     setItems((prev) => {
       const updated = prev.map((i) => (i.id === id ? { ...i, notes } : i));
       const itemToSync = updated.find((i) => i.id === id);
-
-      // We use brackets here to group these two logic steps together
-      if (itemToSync) {
-        updateSupabaseItem(itemToSync);
-      }
-
+      if (itemToSync) updateSupabaseItem(itemToSync);
       return updated;
     });
   };
@@ -315,7 +309,7 @@ export default function App() {
   const updateSupabaseItem = async (item) => {
     if (!session?.user) return;
 
-    const { error } = await supabase.from("items").upsert({
+    await supabase.from("items").upsert({
       id: item.id,
       user_id: session.user.id, // Added user_id
       notes: item.notes,
@@ -323,9 +317,6 @@ export default function App() {
       flipped: item.flipped,
       image_path: item.image_path,
     });
-    if (error) {
-      console.error("Sync Error:", error.message);
-    }
   };
 
   const handleUpload = async (event) => {
@@ -464,30 +455,6 @@ export default function App() {
     return filterItems(items, activeFolder, "");
   }, [items, activeFolder, search]);
 
-  const handleImport = async (event) => {
-    const file = event.target.files[0];
-    if (!file) return;
-
-    setIsLoading(true);
-    setImportProgress("Initializing...");
-
-    try {
-      // We pass the progress callback as the second argument
-      const newItems = await importGalleryZip(file, (current, total) => {
-        setImportProgress(`Importing ${current} of ${total} photos...`);
-      });
-
-      if (newItems.length > 0) fetchItems();
-      alert(`Import complete! Added ${newItems.length} new items.`);
-    } catch (error) {
-      alert("Import failed: " + error.message);
-    } finally {
-      setIsLoading(false);
-      setImportProgress("");
-      event.target.value = ""; // Reset input
-    }
-  };
-
   return (
     <div className="app-container">
       {/* 1. AUTH CHECK: If no session, show Auth component */}
@@ -507,18 +474,6 @@ export default function App() {
             {isLoading && (
               <div className="loading-overlay">
                 <div className="spinner"></div>
-                {importProgress && (
-                  <p
-                    style={{
-                      marginTop: "15px",
-                      fontWeight: "bold",
-                      color: "#333",
-                      fontSize: "1.1rem",
-                    }}
-                  >
-                    {importProgress}
-                  </p>
-                )}
               </div>
             )}
             <aside className="sidebar">
@@ -618,8 +573,9 @@ export default function App() {
                     📥 Import
                     <input
                       type="file"
-                      accept=".zip"
-                      onChange={handleImport}
+                      onChange={(e) =>
+                        importGalleryZip(e.target.files[0]).then(fetchItems)
+                      }
                       hidden
                     />
                   </label>
@@ -717,3 +673,7 @@ export default function App() {
     </div>
   );
 }
+
+/*
+final code before netlify deploy with supabase
+*/
