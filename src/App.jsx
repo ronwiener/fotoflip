@@ -236,6 +236,10 @@ export default function App() {
   const [isDropping, setIsDropping] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [importProgress, setImportProgress] = useState("");
+  const [uploadProgress, setUploadProgress] = useState({
+    current: 0,
+    total: 0,
+  });
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
@@ -329,15 +333,18 @@ export default function App() {
   };
 
   const handleUpload = async (event) => {
-    const files = event.target.files; // Get the full FileList, not just [0]
+    const files = event.target.files;
     if (!files || files.length === 0 || !session?.user) return;
 
     setIsLoading(true);
+    // Initialize the counter with the total number of files selected
+    setUploadProgress({ current: 0, total: files.length });
+
+    let completedCount = 0;
 
     // Loop through every file selected
     for (const file of files) {
       const fileExt = file.name.split(".").pop();
-      // Adding Date.now() ensures unique filenames if multiple uploads happen fast
       const fileName = `${Date.now()}-${Math.random()}.${fileExt}`;
       const filePath = `${session.user.id}/${fileName}`;
 
@@ -348,7 +355,10 @@ export default function App() {
 
       if (uploadError) {
         console.error("Storage Error for " + file.name, uploadError.message);
-        continue; // Skip this one and try the next file
+        // Even if it fails, we increment the progress to move to the next "slot"
+        completedCount++;
+        setUploadProgress((prev) => ({ ...prev, current: completedCount }));
+        continue;
       }
 
       // 2. Insert record
@@ -365,11 +375,18 @@ export default function App() {
       if (dbError) {
         console.error("Database Error for " + file.name, dbError.message);
       }
+
+      // Update progress after each file is processed
+      completedCount++;
+      setUploadProgress((prev) => ({ ...prev, current: completedCount }));
     }
 
     // Refresh and stop loading ONLY after the loop finishes
     await fetchItems();
     setIsLoading(false);
+
+    // Optional: Reset progress after 2 seconds so the message disappears
+    setTimeout(() => setUploadProgress({ current: 0, total: 0 }), 2000);
   };
 
   const handleDragOver = useCallback((event) => {
@@ -507,16 +524,17 @@ export default function App() {
             {isLoading && (
               <div className="loading-overlay">
                 <div className="spinner"></div>
+
+                {/* 1. Show Zip Import Progress */}
                 {importProgress && (
-                  <p
-                    style={{
-                      marginTop: "15px",
-                      fontWeight: "bold",
-                      color: "#333",
-                      fontSize: "1.1rem",
-                    }}
-                  >
-                    {importProgress}
+                  <p className="progress-bar">{importProgress}</p>
+                )}
+
+                {/* 2. Show Image Upload Progress */}
+                {!importProgress && uploadProgress.total > 0 && (
+                  <p className="progress-bar">
+                    Uploading {uploadProgress.current} of {uploadProgress.total}{" "}
+                    images...
                   </p>
                 )}
               </div>
@@ -717,3 +735,8 @@ export default function App() {
     </div>
   );
 }
+
+/*
+1.  add upload progress bar
+2. highlight image when selecting multiple images to be dragged
+*/
