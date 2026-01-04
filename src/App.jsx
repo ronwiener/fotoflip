@@ -329,46 +329,46 @@ export default function App() {
   };
 
   const handleUpload = async (event) => {
-    const file = event.target.files[0];
-    if (!file || !session?.user) return;
+    const files = event.target.files; // Get the full FileList, not just [0]
+    if (!files || files.length === 0 || !session?.user) return;
 
     setIsLoading(true);
 
-    const fileExt = file.name.split(".").pop();
-    const fileName = `${Math.random()}.${fileExt}`;
-    // This creates a path like: "user_uuid/0.12345.jpg"
-    const filePath = `${session.user.id}/${fileName}`;
+    // Loop through every file selected
+    for (const file of files) {
+      const fileExt = file.name.split(".").pop();
+      // Adding Date.now() ensures unique filenames if multiple uploads happen fast
+      const fileName = `${Date.now()}-${Math.random()}.${fileExt}`;
+      const filePath = `${session.user.id}/${fileName}`;
 
-    // 1. Upload the file to the "gallery" bucket
-    const { error: uploadError } = await supabase.storage
-      .from("gallery")
-      .upload(filePath, file);
+      // 1. Upload to storage
+      const { error: uploadError } = await supabase.storage
+        .from("gallery")
+        .upload(filePath, file);
 
-    if (uploadError) {
-      alert("Storage Error: " + uploadError.message);
-      setIsLoading(false);
-      return;
+      if (uploadError) {
+        console.error("Storage Error for " + file.name, uploadError.message);
+        continue; // Skip this one and try the next file
+      }
+
+      // 2. Insert record
+      const { error: dbError } = await supabase.from("items").insert([
+        {
+          image_path: filePath,
+          user_id: session.user.id,
+          notes: "",
+          flipped: false,
+          folder: activeFolder === "Select Folder" ? "" : activeFolder,
+        },
+      ]);
+
+      if (dbError) {
+        console.error("Database Error for " + file.name, dbError.message);
+      }
     }
 
-    // 2. Insert the record into the "items" table
-    // We use 'image_path' to match your database column name
-    const { error: dbError } = await supabase.from("items").insert([
-      {
-        image_path: filePath, // Storing the path, not the full URL
-        user_id: session.user.id,
-        notes: "", // Good to provide defaults
-        flipped: false,
-        folder: activeFolder === "Select Folder" ? "" : activeFolder,
-      },
-    ]);
-
-    if (dbError) {
-      alert("Database Error: " + dbError.message);
-    } else {
-      // Refresh the gallery so the new image appears immediately
-      fetchItems();
-    }
-
+    // Refresh and stop loading ONLY after the loop finishes
+    await fetchItems();
     setIsLoading(false);
   };
 
