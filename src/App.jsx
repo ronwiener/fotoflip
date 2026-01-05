@@ -477,7 +477,7 @@ export default function App() {
     if (selectedIds.size === 0) return;
 
     const confirmDelete = window.confirm(
-      `Are you sure you want to delete ${selectedIds.size} selected item(s)?`
+      `Are you sure you want to delete or move to folder ${selectedIds.size} selected item(s)?`
     );
     if (!confirmDelete) return;
 
@@ -718,7 +718,9 @@ export default function App() {
                       borderColor: "#ffcccc",
                     }}
                   >
-                    🗑 Delete ({selectedIds.size})
+                    {selectedIds.size === 1
+                      ? "🗑 Move 1 image to Trash or Folder"
+                      : `🗑 Move ${selectedIds.size} images to Trash or Folder`}
                   </button>
                 )}
 
