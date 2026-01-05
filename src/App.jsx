@@ -293,19 +293,37 @@ export default function App() {
   }, []);
 
   useEffect(() => {
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setSession(session);
-      if (session?.user) fetchItems();
+    // 1. Fallback timer for Safari / slow loads
+    const timer = setTimeout(() => {
+      if (!session) setIsLoading(false);
+    }, 10000);
+
+    // 2. Get initial session
+    supabase.auth.getSession().then(({ data: { session: initialSession } }) => {
+      setSession(initialSession);
+      if (initialSession?.user) fetchItems();
+      setIsLoading(false);
+      clearTimeout(timer);
     });
+
+    // 3. Listen for auth changes (Login/Logout)
     const {
       data: { subscription },
-    } = supabase.auth.onAuthStateChange((_event, session) => {
-      setSession(session);
-      if (session?.user) fetchItems();
-      else setItems([]);
+    } = supabase.auth.onAuthStateChange((_event, currentSession) => {
+      setSession(currentSession);
+      if (currentSession?.user) {
+        fetchItems();
+      } else {
+        setItems([]);
+      }
+      setIsLoading(false);
     });
-    return () => subscription.unsubscribe();
-  }, [fetchItems]);
+
+    return () => {
+      subscription.unsubscribe();
+      clearTimeout(timer);
+    };
+  }, [fetchItems, session]); // <--- Add 'session' here
 
   const updateSupabaseItem = async (item) => {
     if (!session?.user) return;
