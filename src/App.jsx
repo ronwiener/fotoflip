@@ -250,9 +250,18 @@ export default function App() {
   });
 
   const sensors = useSensors(
-    useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
+    // Desktop & General Pointer Logic
+    useSensor(PointerSensor, {
+      activationConstraint: {
+        distance: 8, // Drag starts after moving 8px
+      },
+    }),
+    // Mobile Specific Logic (The Long Press)
     useSensor(TouchSensor, {
-      activationConstraint: { delay: 250, tolerance: 10 },
+      activationConstraint: {
+        delay: 250, // Hold for 250ms to start dragging
+        tolerance: 10, // Allows finger to wobble 10px while holding
+      },
     })
   );
 
