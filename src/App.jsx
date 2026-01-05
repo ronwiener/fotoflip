@@ -206,7 +206,12 @@ function DraggableCard({
             🔍
           </button>
           <div className="drag-handle" {...attributes} {...listeners}>
-            <img src={item.imageURL} alt="" draggable="false" />
+            <img
+              src={item.imageURL}
+              alt=""
+              draggable="false"
+              style={{ pointerEvents: "none" }}
+            />
           </div>
         </div>
         <div className="card-face card-back">
@@ -476,7 +481,11 @@ export default function App() {
             </button>
             <button
               className="nav-btn logout-btn"
-              onClick={() => supabase.auth.signOut()}
+              onClick={async () => {
+                await supabase.auth.signOut();
+                setSession(null); // Force clear session
+                setItems([]); // Clear local items for security
+              }}
             >
               Sign Out
             </button>
