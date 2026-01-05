@@ -19,22 +19,66 @@ body {
 
 body,
 html {
-  overscroll-behavior-y: contain;
-  overscroll-behavior-x: none;
-  touch-action: pan-x pan-y;
-  position: fixed;
+  /* Prevent the browser from bouncing or refreshing when dragging */
+  overscroll-behavior: none;
+
+  /* Standard layout */
   margin: 0;
   padding: 0;
+  height: 100%; /* Better compatibility than 100vh on some mobile browsers */
+  width: 100%;
   background: aliceblue;
-  height: 100vh;
-  width: 100vw;
-  overflow: hidden; /* Prevents double scrollbars on the window */
+  overflow: hidden;
+
+  /* Help prevent accidental text selection during drag-and-drop */
+  -webkit-user-select: none;
+  user-select: none;
+
+  /* Standardizes touch gestures */
+  touch-action: none;
+}
+
+/* IMPORTANT: Re-enable selection for your notes/inputs */
+textarea,
+input {
+  user-select: text;
+  -webkit-user-select: text;
+  touch-action: pan-y; /* Allows scrolling inside the textarea */
 }
 
 a {
   font-weight: 500;
   color: #646cff;
   text-decoration: none;
+}
+
+/* ---------- LOADING & SPINNERS ---------- */
+.loading-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(255, 255, 255, 0.85);
+  backdrop-filter: blur(4px);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  z-index: 9999;
+}
+
+.spinner {
+  width: 50px;
+  height: 50px;
+  border: 5px solid #f3f3f3;
+  border-top: 5px solid #0077ff;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+  margin-bottom: 20px;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 /* Container for the progress info in the Main gallery area */
@@ -475,6 +519,7 @@ a {
   user-select: none;
   -webkit-user-select: none;
   transition: transform 0.2s cubic-bezier(0.2, 0, 0, 1);
+  position: relative;
 }
 
 .card {
@@ -511,12 +556,14 @@ a {
 }
 
 .card-face img {
+  pointer-events: none;
   width: 100%;
   height: 100%;
   object-fit: cover;
   /* CRITICAL: Prevents the system "Save Image" popup from breaking the drag */
   -webkit-touch-callout: none;
   -webkit-user-drag: none;
+  user-select: none;
 
   /* Lets the touch events pass through to the .drag-handle listener */
   pointer-events: none;
@@ -585,19 +632,26 @@ a {
   height: 100%;
   /* This prevents the browser from scrolling the page when you hold to drag */
   user-select: none;
+  touch-action: none !important;
   /* Vendor prefixes for compatibility */
   -webkit-user-select: none; /* Safari/Chrome */
   -moz-user-select: none; /* Firefox */
   -ms-user-select: none; /* Older IE/Edge */
-
+  display: block;
   /* Critical for long-press on mobile */
-  touch-action: none !important;
+
   -webkit-touch-callout: none;
   cursor: grab;
 }
 
 .drag-handle:active {
   cursor: grabbing;
+}
+
+.card-wrapper[data-dragging="true"] {
+  opacity: 0.5;
+  transform: scale(0.95);
+  z-index: 10;
 }
 
 .folder-hover-active {
@@ -799,7 +853,7 @@ a {
     grid-template-columns: repeat(2, 1fr); /* 2 columns on mobile */
     gap: 24px;
     padding: 20px;
-    padding-bottom: 200px; /* Space so cards aren't hidden by sidebar */
+    padding-bottom: 220px; /* Space so cards aren't hidden by sidebar */
   }
 
   .card-wrapper {

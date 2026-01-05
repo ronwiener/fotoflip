@@ -6,11 +6,9 @@ import {
   useSensor,
   useSensors,
   DragOverlay,
-  useDraggable,
   useDroppable,
   defaultDropAnimationSideEffects,
 } from "@dnd-kit/core";
-// 1. Import Sortable Context and Strategy
 import {
   SortableContext,
   useSortable,
@@ -29,8 +27,128 @@ import {
   importGalleryZip,
 } from "./helpers/galleryHelpers";
 
-/* ---------- REFACTORED DRAGGABLE CARD ---------- */
+/* ---------- AUTH COMPONENT ---------- */
+function Auth() {
+  const [email, setEmail] = useState("");
+  const [loading, setLoading] = useState(false);
 
+  const handleLogin = async (e) => {
+    e.preventDefault();
+    setLoading(true);
+    const { error } = await supabase.auth.signInWithPasswordless({
+      type: "magiclink",
+      email,
+    });
+    if (error) alert(error.message);
+    else alert("Check your email for the login link!");
+    setLoading(false);
+  };
+
+  const handleGoogleLogin = async () => {
+    const { error } = await supabase.auth.signInWithOAuth({
+      provider: "google",
+      options: { redirectTo: window.location.origin },
+    });
+    if (error) alert(error.message);
+  };
+
+  return (
+    <div className="auth-container">
+      <div className="auth-box">
+        <h1>Photo Flip</h1>
+        <p>Sign in to manage your gallery</p>
+        <button onClick={handleGoogleLogin} className="google-btn">
+          <img
+            src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg"
+            alt=""
+            width="18"
+          />
+          Continue with Google
+        </button>
+        <div className="divider">
+          <span>OR</span>
+        </div>
+        <form onSubmit={handleLogin}>
+          <input
+            type="email"
+            placeholder="Your email"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            required
+          />
+          <button
+            type="submit"
+            disabled={loading}
+            className={email ? "btn-active" : ""}
+          >
+            {loading ? (
+              <span className="spinner-small"></span>
+            ) : (
+              "Send Magic Link"
+            )}
+          </button>
+        </form>
+      </div>
+    </div>
+  );
+}
+
+/* ---------- UI SUB-COMPONENTS ---------- */
+function MainGalleryDropZone({ activeFolder, setActiveFolder }) {
+  const { isOver, setNodeRef } = useDroppable({ id: "Select Folder" });
+  return (
+    <div
+      ref={setNodeRef}
+      className={`nav-btn ${activeFolder === "Select Folder" ? "active" : ""} ${
+        isOver ? "folder-hover-active" : ""
+      }`}
+      onClick={() => setActiveFolder("Select Folder")}
+    >
+      <span className="main-text">Main Gallery</span>
+    </div>
+  );
+}
+
+function FolderButton({ f, activeFolder, setActiveFolder, onDelete }) {
+  const { isOver, setNodeRef } = useDroppable({ id: f });
+  return (
+    <div
+      ref={setNodeRef}
+      className={`folder-item ${f === activeFolder ? "active" : ""} ${
+        isOver ? "folder-hover-active" : ""
+      }`}
+    >
+      <button onClick={() => setActiveFolder(f)} className="folder-name-btn">
+        {f}
+      </button>
+      <button
+        className="delete-folder-btn"
+        onClick={(e) => {
+          e.stopPropagation();
+          onDelete(f);
+        }}
+      >
+        &times;
+      </button>
+    </div>
+  );
+}
+
+function TrashDropZone({ selectedCount, isDropping }) {
+  const { isOver, setNodeRef } = useDroppable({ id: "TRASH_BIN" });
+  return (
+    <div
+      ref={setNodeRef}
+      className={`trash-zone ${isOver ? "trash-over" : ""} ${
+        isDropping ? "trash-dropped" : ""
+      }`}
+    >
+      <span>{selectedCount > 0 ? `🗑 (${selectedCount})` : "🗑 Trash"}</span>
+    </div>
+  );
+}
+
+/* ---------- DRAGGABLE CARD ---------- */
 function DraggableCard({
   item,
   isSelected,
@@ -40,7 +158,6 @@ function DraggableCard({
   onZoom,
   updateNotes,
 }) {
-  // 2. Switch to useSortable for better mobile touch handling
   const {
     attributes,
     listeners,
@@ -53,7 +170,7 @@ function DraggableCard({
   const style = {
     transform: CSS.Transform.toString(transform),
     transition,
-    opacity: isDragging ? 0.3 : 1, // Dims the original card while dragging
+    opacity: isDragging ? 0.3 : 1,
   };
 
   const handleFrontClick = (e) => {
@@ -74,10 +191,10 @@ function DraggableCard({
     <div
       ref={setNodeRef}
       style={style}
+      data-dragging={isDragging}
       className={`card-wrapper ${isSelected ? "selected" : ""}`}
     >
       <div className={`card ${item.flipped ? "flipped" : ""}`}>
-        {/* Front Face */}
         <div className="card-face card-front" onClick={handleFrontClick}>
           <button
             className="zoom-btn"
@@ -88,21 +205,17 @@ function DraggableCard({
           >
             🔍
           </button>
-
-          {/* 3. The Drag Handle needs the listeners and attributes */}
           <div className="drag-handle" {...attributes} {...listeners}>
             <img src={item.imageURL} alt="" draggable="false" />
           </div>
         </div>
-
-        {/* Back Face */}
         <div className="card-face card-back">
           <div className="notes-content">
             <textarea
               value={item.notes}
               onClick={(e) => e.stopPropagation()}
               onChange={(e) => updateNotes(item.id, e.target.value)}
-              placeholder="Zoom to write notes..."
+              placeholder="Zoom to write..."
             />
             <div className="notes-actions">
               <button
@@ -129,10 +242,8 @@ function DraggableCard({
   );
 }
 
-/* ---------- APP COMPONENT ---------- */
-
+/* ---------- MAIN APP ---------- */
 export default function App() {
-  // ... (keep all your existing state: session, items, folders, etc.)
   const [session, setSession] = useState(null);
   const [items, setItems] = useState([]);
   const [folders, setFolders] = useState(() => loadFolders() || []);
@@ -152,35 +263,28 @@ export default function App() {
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
     useSensor(TouchSensor, {
-      activationConstraint: { delay: 250, tolerance: 10 },
+      activationConstraint: { delay: 250, tolerance: 15 },
     })
   );
 
-  // ... (keep fetchItems, useEffect, updateNotes, updateSupabaseItem, handleUpload, handleDragOver)
-
   const fetchItems = useCallback(async () => {
-    try {
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
-      if (!user) return;
-      const { data, error } = await supabase
-        .from("items")
-        .select("*")
-        .eq("user_id", user.id)
-        .order("created_at", { ascending: false });
-
-      if (error) throw error;
-      const formatted = data.map((item) => {
-        const { data: urlData } = supabase.storage
-          .from("gallery")
-          .getPublicUrl(item.image_path);
-        return { ...item, imageURL: urlData.publicUrl };
-      });
-      setItems(formatted);
-    } catch (err) {
-      console.error(err);
-    }
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+    if (!user) return;
+    const { data, error } = await supabase
+      .from("items")
+      .select("*")
+      .eq("user_id", user.id)
+      .order("created_at", { ascending: false });
+    if (error) return console.error(error);
+    const formatted = data.map((item) => {
+      const { data: urlData } = supabase.storage
+        .from("gallery")
+        .getPublicUrl(item.image_path);
+      return { ...item, imageURL: urlData.publicUrl };
+    });
+    setItems(formatted);
   }, []);
 
   useEffect(() => {
@@ -198,15 +302,6 @@ export default function App() {
     return () => subscription.unsubscribe();
   }, [fetchItems]);
 
-  const updateNotes = async (id, notes) => {
-    setItems((prev) => {
-      const updated = prev.map((i) => (i.id === id ? { ...i, notes } : i));
-      const itemToSync = updated.find((i) => i.id === id);
-      if (itemToSync) updateSupabaseItem(itemToSync);
-      return updated;
-    });
-  };
-
   const updateSupabaseItem = async (item) => {
     if (!session?.user) return;
     await supabase.from("items").upsert({
@@ -219,6 +314,15 @@ export default function App() {
     });
   };
 
+  const updateNotes = async (id, notes) => {
+    setItems((prev) => {
+      const updated = prev.map((i) => (i.id === id ? { ...i, notes } : i));
+      const itemToSync = updated.find((i) => i.id === id);
+      if (itemToSync) updateSupabaseItem(itemToSync);
+      return updated;
+    });
+  };
+
   const handleUpload = async (event) => {
     const files = event.target.files;
     if (!files || !session?.user) return;
@@ -226,8 +330,9 @@ export default function App() {
     setUploadProgress({ current: 0, total: files.length });
     let completedCount = 0;
     for (const file of files) {
-      const fileExt = file.name.split(".").pop();
-      const fileName = `${Date.now()}-${Math.random()}.${fileExt}`;
+      const fileName = `${Date.now()}-${Math.random()}.${file.name
+        .split(".")
+        .pop()}`;
       const filePath = `${session.user.id}/${fileName}`;
       await supabase.storage.from("gallery").upload(filePath, file);
       await supabase.from("items").insert([
@@ -240,24 +345,34 @@ export default function App() {
         },
       ]);
       completedCount++;
-      setUploadProgress((p) => ({ ...p, current: completedCount }));
+      setUploadProgress({ current: completedCount, total: files.length });
     }
     await fetchItems();
     setIsLoading(false);
     setTimeout(() => setUploadProgress({ current: 0, total: 0 }), 2000);
   };
 
-  const handleDragOver = useCallback((event) => {
-    // Optional: add logic here if you want items to swap places in the grid
-  }, []);
+  const handleImport = async (event) => {
+    const file = event.target.files[0];
+    if (!file) return;
+    setIsLoading(true);
+    try {
+      await importGalleryZip(file, (curr, tot) =>
+        setImportProgress(`Importing ${curr} of ${tot}...`)
+      );
+      fetchItems();
+    } catch (e) {
+      alert("Import failed: " + e.message);
+    } finally {
+      setIsLoading(false);
+      setImportProgress("");
+    }
+  };
 
   const handleDragEnd = async (event) => {
     const { active, over } = event;
     setActiveDragItem(null);
-    if (!over || !session?.user) {
-      setSelectedIds(new Set());
-      return;
-    }
+    if (!over || !session?.user) return;
 
     const draggedIds = selectedIds.has(active.id)
       ? Array.from(selectedIds)
@@ -269,38 +384,34 @@ export default function App() {
         ? ""
         : over.id;
 
-    // UI Update
     setItems((prev) => {
       if (targetFolder === "DELETE")
-        return prev.filter((item) => !draggedIds.includes(item.id));
-      return prev.map((item) =>
-        draggedIds.includes(item.id) ? { ...item, folder: targetFolder } : item
+        return prev.filter((i) => !draggedIds.includes(i.id));
+      return prev.map((i) =>
+        draggedIds.includes(i.id) ? { ...i, folder: targetFolder } : i
       );
     });
     setSelectedIds(new Set());
 
-    // Sync
-    setTimeout(async () => {
-      if (targetFolder === "DELETE") {
-        setIsDropping(true);
-        const itemsToDelete = items.filter((i) => draggedIds.includes(i.id));
-        await supabase.storage
-          .from("gallery")
-          .remove(itemsToDelete.map((i) => i.image_path));
-        await supabase
-          .from("items")
-          .delete()
-          .in("id", draggedIds)
-          .eq("user_id", session.user.id);
-        setTimeout(() => setIsDropping(false), 500);
-      } else {
-        await supabase
-          .from("items")
-          .update({ folder: targetFolder })
-          .in("id", draggedIds)
-          .eq("user_id", session.user.id);
-      }
-    }, 50);
+    if (targetFolder === "DELETE") {
+      setIsDropping(true);
+      const itemsToDelete = items.filter((i) => draggedIds.includes(i.id));
+      await supabase.storage
+        .from("gallery")
+        .remove(itemsToDelete.map((i) => i.image_path));
+      await supabase
+        .from("items")
+        .delete()
+        .in("id", draggedIds)
+        .eq("user_id", session.user.id);
+      setTimeout(() => setIsDropping(false), 500);
+    } else {
+      await supabase
+        .from("items")
+        .update({ folder: targetFolder })
+        .in("id", draggedIds)
+        .eq("user_id", session.user.id);
+    }
   };
 
   const visibleItems = useMemo(() => {
@@ -311,164 +422,186 @@ export default function App() {
     return filterItems(items, activeFolder, "");
   }, [items, activeFolder, search]);
 
+  if (!session) return <Auth />;
+
   return (
-    <div className="app-container">
-      {!session ? (
-        <Auth />
-      ) : (
-        <DndContext
-          sensors={sensors}
-          onDragStart={(e) => {
-            const draggedItem = items.find((i) => i.id === e.active.id);
-            if (draggedItem) {
-              setActiveDragItem(draggedItem);
-              if (window.navigator?.vibrate) window.navigator.vibrate(50);
-            }
-          }}
-          onDragOver={handleDragOver}
-          onDragEnd={handleDragEnd}
-        >
-          <div className="app">
-            <aside className="sidebar">
-              {/* ... (Sidebar logic remains same) */}
-              <div className="sidebar-top">
-                <MainGalleryDropZone
+    <DndContext
+      sensors={sensors}
+      onDragStart={(e) =>
+        setActiveDragItem(items.find((i) => i.id === e.active.id))
+      }
+      onDragEnd={handleDragEnd}
+    >
+      <div className="app">
+        {isLoading && importProgress && (
+          <div className="loading-overlay">
+            <div className="spinner"></div>
+            <p className="pulse-text">{importProgress}</p>
+          </div>
+        )}
+        <aside className="sidebar">
+          <div className="sidebar-top">
+            <MainGalleryDropZone
+              activeFolder={activeFolder}
+              setActiveFolder={setActiveFolder}
+            />
+            <div className="folders-list">
+              {folders.map((f) => (
+                <FolderButton
+                  key={f}
+                  f={f}
                   activeFolder={activeFolder}
                   setActiveFolder={setActiveFolder}
-                />
-                <div className="folders-list">
-                  {folders.map((f) => (
-                    <FolderButton
-                      key={f}
-                      f={f}
-                      activeFolder={activeFolder}
-                      setActiveFolder={setActiveFolder}
-                      onDelete={(fol) => {
-                        const itemsIn = items.filter((i) => i.folder === fol);
-                        itemsIn.forEach((i) =>
-                          updateSupabaseItem({ ...i, folder: "" })
-                        );
-                        const next = folders.filter((folr) => folr !== fol);
-                        setFolders(next);
-                        saveFolders(next);
-                        if (activeFolder === fol)
-                          setActiveFolder("Select Folder");
-                        fetchItems();
-                      }}
-                    />
-                  ))}
-                </div>
-              </div>
-              <div className="sidebar-bottom">
-                <button
-                  className="nav-btn"
-                  onClick={() => {
-                    const n = prompt("New Folder:");
-                    if (n) {
-                      setFolders([...folders, n]);
-                      saveFolders([...folders, n]);
-                    }
+                  onDelete={(fol) => {
+                    const next = folders.filter((folr) => folr !== fol);
+                    setFolders(next);
+                    saveFolders(next);
                   }}
-                >
-                  ➕ Folder
-                </button>
-                <button
-                  className="nav-btn logout-btn"
-                  onClick={() => supabase.auth.signOut()}
-                  style={{ backgroundColor: "#ffeded", color: "#ff4444" }}
-                >
-                  Sign Out
-                </button>
-                <TrashDropZone
-                  selectedCount={selectedIds.size}
-                  isDropping={isDropping}
                 />
-              </div>
-            </aside>
-
-            <main className="main">
-              <div className="heading">
-                <h1>
-                  Photo <span className="flip-animation">Flip</span>
-                </h1>
-              </div>
-
-              {/* 4. Wrap the gallery in SortableContext */}
-              <SortableContext
-                items={visibleItems.map((i) => i.id)}
-                strategy={rectSortingStrategy}
-              >
-                <div className="gallery">
-                  {visibleItems.map((item) => (
-                    <DraggableCard
-                      key={item.id}
-                      item={item}
-                      selectedIds={selectedIds}
-                      isSelected={selectedIds.has(item.id)}
-                      onToggleSelect={(id) => {
-                        setSelectedIds((prev) => {
-                          const newSet = new Set(prev);
-                          newSet.has(id) ? newSet.delete(id) : newSet.add(id);
-                          return newSet;
-                        });
-                      }}
-                      onFlip={(id) => {
-                        const updated = items.map((i) =>
-                          i.id === id ? { ...i, flipped: !i.flipped } : i
-                        );
-                        setItems(updated);
-                        updateSupabaseItem(updated.find((i) => i.id === id));
-                      }}
-                      onZoom={setZoomData}
-                      updateNotes={updateNotes}
-                    />
-                  ))}
-                </div>
-              </SortableContext>
-            </main>
-
-            {/* 5. Refined DragOverlay for better mobile appearance */}
-            <DragOverlay
-              modifiers={[snapCenterToCursor]}
-              dropAnimation={{
-                sideEffects: defaultDropAnimationSideEffects({
-                  styles: { active: { opacity: "0.5" } },
-                }),
+              ))}
+            </div>
+          </div>
+          <div className="sidebar-bottom">
+            <button
+              className="nav-btn"
+              onClick={() => {
+                const n = prompt("New Folder:");
+                if (n) {
+                  setFolders([...folders, n]);
+                  saveFolders([...folders, n]);
+                }
               }}
             >
-              {activeDragItem ? (
-                <div className="card-drag-preview">
-                  <img src={activeDragItem.imageURL} alt="" />
-                </div>
-              ) : null}
-            </DragOverlay>
+              ➕ Folder
+            </button>
+            <button
+              className="nav-btn logout-btn"
+              onClick={() => supabase.auth.signOut()}
+            >
+              Sign Out
+            </button>
+            <TrashDropZone
+              selectedCount={selectedIds.size}
+              isDropping={isDropping}
+            />
+          </div>
+        </aside>
 
-            {/* ... (Zoom logic remains same) */}
-            {zoomData && (
-              <div className="zoom-overlay" onClick={() => setZoomData(null)}>
-                {zoomData.type === "img" ? (
-                  <img src={zoomData.url} alt="" className="zoomed-image" />
-                ) : (
-                  <div
-                    className="zoomed-notes-box"
-                    onClick={(e) => e.stopPropagation()}
-                  >
-                    <h3>Notes</h3>
-                    <textarea
-                      value={
-                        items.find((i) => i.id === zoomData.id)?.notes || ""
-                      }
-                      onChange={(e) => updateNotes(zoomData.id, e.target.value)}
-                      autoFocus
-                    />
-                    <button onClick={() => setZoomData(null)}>Close</button>
-                  </div>
-                )}
+        <main className="main">
+          {isLoading && uploadProgress.total > 0 && !importProgress && (
+            <div className="gallery-upload-status">
+              <p className="pulse-text">
+                Uploading {uploadProgress.current} / {uploadProgress.total}
+              </p>
+              <div className="progress-bar-container">
+                <div
+                  className="progress-bar-fill"
+                  style={{
+                    width: `${
+                      (uploadProgress.current / uploadProgress.total) * 100
+                    }%`,
+                  }}
+                ></div>
+              </div>
+            </div>
+          )}
+          <div className="controls">
+            <label className="upload-label">
+              ☁️ Upload
+              <input type="file" multiple onChange={handleUpload} hidden />
+            </label>
+            <button
+              className="util-btn"
+              onClick={() => exportGalleryZip(items)}
+            >
+              📤 Export
+            </button>
+            <label className="util-btn">
+              📥 Import
+              <input type="file" accept=".zip" onChange={handleImport} hidden />
+            </label>
+            <input
+              type="text"
+              className="search-input"
+              placeholder="Search..."
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+            />
+          </div>
+
+          <SortableContext
+            items={visibleItems.map((i) => i.id)}
+            strategy={rectSortingStrategy}
+          >
+            <div className="gallery">
+              {visibleItems.map((item) => (
+                <DraggableCard
+                  key={item.id}
+                  item={item}
+                  selectedIds={selectedIds}
+                  isSelected={selectedIds.has(item.id)}
+                  onToggleSelect={(id) =>
+                    setSelectedIds((prev) => {
+                      const n = new Set(prev);
+                      n.has(id) ? n.delete(id) : n.add(id);
+                      return n;
+                    })
+                  }
+                  onFlip={(id) =>
+                    setItems((prev) => {
+                      const updated = prev.map((i) =>
+                        i.id === id ? { ...i, flipped: !i.flipped } : i
+                      );
+                      const itemToSync = updated.find((i) => i.id === id);
+                      // Explicitly pass the updated item to avoid stale closure
+                      updateSupabaseItem(itemToSync);
+                      return updated;
+                    })
+                  }
+                  onZoom={setZoomData}
+                  updateNotes={updateNotes}
+                />
+              ))}
+            </div>
+          </SortableContext>
+        </main>
+
+        <DragOverlay
+          modifiers={[snapCenterToCursor]}
+          dropAnimation={{
+            sideEffects: defaultDropAnimationSideEffects({
+              styles: { active: { opacity: "0.5" } },
+            }),
+          }}
+        >
+          {activeDragItem && (
+            <div className="card-drag-preview">
+              <img src={activeDragItem.imageURL} alt="" />
+            </div>
+          )}
+        </DragOverlay>
+
+        {zoomData && (
+          <div className="zoom-overlay" onClick={() => setZoomData(null)}>
+            {zoomData.type === "img" ? (
+              <img src={zoomData.url} alt="" className="zoomed-image" />
+            ) : (
+              <div
+                className="zoomed-notes-box"
+                onClick={(e) => e.stopPropagation()}
+              >
+                <h3>Notes</h3>
+                <textarea
+                  value={items.find((i) => i.id === zoomData.id)?.notes || ""}
+                  onChange={(e) => updateNotes(zoomData.id, e.target.value)}
+                  autoFocus
+                />
+                <button onClick={() => setZoomData(null)}>Close</button>
               </div>
             )}
           </div>
-        </DndContext>
-      )}
-    </div>
+        )}
+      </div>
+    </DndContext>
   );
 }
