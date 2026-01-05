@@ -870,7 +870,26 @@ a {
   }
 
   .notes-actions {
+    display: flex;
     flex-direction: column;
-    gap: 6px;
+    gap: 8px;
+    margin-top: auto;
+    width: 100%;
+  }
+
+  .notes-actions button {
+    flex: 1; /* Makes both buttons equal width */
+    min-height: 48px; /* Standard mobile touch target height */
+    padding: 12px;
+    font-size: 1rem;
+    font-weight: 700;
+    border-radius: 8px;
+    border: none;
+    background: #0077ff; /* Matching your theme blue */
+    color: white;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center; /* Meets standard mobile touch-target guidelines */
   }
 }
