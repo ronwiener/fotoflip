@@ -507,11 +507,9 @@ export default function App() {
 
   return (
     <div className="app-container">
-      {/* 1. AUTH CHECK: If no session, show Auth component */}
       {!session ? (
         <Auth />
       ) : (
-        /* 2. GALLERY: If session exists, show your existing DndContext */
         <DndContext
           sensors={sensors}
           onDragStart={(e) =>
@@ -521,24 +519,14 @@ export default function App() {
           onDragEnd={handleDragEnd}
         >
           <div className="app">
-            {isLoading && (
+            {/* 1. GLOBAL LOADING OVERLAY (Used for Imports or Sign Out) */}
+            {isLoading && importProgress && (
               <div className="loading-overlay">
                 <div className="spinner"></div>
-
-                {/* 1. Show Zip Import Progress */}
-                {importProgress && (
-                  <p className="progress-bar">{importProgress}</p>
-                )}
-
-                {/* 2. Show Image Upload Progress */}
-                {!importProgress && uploadProgress.total > 0 && (
-                  <p className="progress-bar">
-                    Uploading {uploadProgress.current} of {uploadProgress.total}{" "}
-                    images...
-                  </p>
-                )}
+                <p className="pulse-text">{importProgress}</p>
               </div>
             )}
+
             <aside className="sidebar">
               <div className="sidebar-top">
                 <MainGalleryDropZone
@@ -593,7 +581,6 @@ export default function App() {
                   ➕ Folder
                 </button>
 
-                {/* LOGOUT BUTTON: Added here for visibility in the sidebar */}
                 <button
                   className="nav-btn logout-btn"
                   onClick={() => supabase.auth.signOut()}
@@ -619,6 +606,26 @@ export default function App() {
                   Photo <span className="flip-animation">Flip</span>
                 </h1>
               </div>
+
+              {/* 2. GALLERY PROGRESS BAR (Specifically for Image Uploads) */}
+              {isLoading && uploadProgress.total > 0 && !importProgress && (
+                <div className="gallery-upload-status">
+                  <p className="pulse-text">
+                    Uploading {uploadProgress.current} of {uploadProgress.total}{" "}
+                    images...
+                  </p>
+                  <div className="progress-bar-container">
+                    <div
+                      className="progress-bar-fill"
+                      style={{
+                        width: `${
+                          (uploadProgress.current / uploadProgress.total) * 100
+                        }%`,
+                      }}
+                    ></div>
+                  </div>
+                </div>
+              )}
 
               <div className="controls">
                 <label className="upload-label">
@@ -737,6 +744,6 @@ export default function App() {
 }
 
 /*
-1.  add upload progress bar
+
 2. highlight image when selecting multiple images to be dragged
 */

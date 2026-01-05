@@ -27,11 +27,63 @@ html {
   overflow: hidden; /* Prevents double scrollbars on the window */
 }
 
-.progress-bar {
-  margin-top: 15px;
-  font-weight: bold;
-  color: #333;
-  font-size: 1.1rem;
+/* Container for the progress info in the Main gallery area */
+.gallery-upload-status {
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  padding: 20px;
+  margin: 10px 0 25px 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+  width: 100%;
+  position: relative;
+  z-index: 5;
+}
+
+/* The outer track of the progress bar */
+.progress-bar-container {
+  width: 100%;
+  max-width: 500px;
+  height: 10px;
+  background-color: #f1f5f9;
+  border-radius: 20px;
+  overflow: hidden;
+  margin-top: 12px;
+}
+
+/* The actual moving fill of the progress bar */
+.progress-bar-fill {
+  height: 100%;
+  background-color: #0f172a; /* Sleek dark blue/black */
+  transition: width 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+  border-radius: 20px;
+}
+
+/* Pulsing text effect */
+@keyframes pulse {
+  0% {
+    opacity: 0.5;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1.01);
+  }
+  100% {
+    opacity: 0.5;
+    transform: scale(1);
+  }
+}
+
+.pulse-text {
+  animation: pulse 1.8s infinite ease-in-out;
+  font-weight: 600;
+  font-size: 1rem;
+  color: #1e293b;
+  margin: 0;
 }
 
 /* Auth Container - Full Screen Centering */
@@ -434,6 +486,26 @@ html {
   -moz-user-drag: none;
   -o-user-drag: none;
   user-drag: none;
+  pointer-events: none;
+}
+
+/* Highlight styling for selected images */
+.card-wrapper.selected {
+  outline: 4px solid #0077ff; /* High-visibility blue */
+  outline-offset: 4px;
+  border-radius: 12px;
+  position: relative;
+  z-index: 10; /* Ensure the highlight stays above non-selected cards */
+  transform: scale(1.02); /* Slight pop effect */
+  transition: all 0.2s ease;
+}
+
+/* Optional: Add a subtle blue tint overlay to the image when selected */
+.card-wrapper.selected .card-front::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 119, 255, 0.1);
   pointer-events: none;
 }
 
