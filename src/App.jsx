@@ -515,6 +515,17 @@ export default function App() {
     }
   };
 
+  const handleSelectAll = () => {
+    // If all visible items are already selected, clear the selection (Deselect All)
+    if (selectedIds.size === visibleItems.length && visibleItems.length > 0) {
+      setSelectedIds(new Set());
+    } else {
+      // Select everything currently visible
+      const allIds = new Set(visibleItems.map((item) => item.id));
+      setSelectedIds(allIds);
+    }
+  };
+
   const visibleItems = useMemo(() => {
     if (search.trim())
       return items.filter((i) =>
@@ -675,21 +686,42 @@ export default function App() {
                   <input type="file" multiple onChange={handleUpload} hidden />
                 </label>
 
-                <div className="controls">
-                  {selectedIds.size > 0 && (
-                    <button
-                      onClick={handleDeleteSelected}
-                      className="util-btn delete-selected-btn"
-                      style={{
-                        backgroundColor: "#ffeded",
-                        color: "#ff4444",
-                        borderColor: "#ffcccc",
-                      }}
-                    >
-                      🗑 Delete ({selectedIds.size})
-                    </button>
-                  )}
-                </div>
+                <button
+                  onClick={handleSelectAll}
+                  className="util-btn"
+                  style={{
+                    backgroundColor:
+                      selectedIds.size === visibleItems.length &&
+                      visibleItems.length > 0
+                        ? "#0077ff"
+                        : "#f0f0f0",
+                    color:
+                      selectedIds.size === visibleItems.length &&
+                      visibleItems.length > 0
+                        ? "white"
+                        : "black",
+                  }}
+                >
+                  {selectedIds.size === visibleItems.length &&
+                  visibleItems.length > 0
+                    ? "✕ Deselect All"
+                    : "☑ Select All"}
+                </button>
+
+                {selectedIds.size > 0 && (
+                  <button
+                    onClick={handleDeleteSelected}
+                    className="util-btn delete-selected-btn"
+                    style={{
+                      backgroundColor: "#ffeded",
+                      color: "#ff4444",
+                      borderColor: "#ffcccc",
+                    }}
+                  >
+                    🗑 Delete ({selectedIds.size})
+                  </button>
+                )}
+
                 <div className="utility-actions">
                   <button
                     onClick={() => exportGalleryZip(items)}
@@ -707,6 +739,7 @@ export default function App() {
                     />
                   </label>
                 </div>
+
                 <div className="search-container">
                   <input
                     type="text"
@@ -733,9 +766,15 @@ export default function App() {
                     item={item}
                     isSelected={selectedIds.has(item.id)}
                     onToggleSelect={(id) => {
-                      const n = new Set(selectedIds);
-                      n.has(id) ? n.delete(id) : n.add(id);
-                      setSelectedIds(n);
+                      setSelectedIds((prev) => {
+                        const newSet = new Set(prev);
+                        if (newSet.has(id)) {
+                          newSet.delete(id); // Removes highlight if already there
+                        } else {
+                          newSet.add(id); // Adds highlight if not there
+                        }
+                        return newSet;
+                      });
                     }}
                     onFlip={(id) => {
                       const updated = items.map((i) =>
