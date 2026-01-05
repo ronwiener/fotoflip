@@ -748,17 +748,20 @@ html {
     /* Adjusted height to account for the fixed bottom sidebar */
     height: calc(100vh - 160px);
     margin-bottom: env(safe-area-inset-bottom);
+    -webkit-overflow-scrolling: touch;
   }
 
   .gallery {
     grid-template-columns: repeat(2, 1fr); /* 2 columns on mobile */
-    gap: 12px;
-    padding: 15px;
-    padding-bottom: 180px; /* Space so cards aren't hidden by sidebar */
+    gap: 24px;
+    padding: 20px;
+    padding-bottom: 200px; /* Space so cards aren't hidden by sidebar */
   }
 
   .card-wrapper {
-    aspect-ratio: 2 / 3; /* Taller cards for mobile portrait */
+    aspect-ratio: 2 / 3;
+    width: 95%;
+    margin: auto;
   }
 
   .notes-actions {
