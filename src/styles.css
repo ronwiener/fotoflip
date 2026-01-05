@@ -723,8 +723,8 @@ html {
     left: 0;
     width: 100%;
     height: auto;
-    max-height: 160px;
-    padding: 12px 15px;
+    max-height: 200px;
+    padding: 12px 15px calc(12px + env(safe-area-inset-bottom)) 15px;
     background: white;
     display: flex;
     flex-direction: column;
@@ -739,15 +739,23 @@ html {
     display: flex;
     flex-direction: row;
     overflow-x: auto;
-    gap: 8px;
-    padding-bottom: 8px;
+    gap: 10px;
+    padding-bottom: 5px;
     -webkit-overflow-scrolling: touch;
   }
 
+  .sidebar-bottom {
+    display: flex;
+    flex-direction: row; /* Puts Logout and Trash side-by-side to save height */
+    justify-content: space-between;
+    align-items: center;
+    border-top: 1px solid #eee;
+    padding-top: 8px;
+  }
+
   .main {
-    /* Adjusted height to account for the fixed bottom sidebar */
     height: calc(100vh - 160px);
-    margin-bottom: env(safe-area-inset-bottom);
+    padding-bottom: calc(200px + env(safe-area-inset-bottom));
     -webkit-overflow-scrolling: touch;
   }
 

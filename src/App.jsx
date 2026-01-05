@@ -160,9 +160,12 @@ function DraggableCard({
 
   const handleFrontClick = (e) => {
     if (isDragging) return;
-    if (e.metaKey || e.ctrlKey || e.shiftKey) {
+
+    // 1. If Shift/Ctrl is held (Desktop) OR if we are already in "Selection Mode" (Mobile)
+    if (e.metaKey || e.ctrlKey || e.shiftKey || selectedIds.size > 0) {
       onToggleSelect(item.id);
     } else {
+      // 2. Otherwise, perform the default action (Flip)
       onFlip(item.id);
     }
   };
