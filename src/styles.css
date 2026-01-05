@@ -770,6 +770,17 @@ html {
     aspect-ratio: 2 / 3;
     width: 95%;
     margin: auto;
+    perspective: 1000px;
+    /* Prevents the browser from stealing the touch for scrolling/context menus */
+    touch-action: pan-y;
+    /* Prevents the 'save image' popup on long-press */
+    -webkit-touch-callout: none;
+    user-select: none;
+    -webkit-user-select: none;
+  }
+
+  .drag-handle {
+    touch-action: none;
   }
 
   .notes-actions {

@@ -144,6 +144,7 @@ function TrashDropZone({ selectedCount, isDropping }) {
 function DraggableCard({
   item,
   isSelected,
+  selectedIds,
   onToggleSelect,
   onFlip,
   onZoom,
@@ -161,11 +162,15 @@ function DraggableCard({
   const handleFrontClick = (e) => {
     if (isDragging) return;
 
-    // 1. If Shift/Ctrl is held (Desktop) OR if we are already in "Selection Mode" (Mobile)
-    if (e.metaKey || e.ctrlKey || e.shiftKey || selectedIds.size > 0) {
+    // Use selectedIds.size to check if we are in "multi-select mode"
+    if (
+      e.metaKey ||
+      e.ctrlKey ||
+      e.shiftKey ||
+      (selectedIds && selectedIds.size > 0)
+    ) {
       onToggleSelect(item.id);
     } else {
-      // 2. Otherwise, perform the default action (Flip)
       onFlip(item.id);
     }
   };
@@ -245,9 +250,9 @@ export default function App() {
   });
 
   const sensors = useSensors(
-    useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
+    useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
     useSensor(TouchSensor, {
-      activationConstraint: { delay: 200, tolerance: 20 },
+      activationConstraint: { delay: 250, tolerance: 5 },
     })
   );
 
@@ -769,6 +774,7 @@ export default function App() {
                   <DraggableCard
                     key={item.id}
                     item={item}
+                    selectedIds={selectedIds}
                     isSelected={selectedIds.has(item.id)}
                     onToggleSelect={(id) => {
                       setSelectedIds((prev) => {
