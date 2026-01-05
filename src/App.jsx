@@ -250,9 +250,9 @@ export default function App() {
   });
 
   const sensors = useSensors(
-    useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
+    useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
     useSensor(TouchSensor, {
-      activationConstraint: { delay: 250, tolerance: 5 },
+      activationConstraint: { delay: 250, tolerance: 10 },
     })
   );
 
@@ -573,9 +573,17 @@ export default function App() {
       ) : (
         <DndContext
           sensors={sensors}
-          onDragStart={(e) =>
-            setActiveDragItem(items.find((i) => i.id === e.active.id))
-          }
+          onDragStart={(e) => {
+            const draggedItem = items.find((i) => i.id === e.active.id);
+            if (draggedItem) {
+              setActiveDragItem(draggedItem);
+
+              // Haptic feedback: The phone vibrates slightly when the drag starts
+              if (window.navigator && window.navigator.vibrate) {
+                window.navigator.vibrate(50);
+              }
+            }
+          }}
           onDragOver={handleDragOver}
           onDragEnd={handleDragEnd}
         >

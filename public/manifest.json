@@ -1,0 +1,16 @@
+{
+  "short_name": "Photo Flip",
+  "name": "Photo Flip",
+  "icons": [
+    {
+      "src": "favicon.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ],
+  "start_url": ".",
+  "display": "standalone",
+  "theme_color": "#f0f8ff",
+  "background_color": "#f0f8ff"
+}
