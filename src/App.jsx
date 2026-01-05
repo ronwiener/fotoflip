@@ -473,6 +473,48 @@ export default function App() {
     }, 50);
   };
 
+  const handleDeleteSelected = async () => {
+    if (selectedIds.size === 0) return;
+
+    const confirmDelete = window.confirm(
+      `Are you sure you want to delete ${selectedIds.size} selected item(s)?`
+    );
+    if (!confirmDelete) return;
+
+    setIsLoading(true);
+    const draggedIds = Array.from(selectedIds);
+
+    try {
+      const itemsToDelete = items.filter((i) => draggedIds.includes(i.id));
+      const pathsToRemove = itemsToDelete
+        .map((i) => i.image_path)
+        .filter(Boolean);
+
+      // 1. Remove from Storage
+      if (pathsToRemove.length > 0) {
+        await supabase.storage.from("gallery").remove(pathsToRemove);
+      }
+
+      // 2. Remove from Database
+      const { error } = await supabase
+        .from("items")
+        .delete()
+        .in("id", draggedIds)
+        .eq("user_id", session.user.id);
+
+      if (error) throw error;
+
+      // 3. Update Local State
+      setItems((prev) => prev.filter((item) => !draggedIds.includes(item.id)));
+      setSelectedIds(new Set());
+    } catch (err) {
+      console.error("Delete Error:", err);
+      alert("Failed to delete some items.");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   const visibleItems = useMemo(() => {
     if (search.trim())
       return items.filter((i) =>
@@ -632,6 +674,22 @@ export default function App() {
                   ☁️ Upload
                   <input type="file" multiple onChange={handleUpload} hidden />
                 </label>
+
+                <div className="controls">
+                  {selectedIds.size > 0 && (
+                    <button
+                      onClick={handleDeleteSelected}
+                      className="util-btn delete-selected-btn"
+                      style={{
+                        backgroundColor: "#ffeded",
+                        color: "#ff4444",
+                        borderColor: "#ffcccc",
+                      }}
+                    >
+                      🗑 Delete ({selectedIds.size})
+                    </button>
+                  )}
+                </div>
                 <div className="utility-actions">
                   <button
                     onClick={() => exportGalleryZip(items)}
@@ -744,6 +802,7 @@ export default function App() {
 }
 
 /*
-
-2. highlight image when selecting multiple images to be dragged
+1.  when using small screen on mobile the gap for scrolling is too small
+2.  folders created on desktop do not appear on mobile screen
+3.  safe area needs to be created at the bottom because can't see the whole nav bar
 */

@@ -380,6 +380,28 @@ html {
   font-weight: 600;
 }
 
+.delete-selected-btn {
+  animation: slideIn 0.2s ease-out;
+  font-weight: 600;
+  border: 1px solid #ffcccc;
+}
+
+.delete-selected-btn:hover {
+  background-color: #ff4444 !important;
+  color: white !important;
+}
+
+@keyframes slideIn {
+  from {
+    opacity: 0;
+    transform: translateX(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
 .utility-actions {
   display: flex;
   gap: 10px;
