@@ -481,17 +481,37 @@ export default function App() {
 
     if (targetFolder === "DELETE") {
       setIsDropping(true);
+
+      // 1. Identify paths before clearing the state or database
       const itemsToDelete = items.filter((i) => draggedIds.includes(i.id));
-      await supabase.storage
-        .from("gallery")
-        .remove(itemsToDelete.map((i) => i.image_path));
-      await supabase
+      const pathsToDelete = itemsToDelete.map((i) => i.image_path);
+
+      // 2. Delete from Database first (this updates the app's source of truth)
+      const { error: dbError } = await supabase
         .from("items")
         .delete()
         .in("id", draggedIds)
         .eq("user_id", session.user.id);
+
+      if (dbError) {
+        console.error("Database deletion failed:", dbError.message);
+        // If the database fails, we should re-fetch to fix the UI
+        await fetchItems(session.user.id);
+      } else {
+        // 3. Only clean up Storage if the database record was successfully removed
+        if (pathsToDelete.length > 0) {
+          const { error: storageError } = await supabase.storage
+            .from("gallery")
+            .remove(pathsToDelete);
+
+          if (storageError)
+            console.error("Storage cleanup failed:", storageError.message);
+        }
+      }
+
       setTimeout(() => setIsDropping(false), 500);
     } else {
+      // Keep your existing update logic for moving between folders
       await supabase
         .from("items")
         .update({ folder: targetFolder })
