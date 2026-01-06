@@ -140,6 +140,40 @@ a {
   margin: 0;
 }
 
+.selection-status-bar {
+  background: #e7f3ff;
+  border: 1px solid #b2d7ff;
+  padding: 10px 15px;
+  border-radius: 8px;
+  margin-bottom: 20px;
+  text-align: center;
+  min-height: 45px; /* Prevents layout jump when text appears */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.selection-text {
+  color: #0056b3;
+  margin: 0;
+  font-size: 0.95rem;
+}
+
+.selection-text-hint {
+  color: #666;
+  margin: 0;
+  font-size: 0.85rem;
+  font-style: italic;
+}
+
+/* Add this to highlight the cards themselves */
+.card-wrapper.selected {
+  outline: 4px solid #007bff;
+  outline-offset: 2px;
+  border-radius: 12px;
+  z-index: 10;
+}
+
 /* Auth Container - Full Screen Centering */
 .auth-container {
   display: flex;
