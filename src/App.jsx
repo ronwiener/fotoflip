@@ -281,58 +281,94 @@ export default function App() {
     })
   );
 
-  const fetchItems = useCallback(async () => {
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-    if (!user) return;
-    const { data, error } = await supabase
-      .from("items")
-      .select("*")
-      .eq("user_id", user.id)
-      .order("created_at", { ascending: false });
-    if (error) return console.error(error);
-    const formatted = data.map((item) => {
-      const { data: urlData } = supabase.storage
-        .from("gallery")
-        .getPublicUrl(item.image_path);
-      return { ...item, imageURL: urlData.publicUrl };
-    });
-    setItems(formatted);
-  }, []);
+  const fetchItems = useCallback(
+    async (userId) => {
+      // If no userId is passed, try to fall back to the session state
+      const idToUse = userId || session?.user?.id;
+      if (!idToUse) return;
+
+      const { data, error } = await supabase
+        .from("items")
+        .select("*")
+        .eq("user_id", idToUse)
+        .order("created_at", { ascending: false });
+
+      if (error) {
+        console.error("Error fetching items:", error.message);
+        return;
+      }
+
+      // Map the public URLs for the images
+      const formatted = data.map((item) => {
+        const { data: urlData } = supabase.storage
+          .from("gallery")
+          .getPublicUrl(item.image_path);
+
+        return {
+          ...item,
+          imageURL: urlData.publicUrl,
+        };
+      });
+
+      setItems(formatted);
+    },
+    [session]
+  ); // Add session as a dependency if you use the fallback
 
   useEffect(() => {
+    let isMounted = true;
+
     // 1. Fallback timer for Safari / slow loads
     const timer = setTimeout(() => {
-      if (!session) setIsLoading(false);
+      if (isMounted) setIsLoading(false);
     }, 10000);
 
-    // 2. Get initial session
-    supabase.auth.getSession().then(({ data: { session: initialSession } }) => {
-      setSession(initialSession);
-      if (initialSession?.user) fetchItems();
-      setIsLoading(false);
-      clearTimeout(timer);
-    });
+    // 2. Initial Session Check
+    const initializeAuth = async () => {
+      const {
+        data: { session: initialSession },
+      } = await supabase.auth.getSession();
 
-    // 3. Listen for auth changes (Login/Logout)
+      if (isMounted) {
+        setSession(initialSession);
+        if (initialSession) {
+          // Pass the user directly to fetchItems to avoid stale state issues
+          fetchItems(initialSession.user.id);
+        }
+        setIsLoading(false);
+        clearTimeout(timer);
+      }
+    };
+
+    initializeAuth();
+
+    // 3. Listen for auth changes (Login/Logout/Token Refresh)
     const {
       data: { subscription },
-    } = supabase.auth.onAuthStateChange((_event, currentSession) => {
+    } = supabase.auth.onAuthStateChange(async (event, currentSession) => {
+      if (!isMounted) return;
+
       setSession(currentSession);
-      if (currentSession?.user) {
-        fetchItems();
-      } else {
+
+      if (event === "SIGNED_IN" || event === "TOKEN_REFRESHED") {
+        if (currentSession?.user) {
+          fetchItems(currentSession.user.id);
+        }
+      } else if (event === "SIGNED_OUT") {
         setItems([]);
       }
+
       setIsLoading(false);
     });
 
     return () => {
+      isMounted = false;
       subscription.unsubscribe();
       clearTimeout(timer);
     };
-  }, [fetchItems, session]); // <--- Add 'session' here
+    // We remove 'session' from dependencies to prevent the loop.
+    // 'fetchItems' should be wrapped in useCallback in your main component.
+  }, [fetchItems]);
 
   const updateSupabaseItem = async (item) => {
     if (!session?.user) return;
@@ -358,27 +394,47 @@ export default function App() {
   const handleUpload = async (event) => {
     const files = event.target.files;
     if (!files || !session?.user) return;
+
     setIsLoading(true);
     setUploadProgress({ current: 0, total: files.length });
     let completedCount = 0;
+
     for (const file of files) {
-      const fileName = `${Date.now()}-${Math.random()}.${file.name
-        .split(".")
-        .pop()}`;
-      const filePath = `${session.user.id}/${fileName}`;
-      await supabase.storage.from("gallery").upload(filePath, file);
-      await supabase.from("items").insert([
-        {
-          image_path: filePath,
-          user_id: session.user.id,
-          notes: "",
-          flipped: false,
-          folder: activeFolder === "Select Folder" ? "" : activeFolder,
-        },
-      ]);
-      completedCount++;
-      setUploadProgress({ current: completedCount, total: files.length });
+      try {
+        const fileName = `${Date.now()}-${Math.random()}.${file.name
+          .split(".")
+          .pop()}`;
+        const filePath = `${session.user.id}/${fileName}`;
+
+        // Capture the error from the storage upload
+        const { error: uploadError } = await supabase.storage
+          .from("gallery")
+          .upload(filePath, file);
+
+        if (uploadError) {
+          console.error("Storage Error:", uploadError.message);
+          continue; // Skip this file and try the next one
+        }
+
+        const { error: dbError } = await supabase.from("items").insert([
+          {
+            image_path: filePath,
+            user_id: session.user.id,
+            notes: "",
+            flipped: false,
+            folder: activeFolder === "Select Folder" ? "" : activeFolder,
+          },
+        ]);
+
+        if (dbError) console.error("Database Error:", dbError.message);
+
+        completedCount++;
+        setUploadProgress({ current: completedCount, total: files.length });
+      } catch (err) {
+        console.error("Unexpected Error:", err);
+      }
     }
+
     await fetchItems();
     setIsLoading(false);
     setTimeout(() => setUploadProgress({ current: 0, total: 0 }), 2000);
