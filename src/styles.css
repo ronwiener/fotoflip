@@ -688,17 +688,22 @@ a {
 
 .notes-actions button {
   flex: 1;
-  padding: 12px 5px; /* Increase vertical padding for height */
+  min-height: 40px;
+  padding: 8px 5px; /* Increase vertical padding for height */
   font-size: 0.9rem;
   font-weight: 700;
   border-radius: 8px;
-  border: 1px solid #ddd;
-  background-color: #f8f9fa;
+  border: 1px solid transparent;
   cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
-  transition: background 0.2s, transform 0.1s;
+  transition: all 0.2s ease;
+}
+.btn-zoom {
+  background-color: #0077ff !important;
+  color: white !important;
+  border-color: #0066db !important;
 }
 
 .btn-flip {
@@ -707,6 +712,9 @@ a {
   border-color: #ddd !important;
 }
 
+.btn-zoom:hover {
+  background-color: #0066db !important;
+}
 .btn-flip:hover {
   background-color: #f0f0f0 !important;
 }
@@ -972,9 +980,7 @@ a {
     font-size: 1rem;
     font-weight: 700;
     border-radius: 8px;
-    border: none;
-    background: #0077ff; /* Matching your theme blue */
-    color: white;
+    border: 1px solid transparent;
     cursor: pointer;
     display: flex;
     align-items: center;

@@ -233,6 +233,7 @@ function DraggableCard({
             />
             <div className="notes-actions">
               <button
+                className="btn-zoom"
                 onClick={(e) => {
                   e.stopPropagation();
                   onZoom({ type: "notes", content: item.notes, id: item.id });
@@ -241,6 +242,7 @@ function DraggableCard({
                 🔍 Zoom
               </button>
               <button
+                className="btn-flip"
                 onClick={(e) => {
                   e.stopPropagation();
                   onFlip(item.id);
