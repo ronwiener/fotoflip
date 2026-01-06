@@ -700,6 +700,12 @@ a {
   justify-content: center;
   transition: all 0.2s ease;
 }
+
+.notes-actions .btn-zoom:hover {
+  background-color: #0056b3 !important;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 119, 255, 0.3);
+}
 .btn-zoom {
   background-color: #0077ff !important;
   color: white !important;
@@ -712,6 +718,19 @@ a {
   border-color: #ddd !important;
 }
 
+.notes-actions .btn-flip {
+  background-color: #ffffff !important;
+  color: #333 !important;
+  border-color: #ddd !important;
+}
+
+.notes-actions .btn-flip:hover {
+  background-color: #f8f9fa !important;
+  border-color: #bbb !important;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+}
+
 .btn-zoom:hover {
   background-color: #0066db !important;
 }
@@ -721,7 +740,7 @@ a {
 
 /* Feedback when pressing the buttons */
 .notes-actions button:active {
-  transform: scale(0.96);
+  transform: scale(0.95) translateY(0) !important;
   filter: brightness(0.9);
 }
 
@@ -967,7 +986,7 @@ a {
 
   .notes-actions {
     display: flex;
-    flex-direction: column;
+    flex-direction: column !important;
     gap: 10px;
     margin-top: auto;
     width: 100%;
@@ -975,7 +994,7 @@ a {
 
   .notes-actions button {
     flex: 1; /* Makes both buttons equal width */
-    min-height: 48px; /* Standard mobile touch target height */
+    min-height: 50px; /* Standard mobile touch target height */
     padding: 12px;
     font-size: 1rem;
     font-weight: 700;
@@ -985,5 +1004,15 @@ a {
     display: flex;
     align-items: center;
     justify-content: center; /* Meets standard mobile touch-target guidelines */
+  }
+
+  .notes-actions .btn-zoom:hover,
+  .notes-actions .btn-zoom:active {
+    background-color: #0056b3 !important;
+  }
+
+  .notes-actions .btn-flip:hover,
+  .notes-actions .btn-flip:active {
+    background-color: #f0f0f0 !important;
   }
 }
