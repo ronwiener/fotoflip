@@ -35,12 +35,21 @@ function Auth() {
   const handleLogin = async (e) => {
     e.preventDefault();
     setLoading(true);
-    const { error } = await supabase.auth.signInWithPasswordless({
-      type: "magiclink",
+
+    // Change signInWithPasswordless to signInWithOtp
+    const { error } = await supabase.auth.signInWithOtp({
       email,
+      options: {
+        // PKCE flow requires a redirect URL to exchange the code for a session
+        emailRedirectTo: window.location.origin,
+      },
     });
-    if (error) alert(error.message);
-    else alert("Check your email for the login link!");
+
+    if (error) {
+      alert(error.message);
+    } else {
+      alert("Check your email for the login link!");
+    }
     setLoading(false);
   };
 
