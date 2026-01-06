@@ -360,6 +360,63 @@ export default function App() {
     };
   }, [fetchItems]);
 
+  const handleUpload = async (event) => {
+    const files = event.target.files;
+    if (!files || !session?.user) return;
+
+    setIsLoading(true);
+    setUploadProgress({ current: 0, total: files.length });
+    let completedCount = 0;
+
+    for (const file of files) {
+      try {
+        const fileName = `${Date.now()}-${Math.random()}.${file.name
+          .split(".")
+          .pop()}`;
+        const filePath = `${session.user.id}/${fileName}`;
+
+        // 1. Upload the file to Storage
+        const { error: uploadError } = await supabase.storage
+          .from("gallery")
+          .upload(filePath, file);
+
+        if (uploadError) {
+          console.error("Storage Error:", uploadError.message);
+          continue;
+        }
+
+        // 2. Insert the record into the 'items' table
+        const { error: dbError } = await supabase.from("items").insert([
+          {
+            image_path: filePath,
+            user_id: session.user.id,
+            notes: "",
+            flipped: false,
+            folder: activeFolder === "Select Folder" ? "" : activeFolder,
+          },
+        ]);
+
+        if (dbError) {
+          console.error("Database Error:", dbError.message);
+        } else {
+          completedCount++;
+          setUploadProgress({ current: completedCount, total: files.length });
+        }
+      } catch (err) {
+        console.error("Unexpected error during file loop:", err);
+      }
+    }
+
+    // 3. CRITICAL: Re-fetch items using the current user ID
+    // This updates the 'items' state and makes images appear without a refresh
+    await fetchItems(session.user.id);
+
+    setIsLoading(false);
+
+    // Reset progress bar after a short delay
+    setTimeout(() => setUploadProgress({ current: 0, total: 0 }), 2000);
+  };
+
   const updateSupabaseItem = async (item) => {
     if (!session?.user) return;
     await supabase.from("items").upsert({
@@ -379,55 +436,6 @@ export default function App() {
       if (itemToSync) updateSupabaseItem(itemToSync);
       return updated;
     });
-  };
-
-  const handleUpload = async (event) => {
-    const files = event.target.files;
-    if (!files || !session?.user) return;
-
-    setIsLoading(true);
-    setUploadProgress({ current: 0, total: files.length });
-    let completedCount = 0;
-
-    for (const file of files) {
-      try {
-        const fileName = `${Date.now()}-${Math.random()}.${file.name
-          .split(".")
-          .pop()}`;
-        const filePath = `${session.user.id}/${fileName}`;
-
-        // Capture the error from the storage upload
-        const { error: uploadError } = await supabase.storage
-          .from("gallery")
-          .upload(filePath, file);
-
-        if (uploadError) {
-          console.error("Storage Error:", uploadError.message);
-          continue; // Skip this file and try the next one
-        }
-
-        const { error: dbError } = await supabase.from("items").insert([
-          {
-            image_path: filePath,
-            user_id: session.user.id,
-            notes: "",
-            flipped: false,
-            folder: activeFolder === "Select Folder" ? "" : activeFolder,
-          },
-        ]);
-
-        if (dbError) console.error("Database Error:", dbError.message);
-
-        completedCount++;
-        setUploadProgress({ current: completedCount, total: files.length });
-      } catch (err) {
-        console.error("Unexpected Error:", err);
-      }
-    }
-
-    await fetchItems();
-    setIsLoading(false);
-    setTimeout(() => setUploadProgress({ current: 0, total: 0 }), 2000);
   };
 
   const handleImport = async (event) => {
