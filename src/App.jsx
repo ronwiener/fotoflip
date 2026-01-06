@@ -644,9 +644,7 @@ export default function App() {
                   {selectedIds.size === 1 ? "item" : "items"} selected to be
                   moved to trash or folders
                 </p>
-              ) : (
-                <p className="selection-text-hint"></p>
-              )}
+              ) : null}
             </div>
           </div>
 
