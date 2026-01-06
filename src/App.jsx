@@ -281,49 +281,42 @@ export default function App() {
     })
   );
 
-  const fetchItems = useCallback(
-    async (userId) => {
-      // If no userId is passed, try to fall back to the session state
-      const idToUse = userId || session?.user?.id;
-      if (!idToUse) return;
+  const fetchItems = useCallback(async (userId) => {
+    // Use the passed userId only; do not reference 'session' state here
+    if (!userId) return;
 
-      const { data, error } = await supabase
-        .from("items")
-        .select("*")
-        .eq("user_id", idToUse)
-        .order("created_at", { ascending: false });
+    const { data, error } = await supabase
+      .from("items")
+      .select("*")
+      .eq("user_id", userId)
+      .order("created_at", { ascending: false });
 
-      if (error) {
-        console.error("Error fetching items:", error.message);
-        return;
-      }
+    if (error) {
+      console.error("Error fetching items:", error.message);
+      return;
+    }
 
-      // Map the public URLs for the images
-      const formatted = data.map((item) => {
-        const { data: urlData } = supabase.storage
-          .from("gallery")
-          .getPublicUrl(item.image_path);
+    const formatted = data.map((item) => {
+      const { data: urlData } = supabase.storage
+        .from("gallery")
+        .getPublicUrl(item.image_path);
 
-        return {
-          ...item,
-          imageURL: urlData.publicUrl,
-        };
-      });
+      return {
+        ...item,
+        imageURL: urlData.publicUrl,
+      };
+    });
 
-      setItems(formatted);
-    },
-    [session]
-  ); // Add session as a dependency if you use the fallback
+    setItems(formatted);
+  }, []); // Empty array: this function is now stable and won't trigger loops
 
   useEffect(() => {
     let isMounted = true;
 
-    // 1. Fallback timer for Safari / slow loads
     const timer = setTimeout(() => {
       if (isMounted) setIsLoading(false);
     }, 10000);
 
-    // 2. Initial Session Check
     const initializeAuth = async () => {
       const {
         data: { session: initialSession },
@@ -331,8 +324,7 @@ export default function App() {
 
       if (isMounted) {
         setSession(initialSession);
-        if (initialSession) {
-          // Pass the user directly to fetchItems to avoid stale state issues
+        if (initialSession?.user) {
           fetchItems(initialSession.user.id);
         }
         setIsLoading(false);
@@ -342,12 +334,12 @@ export default function App() {
 
     initializeAuth();
 
-    // 3. Listen for auth changes (Login/Logout/Token Refresh)
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange(async (event, currentSession) => {
       if (!isMounted) return;
 
+      // Only update state if the session actually changed
       setSession(currentSession);
 
       if (event === "SIGNED_IN" || event === "TOKEN_REFRESHED") {
@@ -366,8 +358,6 @@ export default function App() {
       subscription.unsubscribe();
       clearTimeout(timer);
     };
-    // We remove 'session' from dependencies to prevent the loop.
-    // 'fetchItems' should be wrapped in useCallback in your main component.
   }, [fetchItems]);
 
   const updateSupabaseItem = async (item) => {
