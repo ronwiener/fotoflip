@@ -642,8 +642,8 @@ export default function App() {
               <div className="selection-status-bar">
                 <p className="selection-text">
                   <strong>{selectedIds.size}</strong>{" "}
-                  {selectedIds.size === 1 ? "item" : "items"} selected to be
-                  moved to trash or folders
+                  {selectedIds.size === 1 ? "item" : "items"} moved to trash or
+                  folders
                 </p>
               </div>
             )}

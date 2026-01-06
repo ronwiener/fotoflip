@@ -659,16 +659,62 @@ a {
 
 .notes-content textarea {
   flex: 1;
+  width: 100%;
   border: none;
   resize: none;
-  margin-bottom: 10px;
   background: transparent;
+  font-size: 0.85rem;
+  padding: 5px;
 }
 
 .notes-actions {
   display: flex;
-  gap: 5px;
+  flex-direction: row;
+  gap: 8px;
   margin-top: auto;
+  width: 100%;
+  padding-top: 10px;
+}
+
+.btn-zoom {
+  background-color: #0077ff !important; /* Vivid Blue */
+  color: white !important;
+  border-color: #0066db !important;
+}
+
+.btn-zoom:hover {
+  background-color: #0066db !important;
+}
+
+.notes-actions button {
+  flex: 1;
+  padding: 12px 5px; /* Increase vertical padding for height */
+  font-size: 0.9rem;
+  font-weight: 700;
+  border-radius: 8px;
+  border: 1px solid #ddd;
+  background-color: #f8f9fa;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.2s, transform 0.1s;
+}
+
+.btn-flip {
+  background-color: #ffffff !important; /* Clean White */
+  color: #333 !important;
+  border-color: #ddd !important;
+}
+
+.btn-flip:hover {
+  background-color: #f0f0f0 !important;
+}
+
+/* Feedback when pressing the buttons */
+.notes-actions button:active {
+  transform: scale(0.96);
+  filter: brightness(0.9);
 }
 
 /* ---------- 5. DRAG & DROP ANIMATIONS ---------- */
@@ -811,10 +857,6 @@ a {
   font-size: 1rem;
 }
 
-/* ---------- 6. OVERLAYS (Zoom & Preview) ---------- */
-
-/* ... (your existing zoom-overlay code) ... */
-
 .card-drag-preview {
   width: 160px; /* Sized to look like a picked-up card */
   aspect-ratio: 3/4;
@@ -918,7 +960,7 @@ a {
   .notes-actions {
     display: flex;
     flex-direction: column;
-    gap: 8px;
+    gap: 10px;
     margin-top: auto;
     width: 100%;
   }
