@@ -637,15 +637,16 @@ export default function App() {
               value={search}
               onChange={(e) => setSearch(e.target.value)}
             />
-            <div className="selection-status-bar">
-              {selectedIds.size > 0 ? (
+            {/* Change this block */}
+            {selectedIds.size > 0 && (
+              <div className="selection-status-bar">
                 <p className="selection-text">
                   <strong>{selectedIds.size}</strong>{" "}
                   {selectedIds.size === 1 ? "item" : "items"} selected to be
                   moved to trash or folders
                 </p>
-              ) : null}
-            </div>
+              </div>
+            )}
           </div>
 
           <SortableContext

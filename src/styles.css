@@ -147,10 +147,22 @@ a {
   border-radius: 8px;
   margin-bottom: 20px;
   text-align: center;
-  min-height: 45px; /* Prevents layout jump when text appears */
+  /* min-height: 45px;  <-- REMOVE OR COMMENT OUT THIS LINE */
   display: flex;
   align-items: center;
   justify-content: center;
+  animation: slideDown 0.2s ease-out; /* Optional: adds a nice entrance */
+}
+
+@keyframes slideDown {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 .selection-text {
