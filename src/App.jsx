@@ -645,9 +645,7 @@ export default function App() {
                   moved to trash or folders
                 </p>
               ) : (
-                <p className="selection-text-hint">
-                  Cmd/Ctrl + Click to select multiple items
-                </p>
+                <p className="selection-text-hint"></p>
               )}
             </div>
           </div>
