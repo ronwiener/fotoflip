@@ -719,14 +719,14 @@ a {
 }
 
 .notes-actions .btn-flip {
-  background-color: #ffffff !important;
-  color: #333 !important;
+  background-color: #f8fafc !important;
+  color: #64748b !important;
   border-color: #ddd !important;
 }
 
 .notes-actions .btn-flip:hover {
-  background-color: #f8f9fa !important;
-  border-color: #bbb !important;
+  background-color: #f1f5f9 !important;
+  border-color: #cbd5e1 !important;
   transform: translateY(-2px);
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
 }
