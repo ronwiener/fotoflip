@@ -974,7 +974,7 @@ a {
     content: "";
     display: block;
     grid-column: 1 / -1; /* Span across all columns */
-    height: 180px; /* This matches your sidebar height + safe area */
+    height: 140px; /* This matches your sidebar height + safe area */
   }
 
   .card-wrapper {
