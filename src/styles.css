@@ -548,7 +548,7 @@ a {
   flex: 1;
   min-height: 100%;
   contain: layout;
-  padding-bottom: 120px;
+  padding-bottom: 150px;
   -webkit-overflow-scrolling: touch;
 }
 
@@ -913,7 +913,7 @@ a {
     bottom: 0;
     left: 0;
     width: 100%;
-    height: 200px;
+    height: 180px;
     padding: 12px 15px calc(12px + env(safe-area-inset-bottom)) 15px;
     background: white;
     display: flex;
@@ -957,7 +957,7 @@ a {
     display: flex;
     flex-direction: column;
     overflow: hidden;
-    padding-bottom: 20px;
+    padding-bottom: 0;
     -webkit-overflow-scrolling: touch;
   }
 
@@ -973,7 +973,7 @@ a {
     content: "";
     display: block;
     grid-column: 1 / -1; /* Span across all columns */
-    height: 220px; /* This matches your sidebar height + safe area */
+    height: 180px; /* This matches your sidebar height + safe area */
   }
 
   .card-wrapper {
