@@ -409,8 +409,9 @@ a {
   flex: 1;
   display: flex;
   flex-direction: column;
+  min-height: 0;
   height: 100%; /* Force it to stay within the app's 100dvh */
-  overflow-y: auto;
+  overflow: hidden;
   position: relative;
   /* Prevent the body from scrolling instead of this container */
   overscroll-behavior-y: contain;
@@ -543,9 +544,12 @@ a {
   grid-template-columns: repeat(auto-fill, minmax(160px, 200px));
   gap: 20px;
   align-content: start;
+  overflow-y: auto;
   flex: 1;
   min-height: 100%;
   contain: layout;
+  padding-bottom: 120px;
+  -webkit-overflow-scrolling: touch;
 }
 
 .card-wrapper {
@@ -909,8 +913,7 @@ a {
     bottom: 0;
     left: 0;
     width: 100%;
-    height: auto;
-    max-height: 200px;
+    height: 200px;
     padding: 12px 15px calc(12px + env(safe-area-inset-bottom)) 15px;
     background: white;
     display: flex;
@@ -953,7 +956,7 @@ a {
     height: 100dvh;
     display: flex;
     flex-direction: column;
-    overflow: auto;
+    overflow: hidden;
     padding-bottom: 20px;
     -webkit-overflow-scrolling: touch;
   }
@@ -970,7 +973,7 @@ a {
     content: "";
     display: block;
     grid-column: 1 / -1; /* Span across all columns */
-    height: 240px; /* This matches your sidebar height + safe area */
+    height: 220px; /* This matches your sidebar height + safe area */
   }
 
   .card-wrapper {
