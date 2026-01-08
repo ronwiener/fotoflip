@@ -978,7 +978,7 @@ a {
     content: "";
     display: block;
     grid-column: 1 / -1; /* Span across all columns */
-    height: 200px !important;
+    height: 250px !important;
   }
 
   .card-wrapper {
@@ -1075,6 +1075,8 @@ a {
     min-height: 38px !important;
     display: flex;
     align-items: center;
+    justify-content: center;
+    height: 44px !important;
     background: #f5f5f5;
     border-radius: 8px;
     padding: 0 8px;
