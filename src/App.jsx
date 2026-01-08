@@ -275,6 +275,7 @@ export default function App() {
     current: 0,
     total: 0,
   });
+  const [showScrollTop, setShowScrollTop] = useState(false);
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
@@ -361,6 +362,27 @@ export default function App() {
       clearTimeout(timer);
     };
   }, [fetchItems]);
+
+  useEffect(() => {
+    const galleryEl = document.querySelector(".gallery");
+    if (!galleryEl) return;
+
+    const handleScroll = () => {
+      if (galleryEl.scrollTop > 300) {
+        setShowScrollTop(true);
+      } else {
+        setShowScrollTop(false);
+      }
+    };
+
+    galleryEl.addEventListener("scroll", handleScroll);
+    return () => galleryEl.removeEventListener("scroll", handleScroll);
+  }, []);
+
+  const scrollToTop = () => {
+    const galleryEl = document.querySelector(".gallery");
+    galleryEl.scrollTo({ top: 0, behavior: "smooth" });
+  };
 
   const handleUpload = async (event) => {
     const files = event.target.files;
@@ -686,6 +708,11 @@ export default function App() {
               ))}
             </div>
           </SortableContext>
+          {showScrollTop && (
+            <button className="scroll-to-top" onClick={scrollToTop}>
+              ↑ Scroll to Top
+            </button>
+          )}
         </main>
 
         <DragOverlay
