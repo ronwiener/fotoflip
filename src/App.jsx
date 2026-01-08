@@ -722,7 +722,7 @@ export default function App() {
               className={`scroll-to-top ${showScrollTop ? "visible" : ""}`}
               onClick={scrollToTop}
             >
-              ↑ Scroll to Top
+              ↑
             </button>
           )}
         </main>

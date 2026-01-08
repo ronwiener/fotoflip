@@ -748,14 +748,21 @@ a {
   color: white;
   border: none;
   border-radius: 50%;
-  font-size: 24px;
-  font-weight: bold;
   cursor: pointer;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
   z-index: 2000;
+
+  /* Key Changes: Flexbox centering */
   display: flex;
   align-items: center;
   justify-content: center;
+
+  /* Font styling for the arrow */
+  font-size: 24px;
+  font-weight: bold;
+  line-height: 1; /* Prevents the circle from stretching */
+
+  /* Animation/Transition */
   transition: all 0.3s ease-in-out;
   opacity: 0;
   visibility: hidden;
