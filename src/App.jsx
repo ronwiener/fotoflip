@@ -42,7 +42,6 @@ function Auth() {
     e.preventDefault();
     setLoading(true);
 
-    // Change signInWithPasswordless to signInWithOtp
     const { error } = await supabase.auth.signInWithOtp({
       email,
       options: {
@@ -286,7 +285,7 @@ export default function App() {
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
     useSensor(TouchSensor, {
-      activationConstraint: { delay: 250, tolerance: 15 },
+      activationConstraint: { delay: 250, tolerance: 5 },
     })
   );
   const galleryRef = useRef(null);
@@ -328,6 +327,30 @@ export default function App() {
     }, 10000);
 
     const initializeAuth = async () => {
+      // 1. Check if we just arrived from a Magic Link (Mobile fix)
+      const queryParams = new URLSearchParams(window.location.search);
+      const tokenHash = queryParams.get("token_hash");
+      const type = queryParams.get("type");
+
+      if (tokenHash && type === "magiclink") {
+        const { error } = await supabase.auth.verifyOtp({
+          token_hash: tokenHash,
+          type: "magiclink",
+        });
+
+        if (error) {
+          console.error("Error verifying magic link:", error.message);
+        } else {
+          // Clean the URL so the token doesn't stay in the address bar
+          window.history.replaceState(
+            {},
+            document.title,
+            window.location.origin
+          );
+        }
+      }
+
+      // 2. Proceed with normal session check
       const {
         data: { session: initialSession },
       } = await supabase.auth.getSession();
@@ -349,7 +372,6 @@ export default function App() {
     } = supabase.auth.onAuthStateChange(async (event, currentSession) => {
       if (!isMounted) return;
 
-      // Only update state if the session actually changed
       setSession(currentSession);
 
       if (event === "SIGNED_IN" || event === "TOKEN_REFRESHED") {
@@ -566,9 +588,13 @@ export default function App() {
   return (
     <DndContext
       sensors={sensors}
-      onDragStart={(e) =>
-        setActiveDragItem(items.find((i) => i.id === e.active.id))
-      }
+      onDragStart={(e) => {
+        // Trigger a 10ms vibration (tiny tap) on mobile devices
+        if (window.navigator.vibrate) {
+          window.navigator.vibrate(10);
+        }
+        setActiveDragItem(items.find((i) => i.id === e.active.id));
+      }}
       onDragEnd={handleDragEnd}
     >
       <div className="app">
