@@ -187,26 +187,17 @@ function DraggableCard({
     opacity: isDragging ? 0.3 : 1,
   };
 
-  // --- NEW SELECTION LOGIC ---
-  const handlePointerDown = (e) => {
-    // If we are already in "selection mode" (multi-select),
-    // any tap should toggle selection immediately.
-    if (selectedIds && selectedIds.size > 0) {
-      onToggleSelect(item.id);
-    }
-  };
-
-  const handleFrontClick = (e) => {
+  // NEW: This single function replaces handleFrontClick and handlePointerDown
+  const handlePointerUp = (e) => {
+    // If dnd-kit is currently dragging, don't flip or select
     if (isDragging) return;
 
-    // Desktop multi-select (Ctrl/Cmd click)
-    if (e.metaKey || e.ctrlKey || e.shiftKey) {
-      onToggleSelect(item.id);
-      return;
-    }
+    // Optional: Only handle left-clicks on desktop
+    if (e.pointerType === "mouse" && e.button !== 0) return;
 
-    // If not in multi-select mode, just flip
-    if (!selectedIds || selectedIds.size === 0) {
+    if (selectedIds && selectedIds.size > 0) {
+      onToggleSelect(item.id);
+    } else {
       onFlip(item.id);
     }
   };
@@ -217,19 +208,21 @@ function DraggableCard({
       style={style}
       data-dragging={isDragging}
       className={`card-wrapper ${isSelected ? "selected" : ""}`}
-      onPointerDown={handlePointerDown} // Trigger selection check on touch
+      // The logic starts here now
+      onPointerUp={handlePointerUp}
     >
       <div className={`card ${item.flipped ? "flipped" : ""}`}>
-        <div className="card-face card-front" onClick={handleFrontClick}>
+        <div className="card-face card-front">
           <button
             className="zoom-btn"
             onClick={(e) => {
-              e.stopPropagation();
+              e.stopPropagation(); // Stops the flip when clicking zoom
               onZoom({ type: "img", url: item.imageURL });
             }}
           >
             🔍
           </button>
+          {/* Drag handle only handles the movement, not the clicking */}
           <div className="drag-handle" {...attributes} {...listeners}>
             <img
               src={item.imageURL}
@@ -239,19 +232,20 @@ function DraggableCard({
             />
           </div>
         </div>
-        {/* ... back face remains the same ... */}
+
         <div className="card-face card-back">
           <div className="notes-content">
             <textarea
               value={item.notes}
-              onClick={(e) => e.stopPropagation()}
+              // Stop propagation so clicking the text doesn't flip the card back
+              onPointerUp={(e) => e.stopPropagation()}
               onChange={(e) => updateNotes(item.id, e.target.value)}
               placeholder="Zoom to write..."
             />
             <div className="notes-actions">
               <button
                 className="btn-zoom"
-                onClick={(e) => {
+                onPointerUp={(e) => {
                   e.stopPropagation();
                   onZoom({ type: "notes", content: item.notes, id: item.id });
                 }}
@@ -260,7 +254,7 @@ function DraggableCard({
               </button>
               <button
                 className="btn-flip"
-                onClick={(e) => {
+                onPointerUp={(e) => {
                   e.stopPropagation();
                   onFlip(item.id);
                 }}
@@ -274,7 +268,6 @@ function DraggableCard({
     </div>
   );
 }
-
 /* ---------- MAIN APP ---------- */
 export default function App() {
   const [session, setSession] = useState(null);
@@ -297,7 +290,7 @@ export default function App() {
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
     useSensor(TouchSensor, {
-      activationConstraint: { delay: 250, tolerance: 5 },
+      activationConstraint: { delay: 300, tolerance: 10 },
     })
   );
   const galleryRef = useRef(null);
@@ -525,7 +518,7 @@ export default function App() {
   const handleDragEnd = async (event) => {
     const { active, over } = event;
     setActiveDragItem(null);
-    if (!over || !session?.user) return;
+    if (!over || active.id === over.id) return;
 
     const draggedIds = selectedIds.has(active.id)
       ? Array.from(selectedIds)
@@ -602,22 +595,13 @@ export default function App() {
       sensors={sensors}
       onDragStart={(e) => {
         const { active } = e;
+        if (window.navigator.vibrate) window.navigator.vibrate(15);
 
-        // 1. Haptic feedback
-        if (window.navigator.vibrate) {
-          window.navigator.vibrate(10);
-        }
-
-        // 2. AUTOMATIC SELECTION ON HOLD
-        // If the user holds long enough to start a drag,
-        // ensure the item is selected.
         setSelectedIds((prev) => {
-          if (!prev.has(active.id)) {
-            const next = new Set(prev);
-            next.add(active.id);
-            return next;
-          }
-          return prev;
+          const next = new Set(prev);
+          // Add the item to selection if it's not already there
+          next.add(active.id);
+          return next;
         });
 
         setActiveDragItem(items.find((i) => i.id === active.id));
