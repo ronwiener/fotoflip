@@ -187,16 +187,26 @@ function DraggableCard({
     opacity: isDragging ? 0.3 : 1,
   };
 
+  // --- NEW SELECTION LOGIC ---
+  const handlePointerDown = (e) => {
+    // If we are already in "selection mode" (multi-select),
+    // any tap should toggle selection immediately.
+    if (selectedIds && selectedIds.size > 0) {
+      onToggleSelect(item.id);
+    }
+  };
+
   const handleFrontClick = (e) => {
     if (isDragging) return;
-    if (
-      e.metaKey ||
-      e.ctrlKey ||
-      e.shiftKey ||
-      (selectedIds && selectedIds.size > 0)
-    ) {
+
+    // Desktop multi-select (Ctrl/Cmd click)
+    if (e.metaKey || e.ctrlKey || e.shiftKey) {
       onToggleSelect(item.id);
-    } else {
+      return;
+    }
+
+    // If not in multi-select mode, just flip
+    if (!selectedIds || selectedIds.size === 0) {
       onFlip(item.id);
     }
   };
@@ -207,6 +217,7 @@ function DraggableCard({
       style={style}
       data-dragging={isDragging}
       className={`card-wrapper ${isSelected ? "selected" : ""}`}
+      onPointerDown={handlePointerDown} // Trigger selection check on touch
     >
       <div className={`card ${item.flipped ? "flipped" : ""}`}>
         <div className="card-face card-front" onClick={handleFrontClick}>
@@ -228,6 +239,7 @@ function DraggableCard({
             />
           </div>
         </div>
+        {/* ... back face remains the same ... */}
         <div className="card-face card-back">
           <div className="notes-content">
             <textarea
@@ -589,11 +601,26 @@ export default function App() {
     <DndContext
       sensors={sensors}
       onDragStart={(e) => {
-        // Trigger a 10ms vibration (tiny tap) on mobile devices
+        const { active } = e;
+
+        // 1. Haptic feedback
         if (window.navigator.vibrate) {
           window.navigator.vibrate(10);
         }
-        setActiveDragItem(items.find((i) => i.id === e.active.id));
+
+        // 2. AUTOMATIC SELECTION ON HOLD
+        // If the user holds long enough to start a drag,
+        // ensure the item is selected.
+        setSelectedIds((prev) => {
+          if (!prev.has(active.id)) {
+            const next = new Set(prev);
+            next.add(active.id);
+            return next;
+          }
+          return prev;
+        });
+
+        setActiveDragItem(items.find((i) => i.id === active.id));
       }}
       onDragEnd={handleDragEnd}
     >
