@@ -185,16 +185,18 @@ function DraggableCard({
     transform: CSS.Transform.toString(transform),
     transition,
     opacity: isDragging ? 0.3 : 1,
+    // Add a slight scale-down effect when holding to drag
+    cursor: isDragging ? "grabbing" : "grab",
   };
 
-  // NEW: This single function replaces handleFrontClick and handlePointerDown
   const handlePointerUp = (e) => {
-    // If dnd-kit is currently dragging, don't flip or select
+    // CRITICAL: If the user is dragging, do nothing on release
     if (isDragging) return;
 
-    // Optional: Only handle left-clicks on desktop
-    if (e.pointerType === "mouse" && e.button !== 0) return;
+    // Prevent this from triggering parent container events
+    e.stopPropagation();
 
+    // Logic migration: Select if in multi-mode, otherwise Flip
     if (selectedIds && selectedIds.size > 0) {
       onToggleSelect(item.id);
     } else {
@@ -208,21 +210,20 @@ function DraggableCard({
       style={style}
       data-dragging={isDragging}
       className={`card-wrapper ${isSelected ? "selected" : ""}`}
-      // The logic starts here now
       onPointerUp={handlePointerUp}
     >
       <div className={`card ${item.flipped ? "flipped" : ""}`}>
         <div className="card-face card-front">
           <button
             className="zoom-btn"
-            onClick={(e) => {
-              e.stopPropagation(); // Stops the flip when clicking zoom
+            // Use onPointerUp + stopPropagation to prevent card flip
+            onPointerUp={(e) => {
+              e.stopPropagation();
               onZoom({ type: "img", url: item.imageURL });
             }}
           >
             🔍
           </button>
-          {/* Drag handle only handles the movement, not the clicking */}
           <div className="drag-handle" {...attributes} {...listeners}>
             <img
               src={item.imageURL}
@@ -237,7 +238,7 @@ function DraggableCard({
           <div className="notes-content">
             <textarea
               value={item.notes}
-              // Stop propagation so clicking the text doesn't flip the card back
+              // Prevent typing from flipping the card
               onPointerUp={(e) => e.stopPropagation()}
               onChange={(e) => updateNotes(item.id, e.target.value)}
               placeholder="Zoom to write..."
@@ -290,7 +291,7 @@ export default function App() {
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
     useSensor(TouchSensor, {
-      activationConstraint: { delay: 300, tolerance: 10 },
+      activationConstraint: { delay: 300, tolerance: 15 },
     })
   );
   const galleryRef = useRef(null);
@@ -595,13 +596,20 @@ export default function App() {
       sensors={sensors}
       onDragStart={(e) => {
         const { active } = e;
-        if (window.navigator.vibrate) window.navigator.vibrate(15);
 
+        // 1. Physical feedback
+        if (window.navigator.vibrate) {
+          window.navigator.vibrate(15);
+        }
+
+        // 2. Immediate selection
         setSelectedIds((prev) => {
-          const next = new Set(prev);
-          // Add the item to selection if it's not already there
-          next.add(active.id);
-          return next;
+          if (!prev.has(active.id)) {
+            const next = new Set(prev);
+            next.add(active.id);
+            return next;
+          }
+          return prev;
         });
 
         setActiveDragItem(items.find((i) => i.id === active.id));
