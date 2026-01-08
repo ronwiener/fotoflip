@@ -935,9 +935,10 @@ a {
     min-height: 44px;
     display: flex;
     flex-direction: row;
+    align-items: center;
     overflow-x: auto;
     gap: 10px;
-    padding-bottom: 5px;
+    padding: 0dvb 0 5px 8px 5px;
     -webkit-overflow-scrolling: touch;
     -ms-overflow-style: none; /* IE and Edge */
     scrollbar-width: none; /* Firefox */
@@ -951,8 +952,9 @@ a {
     margin: 0;
     align-items: center;
     border-top: 1px solid #eee;
-    padding-top: 4px;
-    gap: 5px;
+    padding-top: 10px;
+    gap: 8px;
+    width: 100%;
   }
 
   .main {
@@ -976,7 +978,7 @@ a {
     content: "";
     display: block;
     grid-column: 1 / -1; /* Span across all columns */
-    height: 180px;
+    height: 200px !important;
   }
 
   .card-wrapper {
@@ -1024,14 +1026,28 @@ a {
     background-color: #f0f0f0 !important;
   }
 
-  .nav-btn {
-    min-height: 36px !important;
-    height: 36px;
+  .sidebar-bottom .nav-btn,
+  .sidebar-bottom .logout-btn,
+  .trash-zone {
+    flex: 1; /* Forces equal width */
+    height: 44px; /* Standard comfortable touch-target size */
     display: flex;
     align-items: center;
     justify-content: center;
-    padding: 0 15px !important; /* Tighten horizontal padding */
+    font-size: 0.85rem;
+    padding: 0;
     margin: 0;
+  }
+
+  .nav-btn {
+    min-height: 38px !important;
+    height: 38px !important;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0 12px !important; /* Tighten horizontal padding */
+    margin: 0;
+    font-size: 0.85rem !important;
   }
 
   .main-text {
@@ -1053,5 +1069,14 @@ a {
     min-height: 36px; /* Reduced from 44px */
     padding: 6px 10px;
     font-size: 0.85rem;
+  }
+  .folder-item {
+    height: 38px !important;
+    min-height: 38px !important;
+    display: flex;
+    align-items: center;
+    background: #f5f5f5;
+    border-radius: 8px;
+    padding: 0 8px;
   }
 }
