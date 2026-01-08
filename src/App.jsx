@@ -1,4 +1,10 @@
-import React, { useEffect, useState, useMemo, useCallback } from "react";
+import React, {
+  useEffect,
+  useState,
+  useMemo,
+  useCallback,
+  useRef,
+} from "react";
 import {
   DndContext,
   PointerSensor,
@@ -283,6 +289,7 @@ export default function App() {
       activationConstraint: { delay: 250, tolerance: 15 },
     })
   );
+  const galleryRef = useRef(null);
 
   const fetchItems = useCallback(async (userId) => {
     // Use the passed userId only; do not reference 'session' state here
@@ -364,10 +371,11 @@ export default function App() {
   }, [fetchItems]);
 
   useEffect(() => {
-    const galleryEl = document.querySelector(".gallery");
+    const galleryEl = galleryRef.current; // Use the ref instead of querySelector
     if (!galleryEl) return;
 
     const handleScroll = () => {
+      // console.log("Scroll Position:", galleryEl.scrollTop); // Uncomment to debug
       if (galleryEl.scrollTop > 300) {
         setShowScrollTop(true);
       } else {
@@ -377,11 +385,12 @@ export default function App() {
 
     galleryEl.addEventListener("scroll", handleScroll);
     return () => galleryEl.removeEventListener("scroll", handleScroll);
-  }, []);
+  }, [items]);
 
   const scrollToTop = () => {
-    const galleryEl = document.querySelector(".gallery");
-    galleryEl.scrollTo({ top: 0, behavior: "smooth" });
+    if (galleryRef.current) {
+      galleryRef.current.scrollTo({ top: 0, behavior: "smooth" });
+    }
   };
 
   const handleUpload = async (event) => {
@@ -677,7 +686,7 @@ export default function App() {
             items={visibleItems.map((i) => i.id)}
             strategy={rectSortingStrategy}
           >
-            <div className="gallery">
+            <div className="gallery" ref={galleryRef}>
               {visibleItems.map((item) => (
                 <DraggableCard
                   key={item.id}
@@ -709,7 +718,10 @@ export default function App() {
             </div>
           </SortableContext>
           {showScrollTop && (
-            <button className="scroll-to-top" onClick={scrollToTop}>
+            <button
+              className={`scroll-to-top ${showScrollTop ? "visible" : ""}`}
+              onClick={scrollToTop}
+            >
               ↑ Scroll to Top
             </button>
           )}

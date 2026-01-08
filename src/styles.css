@@ -756,12 +756,22 @@ a {
   display: flex;
   align-items: center;
   justify-content: center;
-  transition: opacity 0.3s, transform 0.3s;
+  transition: all 0.3s ease-in-out;
+  opacity: 0;
+  visibility: hidden;
+  transform: translateY(20px);
+}
+
+.scroll-to-top.visible {
+  opacity: 1;
+  visibility: visible;
+  transform: translateY(0);
 }
 
 .scroll-to-top:hover {
   background-color: #0056b3;
   transform: translateY(-5px);
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.3);
 }
 
 /* ---------- 5. DRAG & DROP ANIMATIONS ---------- */
@@ -993,11 +1003,14 @@ a {
   }
 
   .gallery {
+    height: 100%;
+    display: grid;
     grid-template-columns: repeat(2, 1fr);
     gap: 24px;
     padding: 20px;
-    /* Remove the huge padding-bottom here */
     padding-bottom: 20px;
+    overflow-y: scroll; /* Forces scroll momentum on iOS */
+    -webkit-overflow-scrolling: touch;
   }
 
   .gallery::after {
