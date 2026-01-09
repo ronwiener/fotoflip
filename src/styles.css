@@ -804,6 +804,12 @@ a {
   cursor: grabbing;
 }
 
+.card-drag-preview {
+  z-index: 9999 !important; /* Ensure it sits above everything */
+  pointer-events: none;
+  position: fixed; /* Better for mobile overlays */
+}
+
 .card-wrapper[data-dragging="true"] {
   opacity: 0.5;
   transform: scale(0.95);

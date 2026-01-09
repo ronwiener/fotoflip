@@ -289,7 +289,7 @@ export default function App() {
   const [showScrollTop, setShowScrollTop] = useState(false);
 
   const sensors = useSensors(
-    useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
+    useSensor(PointerSensor, { activationConstraint: { distance: 15 } }),
     useSensor(TouchSensor, {
       activationConstraint: { delay: 300, tolerance: 15 },
     })
@@ -474,6 +474,8 @@ export default function App() {
 
     setIsLoading(false);
 
+    event.target.value = null;
+
     // Reset progress bar after a short delay
     setTimeout(() => setUploadProgress({ current: 0, total: 0 }), 2000);
   };
@@ -519,35 +521,44 @@ export default function App() {
   const handleDragEnd = async (event) => {
     const { active, over } = event;
     setActiveDragItem(null);
+
+    // 1. EXIT EARLY: If dropped outside a zone or dropped back on itself
     if (!over || active.id === over.id) return;
 
     const draggedIds = selectedIds.has(active.id)
       ? Array.from(selectedIds)
       : [active.id];
-    const targetFolder =
-      over.id === "TRASH_BIN"
-        ? "DELETE"
-        : over.id === "Select Folder"
-        ? ""
-        : over.id;
 
+    // 2. IDENTIFY DESTINATION: Trash, Main Gallery, or a specific Folder
+    const isTrash = over.id === "TRASH_BIN";
+    const targetFolder = isTrash
+      ? "DELETE"
+      : over.id === "Select Folder"
+      ? ""
+      : over.id;
+
+    // 3. OPTIMISTIC UI UPDATE: Update local state immediately for a snappy feel
     setItems((prev) => {
-      if (targetFolder === "DELETE")
+      if (isTrash) {
         return prev.filter((i) => !draggedIds.includes(i.id));
+      }
       return prev.map((i) =>
         draggedIds.includes(i.id) ? { ...i, folder: targetFolder } : i
       );
     });
+
+    // Clear selection after the action starts
     setSelectedIds(new Set());
 
-    if (targetFolder === "DELETE") {
+    // 4. DATABASE SYNC
+    if (isTrash) {
       setIsDropping(true);
 
-      // 1. Identify paths before clearing the state or database
+      // Identify storage paths before deletion
       const itemsToDelete = items.filter((i) => draggedIds.includes(i.id));
       const pathsToDelete = itemsToDelete.map((i) => i.image_path);
 
-      // 2. Delete from Database first (this updates the app's source of truth)
+      // Remove from Database
       const { error: dbError } = await supabase
         .from("items")
         .delete()
@@ -556,28 +567,32 @@ export default function App() {
 
       if (dbError) {
         console.error("Database deletion failed:", dbError.message);
-        // If the database fails, we should re-fetch to fix the UI
+        // Rollback UI on error
         await fetchItems(session.user.id);
-      } else {
-        // 3. Only clean up Storage if the database record was successfully removed
-        if (pathsToDelete.length > 0) {
-          const { error: storageError } = await supabase.storage
-            .from("gallery")
-            .remove(pathsToDelete);
+      } else if (pathsToDelete.length > 0) {
+        // Remove from Storage only if DB deletion succeeded
+        const { error: storageError } = await supabase.storage
+          .from("gallery")
+          .remove(pathsToDelete);
 
-          if (storageError)
-            console.error("Storage cleanup failed:", storageError.message);
-        }
+        if (storageError)
+          console.error("Storage cleanup failed:", storageError.message);
       }
 
       setTimeout(() => setIsDropping(false), 500);
     } else {
-      // Keep your existing update logic for moving between folders
-      await supabase
+      // Moving items to a different folder
+      const { error: updateError } = await supabase
         .from("items")
         .update({ folder: targetFolder })
         .in("id", draggedIds)
         .eq("user_id", session.user.id);
+
+      if (updateError) {
+        console.error("Folder move failed:", updateError.message);
+        // Rollback UI on error
+        await fetchItems(session.user.id);
+      }
     }
   };
 
@@ -731,7 +746,16 @@ export default function App() {
             items={visibleItems.map((i) => i.id)}
             strategy={rectSortingStrategy}
           >
-            <div className="gallery" ref={galleryRef}>
+            <div
+              className="gallery"
+              ref={galleryRef}
+              onPointerUp={(e) => {
+                // If clicking the empty space in the gallery, clear selection
+                if (e.target === galleryRef.current) {
+                  setSelectedIds(new Set());
+                }
+              }}
+            >
               {visibleItems.map((item) => (
                 <DraggableCard
                   key={item.id}
