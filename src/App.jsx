@@ -190,13 +190,13 @@ function DraggableCard({
   };
 
   const handlePointerUp = (e) => {
-    // CRITICAL: If the user is dragging, do nothing on release
+    // If the sensor determined this was a drag/long-press, do not flip.
     if (isDragging) return;
 
-    // Prevent this from triggering parent container events
     e.stopPropagation();
 
-    // Logic migration: Select if in multi-mode, otherwise Flip
+    // If we already have items selected, a click should toggle selection.
+    // Otherwise, a simple click flips the card.
     if (selectedIds && selectedIds.size > 0) {
       onToggleSelect(item.id);
     } else {
@@ -290,9 +290,9 @@ export default function App() {
   const [isSaved, setIsSaved] = useState(false);
 
   const sensors = useSensors(
-    useSensor(PointerSensor, { activationConstraint: { distance: 15 } }),
+    useSensor(PointerSensor, { activationConstraint: { distance: 10 } }),
     useSensor(TouchSensor, {
-      activationConstraint: { delay: 300, tolerance: 25 },
+      activationConstraint: { delay: 250, tolerance: 5 },
     })
   );
   const galleryRef = useRef(null);
@@ -489,7 +489,7 @@ export default function App() {
   };
 
   const updateNotes = useCallback((id, notes) => {
-    // 1. Immediate UI update (snappy feel)
+    // 1. Immediate UI update
     setItems((prev) => prev.map((i) => (i.id === id ? { ...i, notes } : i)));
 
     // 2. Debounced Database Sync
@@ -498,18 +498,19 @@ export default function App() {
     timerRef.current = setTimeout(async () => {
       const { error } = await supabase
         .from("items")
-        .update({ notes })
+        .update({ notes: notes }) // Syncing the specific note change
         .eq("id", id);
 
       if (!error) {
         setIsSaved(true);
-        // Hide the "Saved" indicator after 2 seconds
-        setTimeout(() => setIsSaved(false), 2000);
+
+        // Increased to 4000ms (4 seconds) so users actually see it
+        setTimeout(() => setIsSaved(false), 4000);
       } else {
         console.error("Sync error:", error.message);
       }
     }, 1000);
-  }, []); // Empty array is correct here
+  }, []);
 
   const handleFlip = useCallback(async (id) => {
     setItems((prev) =>

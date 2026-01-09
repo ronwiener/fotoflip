@@ -778,7 +778,7 @@ a {
   border-radius: 20px;
   font-size: 0.85rem;
   z-index: 1000;
-  animation: fadeInOut 2s ease-in-out;
+  animation: fadeInOut 4s ease-in-out;
 }
 
 @keyframes fadeInOut {
