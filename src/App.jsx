@@ -201,7 +201,6 @@ function DraggableCard({
       onPointerDown={(e) => {
         if (item.flipped) return;
         if (selectedIds.size > 0) {
-          e.stopPropagation();
           onToggleSelect(item.id);
         }
       }}
@@ -284,7 +283,7 @@ export default function App() {
   const sensors = useSensors(
     useSensor(PointerSensor, {
       activationConstraint: {
-        distance: 5,
+        distance: 8,
       },
       // ADD THIS: Prevents the sensor from starting a drag on the textarea
       onActivation: (event) => {
