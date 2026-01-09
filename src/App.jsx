@@ -198,16 +198,20 @@ function DraggableCard({
       data-dragging={isDragging}
       data-flipped={item.flipped}
       className={`card-wrapper ${isSelected ? "selected" : ""}`}
-      onPointerDown={(e) => {
-        if (item.flipped) return;
+      onPointerUp={(e) => {
+        // 1. If we are dragging, don't do anything (let handleDragEnd handle it)
+        if (isDragging) return;
+
+        // 2. If we are already in selection mode, toggle this card
         if (selectedIds.size > 0) {
           onToggleSelect(item.id);
+          return;
         }
-      }}
-      onPointerUp={(e) => {
-        // Only flip if we didn't just finish a drag
-        if (isDragging || selectedIds.size > 0 || item.flipped) return;
-        onFlip(item.id);
+
+        // 3. Otherwise, if not flipped, flip it
+        if (!item.flipped) {
+          onFlip(item.id);
+        }
       }}
     >
       <div className="card">
@@ -283,7 +287,7 @@ export default function App() {
   const sensors = useSensors(
     useSensor(PointerSensor, {
       activationConstraint: {
-        distance: 5,
+        distance: 3,
       },
       // ADD THIS: Prevents the sensor from starting a drag on the textarea
       onActivation: (event) => {
