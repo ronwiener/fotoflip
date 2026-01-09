@@ -201,6 +201,7 @@ function DraggableCard({
       onPointerDown={(e) => {
         if (item.flipped) return;
         if (selectedIds.size > 0) {
+          e.stopPropagation();
           onToggleSelect(item.id);
         }
       }}
