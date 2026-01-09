@@ -287,14 +287,16 @@ export default function App() {
     total: 0,
   });
   const [showScrollTop, setShowScrollTop] = useState(false);
+  const [isSaved, setIsSaved] = useState(false);
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 15 } }),
     useSensor(TouchSensor, {
-      activationConstraint: { delay: 300, tolerance: 15 },
+      activationConstraint: { delay: 300, tolerance: 25 },
     })
   );
   const galleryRef = useRef(null);
+  const timerRef = useRef(null);
 
   const fetchItems = useCallback(async (userId) => {
     // Use the passed userId only; do not reference 'session' state here
@@ -421,6 +423,12 @@ export default function App() {
     }
   };
 
+  useEffect(() => {
+    return () => {
+      if (timerRef.current) clearTimeout(timerRef.current);
+    };
+  }, []);
+
   const handleUpload = async (event) => {
     const files = event.target.files;
     if (!files || !session?.user) return;
@@ -480,36 +488,58 @@ export default function App() {
     setTimeout(() => setUploadProgress({ current: 0, total: 0 }), 2000);
   };
 
-  const updateSupabaseItem = async (item) => {
-    if (!session?.user) return;
-    await supabase.from("items").upsert({
-      id: item.id,
-      user_id: session.user.id,
-      notes: item.notes,
-      folder: item.folder,
-      flipped: item.flipped,
-      image_path: item.image_path,
-    });
-  };
+  const updateNotes = useCallback((id, notes) => {
+    // 1. Immediate UI update (snappy feel)
+    setItems((prev) => prev.map((i) => (i.id === id ? { ...i, notes } : i)));
 
-  const updateNotes = async (id, notes) => {
-    setItems((prev) => {
-      const updated = prev.map((i) => (i.id === id ? { ...i, notes } : i));
-      const itemToSync = updated.find((i) => i.id === id);
-      if (itemToSync) updateSupabaseItem(itemToSync);
-      return updated;
-    });
-  };
+    // 2. Debounced Database Sync
+    if (timerRef.current) clearTimeout(timerRef.current);
+
+    timerRef.current = setTimeout(async () => {
+      const { error } = await supabase
+        .from("items")
+        .update({ notes })
+        .eq("id", id);
+
+      if (!error) {
+        setIsSaved(true);
+        // Hide the "Saved" indicator after 2 seconds
+        setTimeout(() => setIsSaved(false), 2000);
+      } else {
+        console.error("Sync error:", error.message);
+      }
+    }, 1000);
+  }, []); // Empty array is correct here
+
+  const handleFlip = useCallback(async (id) => {
+    setItems((prev) =>
+      prev.map((i) => {
+        if (i.id === id) {
+          const updated = { ...i, flipped: !i.flipped };
+          // Sync to DB immediately using the 'updated' constant
+          supabase
+            .from("items")
+            .update({ flipped: updated.flipped })
+            .eq("id", id)
+            .then(({ error }) => {
+              if (error) console.error("Flip sync failed:", error.message);
+            });
+          return updated;
+        }
+        return i;
+      })
+    );
+  }, []);
 
   const handleImport = async (event) => {
     const file = event.target.files[0];
-    if (!file) return;
+    if (!file || !session?.user) return; // Add check
     setIsLoading(true);
     try {
       await importGalleryZip(file, (curr, tot) =>
         setImportProgress(`Importing ${curr} of ${tot}...`)
       );
-      fetchItems();
+      await fetchItems(session.user.id); // Pass the ID here
     } catch (e) {
       alert("Import failed: " + e.message);
     } finally {
@@ -518,12 +548,37 @@ export default function App() {
     }
   };
 
+  const handleDragStart = (e) => {
+    const { active } = e;
+
+    // 1. Physical feedback (vibrate phone)
+    if (window.navigator.vibrate) {
+      window.navigator.vibrate(15);
+    }
+
+    // 2. Select the item being dragged
+    setSelectedIds((prev) => {
+      if (!prev.has(active.id)) {
+        const next = new Set(prev);
+        next.add(active.id);
+        return next;
+      }
+      return prev;
+    });
+
+    // 3. Set the preview image for the DragOverlay
+    setActiveDragItem(items.find((i) => i.id === active.id));
+  };
+
   const handleDragEnd = async (event) => {
     const { active, over } = event;
     setActiveDragItem(null);
 
     // 1. EXIT EARLY: If dropped outside a zone or dropped back on itself
-    if (!over || active.id === over.id) return;
+    if (!over || active.id === over.id) {
+      setSelectedIds(new Set()); // Reset selection if dropped nowhere
+      return;
+    }
 
     const draggedIds = selectedIds.has(active.id)
       ? Array.from(selectedIds)
@@ -553,46 +608,22 @@ export default function App() {
     // 4. DATABASE SYNC
     if (isTrash) {
       setIsDropping(true);
-
-      // Identify storage paths before deletion
       const itemsToDelete = items.filter((i) => draggedIds.includes(i.id));
       const pathsToDelete = itemsToDelete.map((i) => i.image_path);
 
-      // Remove from Database
-      const { error: dbError } = await supabase
+      const { error } = await supabase
         .from("items")
         .delete()
-        .in("id", draggedIds)
-        .eq("user_id", session.user.id);
-
-      if (dbError) {
-        console.error("Database deletion failed:", dbError.message);
-        // Rollback UI on error
-        await fetchItems(session.user.id);
-      } else if (pathsToDelete.length > 0) {
-        // Remove from Storage only if DB deletion succeeded
-        const { error: storageError } = await supabase.storage
-          .from("gallery")
-          .remove(pathsToDelete);
-
-        if (storageError)
-          console.error("Storage cleanup failed:", storageError.message);
+        .in("id", draggedIds);
+      if (!error && pathsToDelete.length > 0) {
+        await supabase.storage.from("gallery").remove(pathsToDelete);
       }
-
       setTimeout(() => setIsDropping(false), 500);
     } else {
-      // Moving items to a different folder
-      const { error: updateError } = await supabase
+      await supabase
         .from("items")
         .update({ folder: targetFolder })
-        .in("id", draggedIds)
-        .eq("user_id", session.user.id);
-
-      if (updateError) {
-        console.error("Folder move failed:", updateError.message);
-        // Rollback UI on error
-        await fetchItems(session.user.id);
-      }
+        .in("id", draggedIds);
     }
   };
 
@@ -609,27 +640,14 @@ export default function App() {
   return (
     <DndContext
       sensors={sensors}
-      onDragStart={(e) => {
-        const { active } = e;
-
-        // 1. Physical feedback
-        if (window.navigator.vibrate) {
-          window.navigator.vibrate(15);
-        }
-
-        // 2. Immediate selection
-        setSelectedIds((prev) => {
-          if (!prev.has(active.id)) {
-            const next = new Set(prev);
-            next.add(active.id);
-            return next;
-          }
-          return prev;
-        });
-
-        setActiveDragItem(items.find((i) => i.id === active.id));
-      }}
+      onDragStart={handleDragStart}
+      // This clears the highlight when the drag is finished or aborted
       onDragEnd={handleDragEnd}
+      onDragCancel={() => {
+        // This fixes the "Sticky Highlight" if you drop the image in a weird spot
+        setSelectedIds(new Set());
+        setActiveDragItem(null);
+      }}
     >
       <div className="app">
         {isLoading && importProgress && (
@@ -740,6 +758,12 @@ export default function App() {
                 </p>
               </div>
             )}
+
+            {isSaved && (
+              <div className="save-indicator">
+                Checkmark icon or "✓ Saved to Cloud"
+              </div>
+            )}
           </div>
 
           <SortableContext
@@ -769,17 +793,7 @@ export default function App() {
                       return n;
                     })
                   }
-                  onFlip={(id) =>
-                    setItems((prev) => {
-                      const updated = prev.map((i) =>
-                        i.id === id ? { ...i, flipped: !i.flipped } : i
-                      );
-                      const itemToSync = updated.find((i) => i.id === id);
-                      // Explicitly pass the updated item to avoid stale closure
-                      updateSupabaseItem(itemToSync);
-                      return updated;
-                    })
-                  }
+                  onFlip={handleFlip}
                   onZoom={setZoomData}
                   updateNotes={updateNotes}
                 />
