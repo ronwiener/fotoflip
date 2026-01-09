@@ -204,6 +204,11 @@ function DraggableCard({
           onToggleSelect(item.id);
         }
       }}
+      onPointerUp={(e) => {
+        // Only flip if we didn't just finish a drag
+        if (isDragging || selectedIds.size > 0 || item.flipped) return;
+        onFlip(item.id);
+      }}
     >
       <div className="card">
         <div className="card-face card-front" style={{ pointerEvents: "none" }}>
@@ -278,7 +283,7 @@ export default function App() {
   const sensors = useSensors(
     useSensor(PointerSensor, {
       activationConstraint: {
-        distance: 8,
+        distance: 5,
       },
       // ADD THIS: Prevents the sensor from starting a drag on the textarea
       onActivation: (event) => {
@@ -290,7 +295,7 @@ export default function App() {
     useSensor(TouchSensor, {
       activationConstraint: {
         delay: 250,
-        tolerance: 10,
+        tolerance: 5,
       },
     })
   );
