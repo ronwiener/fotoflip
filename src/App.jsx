@@ -193,25 +193,19 @@ function DraggableCard({
     <div
       ref={setNodeRef}
       style={style}
+      {...attributes}
+      {...listeners}
       data-dragging={isDragging}
       data-flipped={item.flipped}
       className={`card-wrapper ${isSelected ? "selected" : ""}`}
-      {...attributes}
-      {...listeners}
       onPointerDown={(e) => {
         if (item.flipped) return;
         if (selectedIds.size > 0) {
-          e.stopPropagation();
           onToggleSelect(item.id);
         }
       }}
-      // Use onPointerUp ONLY for flipping
-      onPointerUp={(e) => {
-        if (isDragging || selectedIds.size > 0 || item.flipped) return;
-        onFlip(item.id);
-      }}
     >
-      <div className={`card ${item.flipped ? "flipped" : ""}`}>
+      <div className="card">
         <div className="card-face card-front" style={{ pointerEvents: "none" }}>
           <button
             className="zoom-btn"
@@ -224,7 +218,7 @@ function DraggableCard({
           >
             🔍
           </button>
-          <img src={item.imageURL} alt="" draggable="false" />
+          <img src={item.imageURL} alt="" />
         </div>
 
         <div className="card-face card-back" data-no-dnd="true">

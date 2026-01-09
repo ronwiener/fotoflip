@@ -554,9 +554,10 @@ a {
 .card-wrapper {
   aspect-ratio: 3/4;
   perspective: 1000px;
-  touch-action: none;
+  touch-action: none !important;
   user-select: none;
   -webkit-user-select: none;
+  -webkit-tap-highlight-color: transparent;
   transition: transform 0.2s cubic-bezier(0.2, 0, 0, 1);
   position: relative;
   cursor: grab;
@@ -565,11 +566,9 @@ a {
 
 .card-wrapper img {
   /* Prevent the desktop browser from starting its own native drag */
-  -webkit-user-drag: none; /* Chrome, Safari, newer Edge */
-  -khtml-user-drag: none;
-  -moz-user-select: none; /* Firefox */
-  user-select: none;
-  pointer-events: none;
+  -webkit-user-drag: none !important; /* Chrome, Safari, newer Edge */
+  user-select: none !important;
+  pointer-events: none !important;
 }
 
 .card {
