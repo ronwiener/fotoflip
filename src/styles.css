@@ -602,7 +602,7 @@ a {
 
 .card-front {
   z-index: 2;
-  pointer-events: none;
+  pointer-events: auto;
 }
 .card-front,
 .card-front img {
@@ -640,6 +640,18 @@ a {
 
   /* Lets the touch events pass through to the .drag-handle listener */
   pointer-events: none;
+}
+
+/* Update these specific lines in styles.css */
+.card-face.card-front {
+  touch-action: none !important; /* Critical for dnd-kit */
+  cursor: grab;
+  pointer-events: auto !important; /* Changed from none to auto */
+}
+
+.card-face.card-front img {
+  pointer-events: none; /* Keeps the image from intercepting the drag */
+  -webkit-user-drag: none;
 }
 
 /* Update this block in styles.css */

@@ -184,38 +184,32 @@ function DraggableCard({
   const style = {
     transform: CSS.Transform.toString(transform),
     transition,
-    opacity: isDragging ? 0.5 : 1,
-    // Add a slight scale-down effect when holding to drag
-    cursor: isDragging ? "grabbing" : "grab",
+    zIndex: isDragging ? 1000 : 1,
   };
 
   return (
     <div
       ref={setNodeRef}
       style={style}
-      {...attributes}
-      {...listeners}
+      className={`card-wrapper ${isSelected ? "selected" : ""}`}
       data-dragging={isDragging}
       data-flipped={item.flipped}
-      className={`card-wrapper ${isSelected ? "selected" : ""}`}
-      onPointerUp={(e) => {
-        // 1. If we are dragging, don't do anything (let handleDragEnd handle it)
-        if (isDragging) return;
-
-        // 2. If we are already in selection mode, toggle this card
-        if (selectedIds.size > 0) {
-          onToggleSelect(item.id);
-          return;
-        }
-
-        // 3. Otherwise, if not flipped, flip it
-        if (!item.flipped) {
-          onFlip(item.id);
-        }
-      }}
     >
-      <div className="card">
-        <div className="card-face card-front" style={{ pointerEvents: "none" }}>
+      <div className={`card ${item.flipped ? "flipped" : ""}`}>
+        <div
+          className="card-face card-front"
+          {...attributes}
+          {...listeners}
+          style={{ pointerEvents: "auto" }}
+          onPointerUp={(e) => {
+            if (isDragging) return;
+            if (selectedIds.size > 0) {
+              onToggleSelect(item.id);
+            } else {
+              onFlip(item.id);
+            }
+          }}
+        >
           <button
             className="zoom-btn"
             style={{ pointerEvents: "auto" }}
@@ -298,7 +292,7 @@ export default function App() {
     }),
     useSensor(TouchSensor, {
       activationConstraint: {
-        delay: 250,
+        delay: 200,
         tolerance: 5,
       },
     })
