@@ -196,6 +196,8 @@ function DraggableCard({
       data-dragging={isDragging}
       data-flipped={item.flipped}
       className={`card-wrapper ${isSelected ? "selected" : ""}`}
+      {...attributes}
+      {...listeners}
       onPointerDown={(e) => {
         if (item.flipped) return;
         if (selectedIds.size > 0) {
@@ -206,7 +208,6 @@ function DraggableCard({
       // Use onPointerUp ONLY for flipping
       onPointerUp={(e) => {
         if (isDragging || selectedIds.size > 0 || item.flipped) return;
-
         onFlip(item.id);
       }}
     >
@@ -222,14 +223,12 @@ function DraggableCard({
           >
             🔍
           </button>
-          <div className="drag-handle" {...attributes} {...listeners}>
-            <img
-              src={item.imageURL}
-              alt=""
-              draggable="false"
-              style={{ pointerEvents: "none" }}
-            />
-          </div>
+          <img
+            src={item.imageURL}
+            alt=""
+            draggable="false"
+            style={{ pointerEvents: "none" }}
+          />
         </div>
 
         <div className="card-face card-back" data-no-dnd="true">
