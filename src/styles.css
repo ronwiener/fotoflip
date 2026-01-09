@@ -581,6 +581,7 @@ a {
   overflow: hidden;
   box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
   background: white;
+  transform: translateZ(0);
 }
 
 .card-front {
@@ -626,6 +627,17 @@ a {
   inset: 0;
   background: rgba(0, 119, 255, 0.1);
   pointer-events: none;
+}
+
+.card.flipped .card-back {
+  opacity: 1 !important;
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+}
+
+/* Prevent the wrapper from dimming the card if it's flipped */
+.card-wrapper[data-flipped="true"] {
+  opacity: 1 !important;
 }
 
 .zoom-btn {

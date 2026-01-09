@@ -184,7 +184,7 @@ function DraggableCard({
   const style = {
     transform: CSS.Transform.toString(transform),
     transition,
-    opacity: isDragging ? 0.3 : 1,
+    opacity: isDragging ? 0.5 : 1,
     // Add a slight scale-down effect when holding to drag
     cursor: isDragging ? "grabbing" : "grab",
   };
@@ -194,6 +194,7 @@ function DraggableCard({
       ref={setNodeRef}
       style={style}
       data-dragging={isDragging}
+      data-flipped={item.flipped}
       className={`card-wrapper ${isSelected ? "selected" : ""}`}
       onPointerDown={(e) => {
         if (selectedIds.size > 0) {
@@ -560,8 +561,6 @@ export default function App() {
   const handleDragStart = (e) => {
     const { active } = e;
     const draggedItem = items.find((i) => i.id === active.id);
-
-    // If the user tries to drag a flipped card (should be blocked by 'disabled' anyway)
     if (draggedItem?.flipped) return;
 
     if (window.navigator.vibrate) window.navigator.vibrate(15);
@@ -571,7 +570,6 @@ export default function App() {
       next.add(active.id);
       return next;
     });
-
     setActiveDragItem(draggedItem);
   };
 
