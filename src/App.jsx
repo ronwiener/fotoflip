@@ -198,7 +198,7 @@ function DraggableCard({
       className={`card-wrapper ${isSelected ? "selected" : ""}`}
       onPointerDown={(e) => {
         if (item.flipped) return;
-        if (selectedIds.size > 0 && !item.flipped) {
+        if (selectedIds.size > 0) {
           e.stopPropagation();
           onToggleSelect(item.id);
         }
@@ -206,7 +206,7 @@ function DraggableCard({
       // Use onPointerUp ONLY for flipping
       onPointerUp={(e) => {
         if (isDragging || selectedIds.size > 0 || item.flipped) return;
-        e.stopPropagation();
+
         onFlip(item.id);
       }}
     >
@@ -289,9 +289,7 @@ export default function App() {
   const sensors = useSensors(
     useSensor(PointerSensor, {
       activationConstraint: {
-        distance: 8,
-        delay: 250,
-        tolerance: 10,
+        distance: 5,
       },
       // ADD THIS: Prevents the sensor from starting a drag on the textarea
       onActivation: (event) => {
@@ -302,8 +300,8 @@ export default function App() {
     }),
     useSensor(TouchSensor, {
       activationConstraint: {
-        delay: 300,
-        tolerance: 15,
+        delay: 250,
+        tolerance: 10,
       },
     })
   );

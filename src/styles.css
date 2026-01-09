@@ -593,6 +593,8 @@ a {
   padding: 15px;
   display: flex;
   flex-direction: column;
+  touch-action: auto !important;
+  pointer-events: all !important;
 }
 
 .card-face img {
@@ -623,7 +625,8 @@ a {
 .card-back textarea {
   /* Ensure the textarea is easy to hit */
   cursor: text !important;
-  z-index: 10;
+  position: relative;
+  z-index: 5;
 }
 
 /* Highlight styling for selected images */
@@ -651,10 +654,13 @@ a {
   backface-visibility: hidden;
   -webkit-backface-visibility: hidden;
 }
-
+.card-wrapper[data-dragging="true"] {
+  opacity: 0.5;
+}
 /* Prevent the wrapper from dimming the card if it's flipped */
 .card-wrapper[data-flipped="true"] {
   opacity: 1 !important;
+  z-index: 5;
 }
 
 /* Ensure the backside and its children always show the correct cursor */
