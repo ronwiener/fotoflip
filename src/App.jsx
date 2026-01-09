@@ -179,7 +179,7 @@ function DraggableCard({
     transform,
     transition,
     isDragging,
-  } = useSortable({ id: item.id });
+  } = useSortable({ id: item.id, disabled: item.flipped });
 
   const style = {
     transform: CSS.Transform.toString(transform),
@@ -189,28 +189,24 @@ function DraggableCard({
     cursor: isDragging ? "grabbing" : "grab",
   };
 
-  const handlePointerUp = (e) => {
-    // If the sensor determined this was a drag/long-press, do not flip.
-    if (isDragging) return;
-
-    e.stopPropagation();
-
-    // If we already have items selected, a click should toggle selection.
-    // Otherwise, a simple click flips the card.
-    if (selectedIds && selectedIds.size > 0) {
-      onToggleSelect(item.id);
-    } else {
-      onFlip(item.id);
-    }
-  };
-
   return (
     <div
       ref={setNodeRef}
       style={style}
       data-dragging={isDragging}
       className={`card-wrapper ${isSelected ? "selected" : ""}`}
-      onPointerUp={handlePointerUp}
+      onPointerDown={(e) => {
+        if (selectedIds.size > 0) {
+          e.stopPropagation();
+          onToggleSelect(item.id);
+        }
+      }}
+      // Use onPointerUp ONLY for flipping
+      onPointerUp={(e) => {
+        if (isDragging || selectedIds.size > 0 || item.flipped) return;
+        e.stopPropagation();
+        onFlip(item.id);
+      }}
     >
       <div className={`card ${item.flipped ? "flipped" : ""}`}>
         <div className="card-face card-front">
@@ -235,7 +231,10 @@ function DraggableCard({
         </div>
 
         <div className="card-face card-back">
-          <div className="notes-content">
+          <div
+            className="notes-content"
+            onPointerUp={(e) => e.stopPropagation()}
+          >
             <textarea
               value={item.notes}
               // Prevent typing from flipping the card
@@ -290,9 +289,18 @@ export default function App() {
   const [isSaved, setIsSaved] = useState(false);
 
   const sensors = useSensors(
-    useSensor(PointerSensor, { activationConstraint: { distance: 10 } }),
+    useSensor(PointerSensor, {
+      activationConstraint: {
+        distance: 15, // Lower distance is fine IF we add a delay
+        delay: 150, // 150ms delay means a quick tap (flip) won't trigger drag
+        tolerance: 5,
+      },
+    }),
     useSensor(TouchSensor, {
-      activationConstraint: { delay: 250, tolerance: 5 },
+      activationConstraint: {
+        delay: 300, // Solid long-press for mobile
+        tolerance: 10,
+      },
     })
   );
   const galleryRef = useRef(null);
@@ -551,24 +559,20 @@ export default function App() {
 
   const handleDragStart = (e) => {
     const { active } = e;
+    const draggedItem = items.find((i) => i.id === active.id);
 
-    // 1. Physical feedback (vibrate phone)
-    if (window.navigator.vibrate) {
-      window.navigator.vibrate(15);
-    }
+    // If the user tries to drag a flipped card (should be blocked by 'disabled' anyway)
+    if (draggedItem?.flipped) return;
 
-    // 2. Select the item being dragged
+    if (window.navigator.vibrate) window.navigator.vibrate(15);
+
     setSelectedIds((prev) => {
-      if (!prev.has(active.id)) {
-        const next = new Set(prev);
-        next.add(active.id);
-        return next;
-      }
-      return prev;
+      const next = new Set(prev);
+      next.add(active.id);
+      return next;
     });
 
-    // 3. Set the preview image for the DragOverlay
-    setActiveDragItem(items.find((i) => i.id === active.id));
+    setActiveDragItem(draggedItem);
   };
 
   const handleDragEnd = async (event) => {
