@@ -222,7 +222,8 @@ function DraggableCard({
             className="zoom-btn"
             data-no-dnd="true" // Matches your sensor exclusion
             onPointerDown={(e) => e.stopPropagation()}
-            onPointerUp={(e) => {
+            onPointerUp={(e) => e.stopPropagation()}
+            onClick={(e) => {
               e.stopPropagation();
               onZoom({ type: "img", url: item.imageURL });
             }}
@@ -248,7 +249,7 @@ function DraggableCard({
                 onPointerDown={(e) => e.stopPropagation()}
                 onPointerUp={(e) => {
                   e.stopPropagation();
-                  onZoom({ type: "img", url: item.imageURL });
+                  onZoom({ type: "notes", id: item.id });
                 }}
                 // Adding onClick ensures it works if pointer events are blocked
                 onClick={(e) => e.stopPropagation()}
@@ -294,19 +295,11 @@ export default function App() {
   const sensors = useSensors(
     useSensor(PointerSensor, {
       activationConstraint: { distance: 3 },
-      onActivation: ({ event }) =>
-        !event.target.closest('[data-no-dnd="true"]'),
     }),
     useSensor(TouchSensor, {
       activationConstraint: {
-        delay: 250, // Press and hold to drag
+        delay: 200, // Reduced slightly for better responsiveness
         tolerance: 5,
-      },
-      // Add this to the TouchSensor as well
-      onActivation: ({ event }) => {
-        if (event.target.closest('[data-no-dnd="true"]')) {
-          return false;
-        }
       },
     })
   );
@@ -834,15 +827,14 @@ export default function App() {
             </div>
           )}
         </DragOverlay>
-
         {zoomData && (
-          <div className="zoom-overlay" onClick={() => setZoomData(null)}>
+          <div className="zoom-overlay" onPointerDown={() => setZoomData(null)}>
             {zoomData.type === "img" ? (
               <img src={zoomData.url} alt="" className="zoomed-image" />
             ) : (
               <div
                 className="zoomed-notes-box"
-                onClick={(e) => e.stopPropagation()}
+                onPointerDown={(e) => e.stopPropagation()} // Stops click-out from closing while typing
               >
                 <h3>Notes</h3>
                 <textarea
@@ -850,7 +842,18 @@ export default function App() {
                   onChange={(e) => updateNotes(zoomData.id, e.target.value)}
                   autoFocus
                 />
-                <button onClick={() => setZoomData(null)}>Close</button>
+                <button
+                  onPointerUp={(e) => {
+                    e.stopPropagation();
+                    setZoomData(null); // This is the fast trigger
+                  }}
+                  onClick={(e) => {
+                    // This stops the 'ghost click' from hitting the background
+                    e.stopPropagation();
+                  }}
+                >
+                  Close
+                </button>
               </div>
             )}
           </div>
