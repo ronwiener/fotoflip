@@ -179,12 +179,18 @@ function DraggableCard({
     transform,
     transition,
     isDragging,
-  } = useSortable({ id: item.id, disabled: item.flipped });
+  } = useSortable({
+    id: item.id,
+    disabled: item.flipped, // Dragging is disabled when flipped
+  });
 
   const style = {
     transform: CSS.Transform.toString(transform),
     transition,
     zIndex: isDragging ? 1000 : 1,
+    // Add touch-action none to the container to prevent
+    // browser scrolling while trying to drag
+    touchAction: "none",
   };
 
   return (
@@ -194,15 +200,17 @@ function DraggableCard({
       className={`card-wrapper ${isSelected ? "selected" : ""}`}
       data-dragging={isDragging}
       data-flipped={item.flipped}
+      {...attributes}
+      {...listeners}
     >
       <div className={`card ${item.flipped ? "flipped" : ""}`}>
+        {/* FRONT FACE */}
         <div
           className="card-face card-front"
-          {...attributes}
-          {...listeners}
-          style={{ pointerEvents: "auto" }}
           onPointerUp={(e) => {
+            // If we just finished a drag, don't trigger a flip
             if (isDragging) return;
+
             if (selectedIds.size > 0) {
               onToggleSelect(item.id);
             } else {
@@ -212,8 +220,7 @@ function DraggableCard({
         >
           <button
             className="zoom-btn"
-            style={{ pointerEvents: "auto" }}
-            // Use onPointerUp + stopPropagation to prevent card flip
+            data-no-dnd="true" // Matches your sensor exclusion
             onPointerUp={(e) => {
               e.stopPropagation();
               onZoom({ type: "img", url: item.imageURL });
@@ -224,11 +231,11 @@ function DraggableCard({
           <img src={item.imageURL} alt="" />
         </div>
 
+        {/* BACK FACE */}
         <div className="card-face card-back" data-no-dnd="true">
           <div className="notes-content">
             <textarea
               value={item.notes}
-              data-no-dnd="true"
               onChange={(e) => updateNotes(item.id, e.target.value)}
               placeholder="Zoom to write..."
             />
@@ -284,15 +291,16 @@ export default function App() {
         distance: 3,
       },
       // ADD THIS: Prevents the sensor from starting a drag on the textarea
-      onActivation: (event) => {
-        if (event.nativeEvent.target.closest('[data-no-dnd="true"]')) {
+      onActivation: ({ event }) => {
+        // Destructure { event } here
+        if (event.target.closest('[data-no-dnd="true"]')) {
           return false;
         }
       },
     }),
     useSensor(TouchSensor, {
       activationConstraint: {
-        delay: 200,
+        delay: 250,
         tolerance: 5,
       },
     })
