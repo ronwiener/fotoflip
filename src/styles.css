@@ -609,6 +609,23 @@ a {
   pointer-events: none;
 }
 
+/* Update this block in styles.css */
+.card-face.card-back {
+  transform: rotateY(180deg);
+  padding: 15px;
+  display: flex;
+  flex-direction: column;
+  /* Add these two lines */
+  touch-action: pan-y !important;
+  user-select: text !important;
+}
+
+.card-back textarea {
+  /* Ensure the textarea is easy to hit */
+  cursor: text !important;
+  z-index: 10;
+}
+
 /* Highlight styling for selected images */
 .card-wrapper.selected {
   outline: 4px solid #0077ff; /* High-visibility blue */
@@ -638,6 +655,14 @@ a {
 /* Prevent the wrapper from dimming the card if it's flipped */
 .card-wrapper[data-flipped="true"] {
   opacity: 1 !important;
+}
+
+/* Ensure the backside and its children always show the correct cursor */
+.card-back,
+.card-back textarea,
+.card-back button {
+  cursor: auto !important;
+  pointer-events: all !important;
 }
 
 .zoom-btn {

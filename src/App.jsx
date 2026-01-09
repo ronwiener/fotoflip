@@ -197,6 +197,7 @@ function DraggableCard({
       data-flipped={item.flipped}
       className={`card-wrapper ${isSelected ? "selected" : ""}`}
       onPointerDown={(e) => {
+        if (item.flipped) return;
         if (selectedIds.size > 0) {
           e.stopPropagation();
           onToggleSelect(item.id);
@@ -231,15 +232,11 @@ function DraggableCard({
           </div>
         </div>
 
-        <div className="card-face card-back">
-          <div
-            className="notes-content"
-            onPointerUp={(e) => e.stopPropagation()}
-          >
+        <div className="card-face card-back" data-no-dnd="true">
+          <div className="notes-content">
             <textarea
               value={item.notes}
-              // Prevent typing from flipping the card
-              onPointerUp={(e) => e.stopPropagation()}
+              data-no-dnd="true"
               onChange={(e) => updateNotes(item.id, e.target.value)}
               placeholder="Zoom to write..."
             />
@@ -292,14 +289,20 @@ export default function App() {
   const sensors = useSensors(
     useSensor(PointerSensor, {
       activationConstraint: {
-        distance: 15, // Lower distance is fine IF we add a delay
-        delay: 150, // 150ms delay means a quick tap (flip) won't trigger drag
+        distance: 15,
+        delay: 150,
         tolerance: 5,
+      },
+      // ADD THIS: Prevents the sensor from starting a drag on the textarea
+      onActivation: (event) => {
+        if (event.nativeEvent.target.closest('[data-no-dnd="true"]')) {
+          return false;
+        }
       },
     }),
     useSensor(TouchSensor, {
       activationConstraint: {
-        delay: 300, // Solid long-press for mobile
+        delay: 300,
         tolerance: 10,
       },
     })
@@ -648,8 +651,9 @@ export default function App() {
       onDragEnd={handleDragEnd}
       onDragCancel={() => {
         // This fixes the "Sticky Highlight" if you drop the image in a weird spot
-        setSelectedIds(new Set());
+
         setActiveDragItem(null);
+        setSelectedIds(new Set());
       }}
     >
       <div className="app">
