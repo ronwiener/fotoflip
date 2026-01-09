@@ -554,12 +554,13 @@ a {
 .card-wrapper {
   aspect-ratio: 3/4;
   perspective: 1000px;
-  touch-action: pan-y;
+  touch-action: none;
   user-select: none;
   -webkit-user-select: none;
   transition: transform 0.2s cubic-bezier(0.2, 0, 0, 1);
   position: relative;
   cursor: grab;
+  pointer-events: auto !important;
 }
 
 .card {
@@ -594,6 +595,18 @@ a {
 .card-front {
   z-index: 2;
   pointer-events: none;
+}
+.card-front,
+.card-front img {
+  pointer-events: none !important;
+  -webkit-user-drag: none;
+  user-select: none;
+}
+
+.zoom-btn,
+.card-back,
+.card-back * {
+  pointer-events: auto !important;
 }
 
 .card-back {

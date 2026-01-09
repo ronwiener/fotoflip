@@ -212,9 +212,10 @@ function DraggableCard({
       }}
     >
       <div className={`card ${item.flipped ? "flipped" : ""}`}>
-        <div className="card-face card-front">
+        <div className="card-face card-front" style={{ pointerEvents: "none" }}>
           <button
             className="zoom-btn"
+            style={{ pointerEvents: "auto" }}
             // Use onPointerUp + stopPropagation to prevent card flip
             onPointerUp={(e) => {
               e.stopPropagation();
@@ -223,12 +224,7 @@ function DraggableCard({
           >
             🔍
           </button>
-          <img
-            src={item.imageURL}
-            alt=""
-            draggable="false"
-            style={{ pointerEvents: "none" }}
-          />
+          <img src={item.imageURL} alt="" draggable="false" />
         </div>
 
         <div className="card-face card-back" data-no-dnd="true">
