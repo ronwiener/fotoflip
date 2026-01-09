@@ -221,6 +221,7 @@ function DraggableCard({
           <button
             className="zoom-btn"
             data-no-dnd="true" // Matches your sensor exclusion
+            onPointerDown={(e) => e.stopPropagation()}
             onPointerUp={(e) => {
               e.stopPropagation();
               onZoom({ type: "img", url: item.imageURL });
@@ -236,16 +237,21 @@ function DraggableCard({
           <div className="notes-content">
             <textarea
               value={item.notes}
+              onPointerUp={(e) => e.stopPropagation()}
               onChange={(e) => updateNotes(item.id, e.target.value)}
               placeholder="Zoom to write..."
             />
             <div className="notes-actions">
               <button
                 className="btn-zoom"
+                data-no-dnd="true"
+                onPointerDown={(e) => e.stopPropagation()}
                 onPointerUp={(e) => {
                   e.stopPropagation();
-                  onZoom({ type: "notes", content: item.notes, id: item.id });
+                  onZoom({ type: "img", url: item.imageURL });
                 }}
+                // Adding onClick ensures it works if pointer events are blocked
+                onClick={(e) => e.stopPropagation()}
               >
                 🔍 Zoom
               </button>
@@ -287,21 +293,20 @@ export default function App() {
 
   const sensors = useSensors(
     useSensor(PointerSensor, {
-      activationConstraint: {
-        distance: 3,
-      },
-      // ADD THIS: Prevents the sensor from starting a drag on the textarea
-      onActivation: ({ event }) => {
-        // Destructure { event } here
-        if (event.target.closest('[data-no-dnd="true"]')) {
-          return false;
-        }
-      },
+      activationConstraint: { distance: 3 },
+      onActivation: ({ event }) =>
+        !event.target.closest('[data-no-dnd="true"]'),
     }),
     useSensor(TouchSensor, {
       activationConstraint: {
-        delay: 250,
+        delay: 250, // Press and hold to drag
         tolerance: 5,
+      },
+      // Add this to the TouchSensor as well
+      onActivation: ({ event }) => {
+        if (event.target.closest('[data-no-dnd="true"]')) {
+          return false;
+        }
       },
     })
   );

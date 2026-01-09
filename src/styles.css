@@ -1225,6 +1225,32 @@ a {
     font-size: 0.85rem !important;
   }
 
+  .zoom-btn {
+    width: 44px !important; /* Larger touch target */
+    height: 44px !important;
+    top: 5px;
+    right: 5px;
+    font-size: 1.2rem;
+    z-index: 100 !important; /* Ensure it stays above everything */
+
+    /* Crucial: prevent the browser from thinking a tap is a drag/scroll */
+    touch-action: none;
+    pointer-events: auto !important;
+  }
+  .zoomed-image {
+    width: auto;
+    height: auto;
+    max-width: 100%;
+    max-height: 80vh;
+    object-fit: contain;
+  }
+
+  .zoomed-notes-box {
+    width: 95%;
+    height: 70vh; /* Leave room for the mobile keyboard */
+    padding: 15px;
+  }
+
   .card-drag-preview {
     z-index: 9999 !important;
     position: fixed !important;
