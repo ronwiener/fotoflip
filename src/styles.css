@@ -560,7 +560,7 @@ a {
   /* Add these to prevent click-leakage */
   pointer-events: auto !important;
   cursor: pointer !important;
-  z-index: 30; /* Ensure it's above the image but below the zoom overlay */
+  z-index: 100 !important; /* Ensure it's above the image but below the zoom overlay */
 
   /* Ensure the container doesn't expand */
   display: flex;
@@ -737,6 +737,11 @@ a {
 }
 
 .card.flipped .card-face.card-front {
+  pointer-events: none !important;
+  visibility: hidden;
+}
+
+.card.flipped .card-front {
   pointer-events: none !important;
   visibility: hidden;
 }
@@ -1088,6 +1093,12 @@ a {
 .zoom-footer-close:hover {
   background: #005ecb;
   transform: scale(1.05);
+}
+
+.zoom-footer-close,
+.notes-close-footer {
+  pointer-events: auto !important;
+  isolation: isolate;
 }
 
 /* Ensure the Notes footer button looks consistent */

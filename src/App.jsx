@@ -227,6 +227,7 @@ function DraggableCard({
             }}
             /* 2. Move your logic here for better accuracy */
             onClick={(e) => {
+              e.preventDefault();
               e.stopPropagation(); // Prevents the card from flipping
               onToggleSelect(item.id);
             }}
@@ -311,11 +312,29 @@ export default function App() {
   const sensors = useSensors(
     useSensor(PointerSensor, {
       activationConstraint: { distance: 3 },
+      // Prevent drag from starting if clicking UI buttons
+      onActivation: (event) => {
+        const target = event.nativeEvent.target;
+        if (
+          target.closest(".select-indicator") ||
+          target.closest(".zoom-btn") ||
+          target.closest("button")
+        ) {
+          return false;
+        }
+      },
     }),
     useSensor(TouchSensor, {
-      activationConstraint: {
-        delay: 200, // Reduced slightly for better responsiveness
-        tolerance: 5,
+      activationConstraint: { delay: 200, tolerance: 5 },
+      onActivation: (event) => {
+        const target = event.nativeEvent.target;
+        if (
+          target.closest(".select-indicator") ||
+          target.closest(".zoom-btn") ||
+          target.closest("button")
+        ) {
+          return false;
+        }
       },
     })
   );
