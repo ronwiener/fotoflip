@@ -1044,16 +1044,24 @@ a {
 
 /* Styled button below the zoomed image */
 .zoom-footer-close {
-  padding: 12px 30px;
+  margin-top: 20px;
+  padding: 12px 40px;
   background: #0077ff;
   color: white;
   border: none;
   border-radius: 25px;
   font-weight: bold;
-  font-size: 1rem;
+  font-size: 1.1rem;
   cursor: pointer;
   box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
-  transition: transform 0.2s;
+  /* Prevents the button from being accidentally highlighted */
+  user-select: none;
+  touch-action: none;
+}
+
+.zoom-footer-close:active {
+  transform: scale(0.95);
+  background: #005ecb;
 }
 
 .zoom-footer-close:hover {

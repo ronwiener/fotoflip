@@ -853,8 +853,10 @@ export default function App() {
                   className="zoom-footer-close"
                   onPointerDown={(e) => {
                     e.stopPropagation();
+                    e.nativeEvent.stopImmediatePropagation();
                     setZoomData(null);
                   }}
+                  onClick={(e) => e.stopPropagation()}
                 >
                   Close Zoom
                 </button>
@@ -867,15 +869,19 @@ export default function App() {
                 <h3>Notes</h3>
                 <textarea
                   value={items.find((i) => i.id === zoomData.id)?.notes || ""}
-                  onPointerDown={(e) => e.stopPropagation()} // Allows clicking inside text
+                  onPointerDown={(e) => e.stopPropagation()}
                   onChange={(e) => updateNotes(zoomData.id, e.target.value)}
                   autoFocus
                 />
                 <button
                   className="notes-close-footer"
                   onPointerDown={(e) => {
-                    e.stopPropagation(); // Stops the "flip" from triggering on the card below
+                    e.stopPropagation();
+                    e.nativeEvent.stopImmediatePropagation(); // Add this line
                     setZoomData(null);
+                  }}
+                  onClick={(e) => {
+                    e.stopPropagation(); // Shield against ghost clicks
                   }}
                 >
                   Close Notes
