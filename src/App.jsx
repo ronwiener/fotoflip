@@ -224,12 +224,17 @@ function DraggableCard({
             /* 1. Prevent the card from starting a drag */
             onPointerDown={(e) => {
               e.stopPropagation();
+              if (e.nativeEvent) e.nativeEvent.stopImmediatePropagation();
             }}
-            /* 2. Move your logic here for better accuracy */
+            onPointerUp={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              if (e.nativeEvent) e.nativeEvent.stopImmediatePropagation();
+              onToggleSelect(item.id);
+            }}
             onClick={(e) => {
               e.preventDefault();
               e.stopPropagation(); // Prevents the card from flipping
-              onToggleSelect(item.id);
             }}
           >
             {isSelected ? "✓" : ""}
@@ -312,13 +317,12 @@ export default function App() {
   const sensors = useSensors(
     useSensor(PointerSensor, {
       activationConstraint: { distance: 3 },
-      // Prevent drag from starting if clicking UI buttons
       onActivation: (event) => {
+        // If the user clicks the checkbox or zoom button, DO NOT start a drag
         const target = event.nativeEvent.target;
         if (
           target.closest(".select-indicator") ||
-          target.closest(".zoom-btn") ||
-          target.closest("button")
+          target.closest(".zoom-btn")
         ) {
           return false;
         }
@@ -330,8 +334,7 @@ export default function App() {
         const target = event.nativeEvent.target;
         if (
           target.closest(".select-indicator") ||
-          target.closest(".zoom-btn") ||
-          target.closest("button")
+          target.closest(".zoom-btn")
         ) {
           return false;
         }
