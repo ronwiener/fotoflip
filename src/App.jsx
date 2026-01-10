@@ -167,6 +167,7 @@ function DraggableCard({
   item,
   isSelected,
   selectedIds,
+  isClosingZoom,
   onToggleSelect,
   onFlip,
   onZoom,
@@ -208,7 +209,7 @@ function DraggableCard({
         <div
           className="card-face card-front"
           onPointerUp={(e) => {
-            if (isDragging) return;
+            if (isDragging || isClosingZoom) return;
 
             if (isSelected || selectedIds.size > 0) {
               onToggleSelect(item.id);
@@ -301,6 +302,7 @@ export default function App() {
   });
   const [showScrollTop, setShowScrollTop] = useState(false);
   const [isSaved, setIsSaved] = useState(false);
+  const [isClosingZoom, setIsClosingZoom] = useState(false);
 
   const sensors = useSensors(
     useSensor(PointerSensor, {
@@ -550,6 +552,24 @@ export default function App() {
     );
   }, []);
 
+  const handleCloseZoom = (e) => {
+    if (e) {
+      e.stopPropagation();
+      e.nativeEvent?.stopImmediatePropagation();
+    }
+
+    // 1. Enter protection mode
+    setIsClosingZoom(true);
+
+    // 2. Close the zoom
+    setZoomData(null);
+
+    // 3. Exit protection mode after a tiny delay
+    setTimeout(() => {
+      setIsClosingZoom(false);
+    }, 100);
+  };
+
   const handleImport = async (event) => {
     const file = event.target.files[0];
     if (!file || !session?.user) return; // Add check
@@ -796,7 +816,7 @@ export default function App() {
               {visibleItems.map((item) => (
                 <DraggableCard
                   key={item.id}
-                  item={item}
+                  isClosingZoom={isClosingZoom}
                   selectedIds={selectedIds}
                   isSelected={selectedIds.has(item.id)}
                   onToggleSelect={(id) => {
@@ -851,11 +871,7 @@ export default function App() {
                 <img src={zoomData.url} alt="" className="zoomed-image" />
                 <button
                   className="zoom-footer-close"
-                  onPointerDown={(e) => {
-                    e.stopPropagation();
-                    e.nativeEvent.stopImmediatePropagation();
-                    setZoomData(null);
-                  }}
+                  onPointerDown={handleCloseZoom}
                   onClick={(e) => e.stopPropagation()}
                 >
                   Close Zoom
@@ -875,11 +891,7 @@ export default function App() {
                 />
                 <button
                   className="notes-close-footer"
-                  onPointerDown={(e) => {
-                    e.stopPropagation();
-                    e.nativeEvent.stopImmediatePropagation(); // Add this line
-                    setZoomData(null);
-                  }}
+                  onPointerDown={handleCloseZoom}
                   onClick={(e) => {
                     e.stopPropagation(); // Shield against ghost clicks
                   }}
