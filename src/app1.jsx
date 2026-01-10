@@ -217,10 +217,22 @@ function DraggableCard({
             }
           }}
         >
+          <div
+            className={`select-indicator ${isSelected ? "active" : ""}`}
+            onPointerDown={(e) => {
+              e.stopPropagation();
+              e.nativeEvent.stopImmediatePropagation();
+              onToggleSelect(item.id);
+            }}
+            onPointerUp={(e) => e.stopPropagation()}
+          >
+            {isSelected ? "✓" : ""}
+          </div>
           <button
             className="zoom-btn"
-            data-no-dnd="true"
+            data-no-dnd="true" // Matches your sensor exclusion
             onPointerDown={(e) => e.stopPropagation()}
+            onPointerUp={(e) => e.stopPropagation()}
             onClick={(e) => {
               e.stopPropagation();
               onZoom({ type: "img", url: item.imageURL });
@@ -864,3 +876,7 @@ export default function App() {
     </DndContext>
   );
 }
+
+/*
+everything works -- before we do the whole card selection
+*/

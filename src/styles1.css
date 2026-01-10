@@ -709,28 +709,12 @@ a {
   transition: all 0.2s ease;
 }
 
-.card-wrapper.selected .card-front {
-  outline: 4px solid #0077ff;
-  outline-offset: -4px;
-}
-
 /* Optional: Add a subtle blue tint overlay to the image when selected */
 .card-wrapper.selected .card-front::after {
-  content: "✓";
+  content: "";
   position: absolute;
-  top: 10px;
-  left: 10px;
-  width: 28px;
-  height: 28px;
-  background: #0077ff;
-  color: white;
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-weight: bold;
-  z-index: 10;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+  inset: 0;
+  background: rgba(0, 119, 255, 0.1);
   pointer-events: none;
 }
 
