@@ -843,40 +843,42 @@ export default function App() {
         </DragOverlay>
         {zoomData && (
           <div className="zoom-overlay" onClick={() => setZoomData(null)}>
-            <button
-              className="zoom-close-btn"
-              onPointerDown={(e) => {
-                e.stopPropagation(); // Stop the event from reaching the image
-                setZoomData(null);
-              }}
-            >
-              &times;
-            </button>
             {zoomData.type === "img" ? (
-              <img
-                src={zoomData.url}
-                alt=""
-                className="zoomed-image"
-                onClick={(e) => e.stopPropagation()} // Prevents closing if clicking the image itself
-              />
+              <div
+                className="zoomed-image-container"
+                onClick={(e) => e.stopPropagation()}
+              >
+                <img src={zoomData.url} alt="" className="zoomed-image" />
+                <button
+                  className="zoom-footer-close"
+                  onPointerDown={(e) => {
+                    e.stopPropagation();
+                    setZoomData(null);
+                  }}
+                >
+                  Close Zoom
+                </button>
+              </div>
             ) : (
               <div
                 className="zoomed-notes-box"
-                onClick={(e) => e.stopPropagation()} // Stops click-out from closing while typing
+                onClick={(e) => e.stopPropagation()}
               >
                 <h3>Notes</h3>
                 <textarea
                   value={items.find((i) => i.id === zoomData.id)?.notes || ""}
+                  onPointerDown={(e) => e.stopPropagation()} // Allows clicking inside text
                   onChange={(e) => updateNotes(zoomData.id, e.target.value)}
                   autoFocus
                 />
                 <button
+                  className="notes-close-footer"
                   onPointerDown={(e) => {
-                    e.stopPropagation();
-                    setZoomData(null); // This is the fast trigger
+                    e.stopPropagation(); // Stops the "flip" from triggering on the card below
+                    setZoomData(null);
                   }}
                 >
-                  Close
+                  Close Notes
                 </button>
               </div>
             )}
