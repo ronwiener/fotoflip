@@ -210,7 +210,7 @@ function DraggableCard({
           onPointerUp={(e) => {
             if (isDragging) return;
 
-            if (selectedIds.size > 0) {
+            if (isSelected || selectedIds.size > 0) {
               onToggleSelect(item.id);
             } else {
               onFlip(item.id);
