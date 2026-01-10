@@ -842,18 +842,27 @@ export default function App() {
           )}
         </DragOverlay>
         {zoomData && (
-          <div className="zoom-overlay" onPointerDown={() => setZoomData(null)}>
+          <div className="zoom-overlay" onClick={() => setZoomData(null)}>
+            <button
+              className="zoom-close-btn"
+              onPointerDown={(e) => {
+                e.stopPropagation(); // Stop the event from reaching the image
+                setZoomData(null);
+              }}
+            >
+              &times;
+            </button>
             {zoomData.type === "img" ? (
               <img
                 src={zoomData.url}
                 alt=""
                 className="zoomed-image"
-                onPointerDown={(e) => e.stopPropagation()} // Prevents closing if clicking the image itself
+                onClick={(e) => e.stopPropagation()} // Prevents closing if clicking the image itself
               />
             ) : (
               <div
                 className="zoomed-notes-box"
-                onPointerDown={(e) => e.stopPropagation()} // Stops click-out from closing while typing
+                onClick={(e) => e.stopPropagation()} // Stops click-out from closing while typing
               >
                 <h3>Notes</h3>
                 <textarea
@@ -862,13 +871,9 @@ export default function App() {
                   autoFocus
                 />
                 <button
-                  onPointerUp={(e) => {
+                  onPointerDown={(e) => {
                     e.stopPropagation();
                     setZoomData(null); // This is the fast trigger
-                  }}
-                  onClick={(e) => {
-                    // This stops the 'ghost click' from hitting the background
-                    e.stopPropagation();
                   }}
                 >
                   Close
