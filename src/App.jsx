@@ -844,7 +844,12 @@ export default function App() {
         {zoomData && (
           <div className="zoom-overlay" onPointerDown={() => setZoomData(null)}>
             {zoomData.type === "img" ? (
-              <img src={zoomData.url} alt="" className="zoomed-image" />
+              <img
+                src={zoomData.url}
+                alt=""
+                className="zoomed-image"
+                onPointerDown={(e) => e.stopPropagation()} // Prevents closing if clicking the image itself
+              />
             ) : (
               <div
                 className="zoomed-notes-box"
