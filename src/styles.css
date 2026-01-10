@@ -1239,18 +1239,35 @@ a {
   }
 
   .select-indicator {
-    width: 32px;
-    height: 32px;
-    top: 8px;
-    left: 8px;
-    background: rgba(255, 255, 255, 0.4);
-    border: 2px solid rgba(0, 0, 0, 0.2);
+    position: absolute;
+    top: 10px;
+    left: 10px;
+    width: 22px;
+    height: 22px;
+
+    /* Change this from 50% to a small value for a square */
+    border-radius: 4px;
+
+    border: 2px solid rgba(255, 255, 255, 0.8);
+    background: rgba(0, 0, 0, 0.2);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    font-size: 14px;
+    transition: all 0.2s ease;
+    z-index: 10;
   }
 
-  select-indicator::before {
-    content: ""; /* Can add a '+' here if you want */
-    font-size: 14px;
-    color: rgba(0, 0, 0, 0.3);
+  .select-indicator.active {
+    background: #0077ff;
+    border-color: #0077ff;
+  }
+
+  .select-indicator:hover {
+    transform: scale(1.1);
+    background: rgba(255, 255, 255, 0.3);
+    border-color: white;
   }
 
   .card-wrapper {
