@@ -167,14 +167,6 @@ a {
   font-style: italic;
 }
 
-/* Add this to highlight the cards themselves */
-.card-wrapper.selected {
-  outline: 4px solid #007bff;
-  outline-offset: 2px;
-  border-radius: 12px;
-  z-index: 10;
-}
-
 /* Auth Container - Full Screen Centering */
 .auth-container {
   display: flex;
@@ -551,29 +543,40 @@ a {
   -webkit-overflow-scrolling: touch;
 }
 
+.card-wrapper.selected {
+  outline: 4px solid #0077ff;
+  outline-offset: 2px;
+  border-radius: 12px;
+}
+
 .select-indicator {
   position: absolute;
   top: 10px;
   left: 10px;
-  width: 24px;
-  height: 24px;
+  width: 26px;
+  height: 26px;
   border-radius: 50%;
-  background: rgba(255, 255, 255, 0.7);
-  border: 2px solid #ccc;
-  z-index: 60; /* Higher than the image */
+  background: rgba(255, 255, 255, 0.6);
+  border: 2px solid rgba(0, 0, 0, 0.2); /* Makes it look like a real checkbox */
+  z-index: 100;
   display: flex;
   align-items: center;
   justify-content: center;
-  color: white;
-  font-weight: bold;
   cursor: pointer;
   transition: all 0.2s ease;
+  color: white;
+  font-weight: bold;
+}
+
+.select-indicator:hover {
+  background: rgba(255, 255, 255, 0.9);
+  transform: scale(1.1);
 }
 
 .select-indicator.active {
   background: #0077ff;
   border-color: #0077ff;
-  transform: scale(1.1);
+  box-shadow: 0 2px 8px rgba(0, 119, 255, 0.4);
 }
 
 .card-wrapper {
