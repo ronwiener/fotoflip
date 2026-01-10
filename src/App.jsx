@@ -208,15 +208,11 @@ function DraggableCard({
         <div
           className="card-face card-front"
           onPointerUp={(e) => {
-            // 1. If we just finished a drag, do nothing (prevents accidental flips)
             if (isDragging) return;
 
-            // 2. CHECK: If any cards are already selected, we are in "Selection Mode"
-            // Tapping a card now toggles it in the set instead of flipping it.
             if (selectedIds.size > 0) {
               onToggleSelect(item.id);
             } else {
-              // 3. If nothing is selected, perform the default action (Flip)
               onFlip(item.id);
             }
           }}
@@ -225,8 +221,10 @@ function DraggableCard({
             className={`select-indicator ${isSelected ? "active" : ""}`}
             onPointerDown={(e) => {
               e.stopPropagation();
+              e.nativeEvent.stopImmediatePropagation();
               onToggleSelect(item.id);
             }}
+            onPointerUp={(e) => e.stopPropagation()}
           >
             {isSelected ? "✓" : ""}
           </div>

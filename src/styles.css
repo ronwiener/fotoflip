@@ -1186,6 +1186,14 @@ a {
     height: 32px;
     top: 8px;
     left: 8px;
+    background: rgba(255, 255, 255, 0.4);
+    border: 2px solid rgba(0, 0, 0, 0.2);
+  }
+
+  select-indicator::before {
+    content: ""; /* Can add a '+' here if you want */
+    font-size: 14px;
+    color: rgba(0, 0, 0, 0.3);
   }
 
   .card-wrapper {
