@@ -558,9 +558,9 @@ a {
   border-radius: 4px; /* Your new square shape */
 
   /* Add these to prevent click-leakage */
-  pointer-events: auto;
-  cursor: pointer;
-  z-index: 20; /* Ensure it's above the image but below the zoom overlay */
+  pointer-events: auto !important;
+  cursor: pointer !important;
+  z-index: 30; /* Ensure it's above the image but below the zoom overlay */
 
   /* Ensure the container doesn't expand */
   display: flex;
@@ -685,8 +685,9 @@ a {
 }
 
 .card-face.card-front img {
-  pointer-events: none; /* Keeps the image from intercepting the drag */
+  pointer-events: none !important; /* Keeps the image from intercepting the drag */
   -webkit-user-drag: none;
+  user-select: none;
 }
 
 /* Update this block in styles.css */

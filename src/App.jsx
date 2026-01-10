@@ -221,17 +221,14 @@ function DraggableCard({
         >
           <div
             className={`select-indicator ${isSelected ? "active" : ""}`}
+            /* 1. Prevent the card from starting a drag */
             onPointerDown={(e) => {
               e.stopPropagation();
-              e.nativeEvent?.stopImmediatePropagation();
-              onToggleSelect(item.id);
             }}
-            onPointerUp={(e) => {
-              e.stopPropagation();
-              e.nativeEvent?.stopImmediatePropagation();
-            }}
+            /* 2. Move your logic here for better accuracy */
             onClick={(e) => {
-              e.stopPropagation();
+              e.stopPropagation(); // Prevents the card from flipping
+              onToggleSelect(item.id);
             }}
           >
             {isSelected ? "✓" : ""}
