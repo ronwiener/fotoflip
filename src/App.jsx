@@ -208,16 +208,28 @@ function DraggableCard({
         <div
           className="card-face card-front"
           onPointerUp={(e) => {
-            // If we just finished a drag, don't trigger a flip
+            // 1. If we just finished a drag, do nothing (prevents accidental flips)
             if (isDragging) return;
 
+            // 2. CHECK: If any cards are already selected, we are in "Selection Mode"
+            // Tapping a card now toggles it in the set instead of flipping it.
             if (selectedIds.size > 0) {
               onToggleSelect(item.id);
             } else {
+              // 3. If nothing is selected, perform the default action (Flip)
               onFlip(item.id);
             }
           }}
         >
+          <div
+            className={`select-indicator ${isSelected ? "active" : ""}`}
+            onPointerDown={(e) => {
+              e.stopPropagation();
+              onToggleSelect(item.id);
+            }}
+          >
+            {isSelected ? "✓" : ""}
+          </div>
           <button
             className="zoom-btn"
             data-no-dnd="true" // Matches your sensor exclusion
@@ -789,13 +801,17 @@ export default function App() {
                   item={item}
                   selectedIds={selectedIds}
                   isSelected={selectedIds.has(item.id)}
-                  onToggleSelect={(id) =>
+                  onToggleSelect={(id) => {
                     setSelectedIds((prev) => {
-                      const n = new Set(prev);
-                      n.has(id) ? n.delete(id) : n.add(id);
-                      return n;
-                    })
-                  }
+                      const next = new Set(prev);
+                      if (next.has(id)) {
+                        next.delete(id);
+                      } else {
+                        next.add(id);
+                      }
+                      return next;
+                    });
+                  }}
                   onFlip={handleFlip}
                   onZoom={setZoomData}
                   updateNotes={updateNotes}

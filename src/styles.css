@@ -551,6 +551,31 @@ a {
   -webkit-overflow-scrolling: touch;
 }
 
+.select-indicator {
+  position: absolute;
+  top: 10px;
+  left: 10px;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.7);
+  border: 2px solid #ccc;
+  z-index: 60; /* Higher than the image */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+  font-weight: bold;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.select-indicator.active {
+  background: #0077ff;
+  border-color: #0077ff;
+  transform: scale(1.1);
+}
+
 .card-wrapper {
   aspect-ratio: 3/4;
   perspective: 1000px;
@@ -1154,6 +1179,13 @@ a {
     display: block;
     grid-column: 1 / -1; /* Span across all columns */
     height: 250px !important;
+  }
+
+  .select-indicator {
+    width: 32px;
+    height: 32px;
+    top: 8px;
+    left: 8px;
   }
 
   .card-wrapper {
