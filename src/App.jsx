@@ -223,10 +223,15 @@ function DraggableCard({
             className={`select-indicator ${isSelected ? "active" : ""}`}
             onPointerDown={(e) => {
               e.stopPropagation();
-              e.nativeEvent.stopImmediatePropagation();
+              if (e.nativeEvent) {
+                e.nativeEvent.stopImmediatePropagation();
+              }
               onToggleSelect(item.id);
             }}
             onPointerUp={(e) => e.stopPropagation()}
+            onClick={(e) => {
+              e.stopPropagation();
+            }}
           >
             {isSelected ? "✓" : ""}
           </div>

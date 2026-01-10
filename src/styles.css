@@ -555,19 +555,20 @@ a {
   left: 10px;
   width: 22px;
   height: 22px;
+  border-radius: 4px; /* Your new square shape */
 
-  /* Change this from 50% to a small value for a square */
-  border-radius: 4px;
+  /* Add these to prevent click-leakage */
+  pointer-events: auto;
+  cursor: pointer;
+  z-index: 20; /* Ensure it's above the image but below the zoom overlay */
 
-  border: 2px solid rgba(255, 255, 255, 0.8);
-  background: rgba(0, 0, 0, 0.2);
+  /* Ensure the container doesn't expand */
   display: flex;
   align-items: center;
   justify-content: center;
-  color: white;
-  font-size: 14px;
-  transition: all 0.2s ease;
-  z-index: 10;
+
+  border: 2px solid rgba(255, 255, 255, 0.8);
+  background: rgba(0, 0, 0, 0.2);
 }
 
 .select-indicator:hover {
