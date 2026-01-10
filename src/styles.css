@@ -533,7 +533,7 @@ a {
   padding: 20px;
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(160px, 200px));
-  gap: 20px;
+  gap: 25px;
   align-content: start;
   overflow-y: auto;
   flex: 1;
@@ -594,6 +594,8 @@ a {
   position: relative;
   cursor: grab;
   pointer-events: auto !important;
+  isolation: isolate;
+  overflow: visible;
 }
 
 .card-wrapper img {
@@ -630,6 +632,7 @@ a {
   box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
   background: white;
   transform: translateZ(0);
+  pointer-events: auto;
 }
 
 .card-front {
@@ -695,6 +698,8 @@ a {
   /* Add these two lines */
   touch-action: pan-y !important;
   user-select: text !important;
+  pointer-events: none !important;
+  visibility: hidden;
 }
 
 .card-back textarea {
@@ -723,6 +728,16 @@ a {
   inset: 0;
   background: rgba(0, 119, 255, 0.1);
   pointer-events: none;
+}
+
+.card.flipped .card-face.card-back {
+  pointer-events: auto !important;
+  visibility: visible;
+}
+
+.card.flipped .card-face.card-front {
+  pointer-events: none !important;
+  visibility: hidden;
 }
 
 .card.flipped .card-back {
