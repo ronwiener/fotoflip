@@ -173,6 +173,7 @@ function DraggableCard({
   onZoom,
   updateNotes,
 }) {
+  if (!item) return null;
   const {
     attributes,
     listeners,
@@ -816,6 +817,7 @@ export default function App() {
               {visibleItems.map((item) => (
                 <DraggableCard
                   key={item.id}
+                  item={item}
                   isClosingZoom={isClosingZoom}
                   selectedIds={selectedIds}
                   isSelected={selectedIds.has(item.id)}
@@ -862,7 +864,7 @@ export default function App() {
           )}
         </DragOverlay>
         {zoomData && (
-          <div className="zoom-overlay" onClick={() => setZoomData(null)}>
+          <div className="zoom-overlay" onPointerDown={handleCloseZoom}>
             {zoomData.type === "img" ? (
               <div
                 className="zoomed-image-container"
