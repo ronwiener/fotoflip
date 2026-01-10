@@ -553,24 +553,27 @@ a {
   position: absolute;
   top: 10px;
   left: 10px;
-  width: 26px;
-  height: 26px;
-  border-radius: 50%;
-  background: rgba(255, 255, 255, 0.6);
-  border: 2px solid rgba(0, 0, 0, 0.2); /* Makes it look like a real checkbox */
-  z-index: 100;
+  width: 22px;
+  height: 22px;
+
+  /* Change this from 50% to a small value for a square */
+  border-radius: 4px;
+
+  border: 2px solid rgba(255, 255, 255, 0.8);
+  background: rgba(0, 0, 0, 0.2);
   display: flex;
   align-items: center;
   justify-content: center;
-  cursor: pointer;
-  transition: all 0.2s ease;
   color: white;
-  font-weight: bold;
+  font-size: 14px;
+  transition: all 0.2s ease;
+  z-index: 10;
 }
 
 .select-indicator:hover {
   background: rgba(255, 255, 255, 0.9);
   transform: scale(1.1);
+  border-color: white;
 }
 
 .select-indicator.active {
