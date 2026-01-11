@@ -53,17 +53,17 @@ export async function exportGalleryZip(items, selectedIds) {
   const zip = new JSZip();
   const meta = [];
 
-  // If selectedIds is provided and has items, filter the items list
   const itemsToExport =
     selectedIds && selectedIds.size > 0
       ? items.filter((item) => selectedIds.has(item.id))
-      : items; // Default to all if nothing is selected (or you can change this to return)
+      : items;
 
   if (itemsToExport.length === 0) {
     alert("No items selected to export!");
     return;
   }
 
+  // 1. Build the ZIP and Meta Data
   for (const item of itemsToExport) {
     try {
       const response = await fetch(item.imageURL);
@@ -71,26 +71,64 @@ export async function exportGalleryZip(items, selectedIds) {
       const blob = await response.blob();
 
       const cleanFilename = item.image_path.split("/").pop();
-      const zipPath = item.folder
-        ? `${item.folder}/${cleanFilename}`
-        : cleanFilename;
+      // We put images in a subfolder for the HTML viewer
+      const zipPath = `images/${cleanFilename}`;
 
       zip.file(zipPath, blob);
 
       meta.push({
         notes: item.notes,
         folder: item.folder,
-        flipped: item.flipped,
         filename: cleanFilename,
       });
     } catch (err) {
-      console.error("Export error for item:", item.id, err);
+      console.error("Export error:", item.id, err);
     }
   }
 
-  zip.file("gallery.json", JSON.stringify(meta, null, 2));
-  const blob = await zip.generateAsync({ type: "blob" });
+  // 2. Generate a "Non-User" HTML Viewer
+  const htmlContent = `
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Photo Flip Gallery</title>
+    <style>
+        body { font-family: sans-serif; background: #f4f7f6; padding: 20px; color: #333; }
+        .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 30px; }
+        .card { background: white; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 10px rgba(0,0,0,0.1); }
+        img { width: 100%; height: 250px; object-fit: cover; border-bottom: 1px solid #eee; }
+        .content { padding: 15px; }
+        .folder { font-size: 0.7rem; text-transform: uppercase; color: #0077ff; font-weight: bold; margin-bottom: 5px; }
+        .notes { font-size: 0.95rem; line-height: 1.5; white-space: pre-wrap; }
+    </style>
+</head>
+<body>
+    <h1>Photo Flip Export</h1>
+    <div class="grid">
+        ${meta
+          .map(
+            (m) => `
+            <div class="card">
+                <img src="images/${m.filename}" />
+                <div class="content">
+                    <div class="folder">${m.folder || "Main Gallery"}</div>
+                    <div class="notes">${
+                      m.notes || "<i>No notes added.</i>"
+                    }</div>
+                </div>
+            </div>
+        `
+          )
+          .join("")}
+    </div>
+</body>
+</html>`;
 
+  // 3. Add both the App-specific JSON and the Human-readable HTML
+  zip.file("gallery.json", JSON.stringify(meta, null, 2));
+  zip.file("index.html", htmlContent);
+
+  const blob = await zip.generateAsync({ type: "blob" });
   const link = document.createElement("a");
   link.href = URL.createObjectURL(blob);
   link.download = `gallery_export_${
@@ -128,7 +166,7 @@ export async function importGalleryZip(file, onProgress) {
       // Update the UI: Send current count and total back to App.jsx
       if (onProgress) onProgress(i + 1, total);
 
-      const zipPath = m.folder ? `${m.folder}/${m.filename}` : m.filename;
+      const zipPath = `images/${m.filename}`;
       const imgFile = zip.file(zipPath);
       if (!imgFile) continue;
 
