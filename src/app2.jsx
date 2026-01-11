@@ -23,7 +23,7 @@ import {
 import { CSS } from "@dnd-kit/utilities";
 import { snapCenterToCursor } from "@dnd-kit/modifiers";
 import { supabase } from "./supabaseClient";
-import "./styles.css";
+import "./styles1.css";
 
 import {
   loadFolders,
@@ -469,17 +469,15 @@ export default function App() {
         .from("gallery")
         .upload(filePath, file);
       if (!uploadError) {
-        await supabase
-          .from("items")
-          .insert([
-            {
-              image_path: filePath,
-              user_id: session.user.id,
-              notes: "",
-              flipped: false,
-              folder: activeFolder === "Select Folder" ? "" : activeFolder,
-            },
-          ]);
+        await supabase.from("items").insert([
+          {
+            image_path: filePath,
+            user_id: session.user.id,
+            notes: "",
+            flipped: false,
+            folder: activeFolder === "Select Folder" ? "" : activeFolder,
+          },
+        ]);
         completedCount++;
         setUploadProgress({ current: completedCount, total: files.length });
       }
