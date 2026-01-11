@@ -41,20 +41,12 @@ function Auth() {
   const handleLogin = async (e) => {
     e.preventDefault();
     setLoading(true);
-
     const { error } = await supabase.auth.signInWithOtp({
       email,
-      options: {
-        // PKCE flow requires a redirect URL to exchange the code for a session
-        emailRedirectTo: window.location.origin,
-      },
+      options: { emailRedirectTo: window.location.origin },
     });
-
-    if (error) {
-      alert(error.message);
-    } else {
-      alert("Check your email for the login link!");
-    }
+    if (error) alert(error.message);
+    else alert("Check your email for the login link!");
     setLoading(false);
   };
 
@@ -110,12 +102,18 @@ function Auth() {
 /* ---------- UI SUB-COMPONENTS ---------- */
 function MainGalleryDropZone({ activeFolder, setActiveFolder }) {
   const { isOver, setNodeRef } = useDroppable({ id: "Select Folder" });
+  const className = [
+    "nav-btn",
+    activeFolder === "Select Folder" ? "active" : "",
+    isOver ? "folder-hover-active" : "",
+  ]
+    .filter(Boolean)
+    .join(" ");
+
   return (
     <div
       ref={setNodeRef}
-      className={`nav-btn ${activeFolder === "Select Folder" ? "active" : ""} ${
-        isOver ? "folder-hover-active" : ""
-      }`}
+      className={className}
       onClick={() => setActiveFolder("Select Folder")}
     >
       <span className="main-text">Main Gallery</span>
@@ -125,13 +123,16 @@ function MainGalleryDropZone({ activeFolder, setActiveFolder }) {
 
 function FolderButton({ f, activeFolder, setActiveFolder, onDelete }) {
   const { isOver, setNodeRef } = useDroppable({ id: f });
+  const className = [
+    "folder-item",
+    f === activeFolder ? "active" : "",
+    isOver ? "folder-hover-active" : "",
+  ]
+    .filter(Boolean)
+    .join(" ");
+
   return (
-    <div
-      ref={setNodeRef}
-      className={`folder-item ${f === activeFolder ? "active" : ""} ${
-        isOver ? "folder-hover-active" : ""
-      }`}
-    >
+    <div ref={setNodeRef} className={className}>
       <button onClick={() => setActiveFolder(f)} className="folder-name-btn">
         {f}
       </button>
@@ -150,14 +151,59 @@ function FolderButton({ f, activeFolder, setActiveFolder, onDelete }) {
 
 function TrashDropZone({ selectedCount, isDropping }) {
   const { isOver, setNodeRef } = useDroppable({ id: "TRASH_BIN" });
+  const className = [
+    "trash-zone",
+    isOver ? "trash-over" : "",
+    isDropping ? "trash-dropped" : "",
+  ]
+    .filter(Boolean)
+    .join(" ");
+
   return (
-    <div
-      ref={setNodeRef}
-      className={`trash-zone ${isOver ? "trash-over" : ""} ${
-        isDropping ? "trash-dropped" : ""
-      }`}
-    >
+    <div ref={setNodeRef} className={className}>
       <span>{selectedCount > 0 ? `🗑 (${selectedCount})` : "🗑 Trash"}</span>
+    </div>
+  );
+}
+
+function ZoomOverlay({ data, items, updateNotes, onClose }) {
+  if (!data) return null;
+  const item = items.find((i) => i.id === data.id);
+
+  return (
+    <div className="zoom-overlay" onPointerDown={onClose}>
+      {data.type === "img" ? (
+        <div
+          className="zoomed-image-container"
+          onClick={(e) => e.stopPropagation()}
+        >
+          <img src={data.url} alt="" className="zoomed-image" />
+          <button
+            className="zoom-footer-close"
+            onPointerDown={onClose}
+            onClick={(e) => e.stopPropagation()}
+          >
+            Close Zoom
+          </button>
+        </div>
+      ) : (
+        <div className="zoomed-notes-box" onClick={(e) => e.stopPropagation()}>
+          <h3>Notes</h3>
+          <textarea
+            value={item?.notes || ""}
+            onPointerDown={(e) => e.stopPropagation()}
+            onChange={(e) => updateNotes(data.id, e.target.value)}
+            autoFocus
+          />
+          <button
+            className="notes-close-footer"
+            onPointerDown={onClose}
+            onClick={(e) => e.stopPropagation()}
+          >
+            Close Notes
+          </button>
+        </div>
+      )}
     </div>
   );
 }
@@ -183,16 +229,23 @@ function DraggableCard({
     isDragging,
   } = useSortable({
     id: item.id,
-    disabled: item.flipped, // Dragging is disabled when flipped
+    disabled: item.flipped,
   });
 
   const style = {
     transform: CSS.Transform.toString(transform),
     transition,
     zIndex: isDragging ? 1000 : 1,
-    // Add touch-action none to the container to prevent
-    // browser scrolling while trying to drag
     touchAction: "none",
+  };
+
+  const handleFrontClick = (e) => {
+    if (isDragging || isClosingZoom) return;
+    if (isSelected || selectedIds.size > 0) {
+      onToggleSelect(item.id);
+    } else {
+      onFlip(item.id);
+    }
   };
 
   return (
@@ -206,22 +259,9 @@ function DraggableCard({
       {...listeners}
     >
       <div className={`card ${item.flipped ? "flipped" : ""}`}>
-        {/* FRONT FACE */}
-        <div
-          className="card-face card-front"
-          onPointerUp={(e) => {
-            if (isDragging || isClosingZoom) return;
-
-            if (isSelected || selectedIds.size > 0) {
-              onToggleSelect(item.id);
-            } else {
-              onFlip(item.id);
-            }
-          }}
-        >
+        <div className="card-face card-front" onPointerUp={handleFrontClick}>
           <div
             className={`select-indicator ${isSelected ? "active" : ""}`}
-            /* 1. Prevent the card from starting a drag */
             onPointerDown={(e) => {
               e.stopPropagation();
               if (e.nativeEvent) e.nativeEvent.stopImmediatePropagation();
@@ -229,19 +269,18 @@ function DraggableCard({
             onPointerUp={(e) => {
               e.preventDefault();
               e.stopPropagation();
-              if (e.nativeEvent) e.nativeEvent.stopImmediatePropagation();
               onToggleSelect(item.id);
             }}
             onClick={(e) => {
               e.preventDefault();
-              e.stopPropagation(); // Prevents the card from flipping
+              e.stopPropagation();
             }}
           >
             {isSelected ? "✓" : ""}
           </div>
           <button
             className="zoom-btn"
-            data-no-dnd="true" // Matches your sensor exclusion
+            data-no-dnd="true"
             onPointerDown={(e) => e.stopPropagation()}
             onPointerUp={(e) => e.stopPropagation()}
             onClick={(e) => {
@@ -254,7 +293,6 @@ function DraggableCard({
           <img src={item.imageURL} alt="" />
         </div>
 
-        {/* BACK FACE */}
         <div className="card-face card-back" data-no-dnd="true">
           <div className="notes-content">
             <textarea
@@ -266,14 +304,10 @@ function DraggableCard({
             <div className="notes-actions">
               <button
                 className="btn-zoom"
-                data-no-dnd="true"
-                onPointerDown={(e) => e.stopPropagation()}
                 onPointerUp={(e) => {
                   e.stopPropagation();
                   onZoom({ type: "notes", id: item.id });
                 }}
-                // Adding onClick ensures it works if pointer events are blocked
-                onClick={(e) => e.stopPropagation()}
               >
                 🔍 Zoom
               </button>
@@ -293,8 +327,10 @@ function DraggableCard({
     </div>
   );
 }
+
 /* ---------- MAIN APP ---------- */
 export default function App() {
+  // --- State ---
   const [session, setSession] = useState(null);
   const [items, setItems] = useState([]);
   const [folders, setFolders] = useState(() => loadFolders() || []);
@@ -314,202 +350,126 @@ export default function App() {
   const [isSaved, setIsSaved] = useState(false);
   const [isClosingZoom, setIsClosingZoom] = useState(false);
 
+  // --- Refs & Sensors ---
+  const galleryRef = useRef(null);
+  const timerRef = useRef(null);
+
   const sensors = useSensors(
     useSensor(PointerSensor, {
       activationConstraint: { distance: 3 },
       onActivation: (event) => {
-        // Use event.active.eventTarget or check for nativeEvent safely
         const target = event.active?.eventTarget || event.nativeEvent?.target;
-
         if (
           target &&
           (target.closest(".select-indicator") ||
             target.closest(".zoom-btn") ||
             target.closest("button") ||
             target.closest("textarea"))
-        ) {
+        )
           return false;
-        }
       },
     }),
     useSensor(TouchSensor, {
       activationConstraint: { delay: 200, tolerance: 5 },
       onActivation: (event) => {
         const target = event.active?.eventTarget || event.nativeEvent?.target;
-
         if (
           target &&
           (target.closest(".select-indicator") ||
             target.closest(".zoom-btn") ||
             target.closest("button") ||
             target.closest("textarea"))
-        ) {
+        )
           return false;
-        }
       },
     })
   );
-  const galleryRef = useRef(null);
-  const timerRef = useRef(null);
 
+  // --- Helpers & Logic ---
   const fetchItems = useCallback(async (userId) => {
-    // Use the passed userId only; do not reference 'session' state here
     if (!userId) return;
-
     const { data, error } = await supabase
       .from("items")
       .select("*")
       .eq("user_id", userId)
       .order("created_at", { ascending: false });
-
-    if (error) {
-      console.error("Error fetching items:", error.message);
-      return;
-    }
+    if (error) return console.error(error.message);
 
     const formatted = data.map((item) => {
       const { data: urlData } = supabase.storage
         .from("gallery")
         .getPublicUrl(item.image_path);
-
-      return {
-        ...item,
-        imageURL: urlData.publicUrl,
-      };
+      return { ...item, imageURL: urlData.publicUrl };
     });
-
     setItems(formatted);
-  }, []); // Empty array: this function is now stable and won't trigger loops
+  }, []);
 
   useEffect(() => {
     let isMounted = true;
-
-    const timer = setTimeout(() => {
-      if (isMounted) setIsLoading(false);
-    }, 10000);
-
     const initializeAuth = async () => {
-      // 1. Check if we just arrived from a Magic Link (Mobile fix)
       const queryParams = new URLSearchParams(window.location.search);
       const tokenHash = queryParams.get("token_hash");
-      const type = queryParams.get("type");
-
-      if (tokenHash && type === "magiclink") {
-        const { error } = await supabase.auth.verifyOtp({
+      if (tokenHash && queryParams.get("type") === "magiclink") {
+        await supabase.auth.verifyOtp({
           token_hash: tokenHash,
           type: "magiclink",
         });
-
-        if (error) {
-          console.error("Error verifying magic link:", error.message);
-        } else {
-          // Clean the URL so the token doesn't stay in the address bar
-          window.history.replaceState(
-            {},
-            document.title,
-            window.location.origin
-          );
-        }
+        window.history.replaceState({}, document.title, window.location.origin);
       }
-
-      // 2. Proceed with normal session check
       const {
         data: { session: initialSession },
       } = await supabase.auth.getSession();
-
       if (isMounted) {
         setSession(initialSession);
-        if (initialSession?.user) {
-          fetchItems(initialSession.user.id);
-        }
-        setIsLoading(false);
-        clearTimeout(timer);
+        if (initialSession?.user) fetchItems(initialSession.user.id);
       }
     };
-
     initializeAuth();
 
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange(async (event, currentSession) => {
       if (!isMounted) return;
-
       setSession(currentSession);
-
-      if (event === "SIGNED_IN" || event === "TOKEN_REFRESHED") {
-        if (currentSession?.user) {
-          fetchItems(currentSession.user.id);
-        }
-      } else if (event === "SIGNED_OUT") {
-        setItems([]);
-      }
-
-      setIsLoading(false);
+      if (
+        (event === "SIGNED_IN" || event === "TOKEN_REFRESHED") &&
+        currentSession?.user
+      )
+        fetchItems(currentSession.user.id);
+      else if (event === "SIGNED_OUT") setItems([]);
     });
 
     return () => {
       isMounted = false;
       subscription.unsubscribe();
-      clearTimeout(timer);
     };
   }, [fetchItems]);
 
   useEffect(() => {
-    const galleryEl = galleryRef.current; // Use the ref instead of querySelector
+    const galleryEl = galleryRef.current;
     if (!galleryEl) return;
-
-    const handleScroll = () => {
-      // console.log("Scroll Position:", galleryEl.scrollTop); // Uncomment to debug
-      if (galleryEl.scrollTop > 300) {
-        setShowScrollTop(true);
-      } else {
-        setShowScrollTop(false);
-      }
-    };
-
+    const handleScroll = () => setShowScrollTop(galleryEl.scrollTop > 300);
     galleryEl.addEventListener("scroll", handleScroll);
     return () => galleryEl.removeEventListener("scroll", handleScroll);
-  }, [items]);
-
-  const scrollToTop = () => {
-    if (galleryRef.current) {
-      galleryRef.current.scrollTo({ top: 0, behavior: "smooth" });
-    }
-  };
-
-  useEffect(() => {
-    return () => {
-      if (timerRef.current) clearTimeout(timerRef.current);
-    };
   }, []);
 
   const handleUpload = async (event) => {
     const files = event.target.files;
     if (!files || !session?.user) return;
-
     setIsLoading(true);
     setUploadProgress({ current: 0, total: files.length });
     let completedCount = 0;
 
     for (const file of files) {
-      try {
-        const fileName = `${Date.now()}-${Math.random()}.${file.name
-          .split(".")
-          .pop()}`;
-        const filePath = `${session.user.id}/${fileName}`;
-
-        // 1. Upload the file to Storage
-        const { error: uploadError } = await supabase.storage
-          .from("gallery")
-          .upload(filePath, file);
-
-        if (uploadError) {
-          console.error("Storage Error:", uploadError.message);
-          continue;
-        }
-
-        // 2. Insert the record into the 'items' table
-        const { error: dbError } = await supabase.from("items").insert([
+      const fileName = `${Date.now()}-${Math.random()}.${file.name
+        .split(".")
+        .pop()}`;
+      const filePath = `${session.user.id}/${fileName}`;
+      const { error: uploadError } = await supabase.storage
+        .from("gallery")
+        .upload(filePath, file);
+      if (!uploadError) {
+        await supabase.from("items").insert([
           {
             image_path: filePath,
             user_id: session.user.id,
@@ -518,50 +478,27 @@ export default function App() {
             folder: activeFolder === "Select Folder" ? "" : activeFolder,
           },
         ]);
-
-        if (dbError) {
-          console.error("Database Error:", dbError.message);
-        } else {
-          completedCount++;
-          setUploadProgress({ current: completedCount, total: files.length });
-        }
-      } catch (err) {
-        console.error("Unexpected error during file loop:", err);
+        completedCount++;
+        setUploadProgress({ current: completedCount, total: files.length });
       }
     }
-
-    // 3. CRITICAL: Re-fetch items using the current user ID
-    // This updates the 'items' state and makes images appear without a refresh
     await fetchItems(session.user.id);
-
     setIsLoading(false);
-
     event.target.value = null;
-
-    // Reset progress bar after a short delay
     setTimeout(() => setUploadProgress({ current: 0, total: 0 }), 2000);
   };
 
   const updateNotes = useCallback((id, notes) => {
-    // 1. Immediate UI update
     setItems((prev) => prev.map((i) => (i.id === id ? { ...i, notes } : i)));
-
-    // 2. Debounced Database Sync
     if (timerRef.current) clearTimeout(timerRef.current);
-
     timerRef.current = setTimeout(async () => {
       const { error } = await supabase
         .from("items")
-        .update({ notes: notes }) // Syncing the specific note change
+        .update({ notes })
         .eq("id", id);
-
       if (!error) {
         setIsSaved(true);
-
-        // Increased to 4000ms (4 seconds) so users actually see it
         setTimeout(() => setIsSaved(false), 4000);
-      } else {
-        console.error("Sync error:", error.message);
       }
     }, 1000);
   }, []);
@@ -571,14 +508,10 @@ export default function App() {
       prev.map((i) => {
         if (i.id === id) {
           const updated = { ...i, flipped: !i.flipped };
-          // Sync to DB immediately using the 'updated' constant
           supabase
             .from("items")
             .update({ flipped: updated.flipped })
-            .eq("id", id)
-            .then(({ error }) => {
-              if (error) console.error("Flip sync failed:", error.message);
-            });
+            .eq("id", id);
           return updated;
         }
         return i;
@@ -586,71 +519,25 @@ export default function App() {
     );
   }, []);
 
-  const handleCloseZoom = (e) => {
-    if (e) {
-      e.stopPropagation();
-      e.nativeEvent?.stopImmediatePropagation();
-    }
-
-    // 1. Enter protection mode
-    setIsClosingZoom(true);
-
-    // 2. Close the zoom
-    setZoomData(null);
-
-    // 3. Exit protection mode after a tiny delay
-    setTimeout(() => {
-      setIsClosingZoom(false);
-    }, 100);
-  };
-
-  const handleImport = async (event) => {
-    const file = event.target.files[0];
-    if (!file || !session?.user) return; // Add check
-    setIsLoading(true);
-    try {
-      await importGalleryZip(file, (curr, tot) =>
-        setImportProgress(`Importing ${curr} of ${tot}...`)
-      );
-      await fetchItems(session.user.id); // Pass the ID here
-    } catch (e) {
-      alert("Import failed: " + e.message);
-    } finally {
-      setIsLoading(false);
-      setImportProgress("");
-    }
-  };
-
-  const handleDragStart = (e) => {
-    const { active } = e;
-    const draggedItem = items.find((i) => i.id === active.id);
-    if (draggedItem?.flipped) return;
-
-    if (window.navigator.vibrate) window.navigator.vibrate(15);
-
+  const handleToggleSelect = useCallback((id) => {
     setSelectedIds((prev) => {
       const next = new Set(prev);
-      next.add(active.id);
+      next.has(id) ? next.delete(id) : next.add(id);
       return next;
     });
-    setActiveDragItem(draggedItem);
-  };
+  }, []);
 
   const handleDragEnd = async (event) => {
     const { active, over } = event;
     setActiveDragItem(null);
-
-    // 1. EXIT EARLY: If dropped outside a zone or dropped back on itself
     if (!over || active.id === over.id) {
-      setSelectedIds(new Set()); // Reset selection if dropped nowhere
+      setSelectedIds(new Set());
       return;
     }
 
     const draggedIds = selectedIds.has(active.id)
       ? Array.from(selectedIds)
       : [active.id];
-
-    // 2. IDENTIFY DESTINATION: Trash, Main Gallery, or a specific Folder
     const isTrash = over.id === "TRASH_BIN";
     const targetFolder = isTrash
       ? "DELETE"
@@ -658,32 +545,23 @@ export default function App() {
       ? ""
       : over.id;
 
-    // 3. OPTIMISTIC UI UPDATE: Update local state immediately for a snappy feel
-    setItems((prev) => {
-      if (isTrash) {
-        return prev.filter((i) => !draggedIds.includes(i.id));
-      }
-      return prev.map((i) =>
-        draggedIds.includes(i.id) ? { ...i, folder: targetFolder } : i
-      );
-    });
-
-    // Clear selection after the action starts
+    setItems((prev) =>
+      isTrash
+        ? prev.filter((i) => !draggedIds.includes(i.id))
+        : prev.map((i) =>
+            draggedIds.includes(i.id) ? { ...i, folder: targetFolder } : i
+          )
+    );
     setSelectedIds(new Set());
 
-    // 4. DATABASE SYNC
     if (isTrash) {
       setIsDropping(true);
-      const itemsToDelete = items.filter((i) => draggedIds.includes(i.id));
-      const pathsToDelete = itemsToDelete.map((i) => i.image_path);
-
-      const { error } = await supabase
-        .from("items")
-        .delete()
-        .in("id", draggedIds);
-      if (!error && pathsToDelete.length > 0) {
+      const pathsToDelete = items
+        .filter((i) => draggedIds.includes(i.id))
+        .map((i) => i.image_path);
+      await supabase.from("items").delete().in("id", draggedIds);
+      if (pathsToDelete.length > 0)
         await supabase.storage.from("gallery").remove(pathsToDelete);
-      }
       setTimeout(() => setIsDropping(false), 500);
     } else {
       await supabase
@@ -706,12 +584,11 @@ export default function App() {
   return (
     <DndContext
       sensors={sensors}
-      onDragStart={handleDragStart}
-      // This clears the highlight when the drag is finished or aborted
+      onDragStart={(e) =>
+        setActiveDragItem(items.find((i) => i.id === e.active.id))
+      }
       onDragEnd={handleDragEnd}
       onDragCancel={() => {
-        // This fixes the "Sticky Highlight" if you drop the image in a weird spot
-
         setActiveDragItem(null);
         setSelectedIds(new Set());
       }}
@@ -723,6 +600,7 @@ export default function App() {
             <p className="pulse-text">{importProgress}</p>
           </div>
         )}
+
         <aside className="sidebar">
           <div className="sidebar-top">
             <MainGalleryDropZone
@@ -737,7 +615,7 @@ export default function App() {
                   activeFolder={activeFolder}
                   setActiveFolder={setActiveFolder}
                   onDelete={(fol) => {
-                    const next = folders.filter((folr) => folr !== fol);
+                    const next = folders.filter((r) => r !== fol);
                     setFolders(next);
                     saveFolders(next);
                   }}
@@ -762,8 +640,8 @@ export default function App() {
               className="nav-btn logout-btn"
               onClick={async () => {
                 await supabase.auth.signOut();
-                setSession(null); // Force clear session
-                setItems([]); // Clear local items for security
+                setSession(null);
+                setItems([]);
               }}
             >
               Sign Out
@@ -793,9 +671,10 @@ export default function App() {
               </div>
             </div>
           )}
+
           <div className="controls">
             <label className="upload-label">
-              ☁️ Upload
+              ☁️ Upload{" "}
               <input type="file" multiple onChange={handleUpload} hidden />
             </label>
             <button
@@ -805,8 +684,28 @@ export default function App() {
               📤 Export
             </button>
             <label className="util-btn">
-              📥 Import
-              <input type="file" accept=".zip" onChange={handleImport} hidden />
+              📥 Import{" "}
+              <input
+                type="file"
+                accept=".zip"
+                onChange={async (e) => {
+                  const file = e.target.files[0];
+                  if (!file) return;
+                  setIsLoading(true);
+                  try {
+                    await importGalleryZip(file, (c, t) =>
+                      setImportProgress(`Importing ${c} of ${t}...`)
+                    );
+                    await fetchItems(session.user.id);
+                  } catch (err) {
+                    alert(err.message);
+                  } finally {
+                    setIsLoading(false);
+                    setImportProgress("");
+                  }
+                }}
+                hidden
+              />
             </label>
             <input
               type="text"
@@ -815,22 +714,14 @@ export default function App() {
               value={search}
               onChange={(e) => setSearch(e.target.value)}
             />
-            {/* Change this block */}
             {selectedIds.size > 0 && (
               <div className="selection-status-bar">
                 <p className="selection-text">
-                  <strong>{selectedIds.size}</strong>{" "}
-                  {selectedIds.size === 1 ? "item" : "items"} moved to trash or
-                  folders
+                  <strong>{selectedIds.size}</strong> items selected
                 </p>
               </div>
             )}
-
-            {isSaved && (
-              <div className="save-indicator">
-                Checkmark icon or "✓ Saved to Cloud"
-              </div>
-            )}
+            {isSaved && <div className="save-indicator">✓ Saved to Cloud</div>}
           </div>
 
           <SortableContext
@@ -840,12 +731,9 @@ export default function App() {
             <div
               className="gallery"
               ref={galleryRef}
-              onPointerUp={(e) => {
-                // If clicking the empty space in the gallery, clear selection
-                if (e.target === galleryRef.current) {
-                  setSelectedIds(new Set());
-                }
-              }}
+              onPointerUp={(e) =>
+                e.target === galleryRef.current && setSelectedIds(new Set())
+              }
             >
               {visibleItems.map((item) => (
                 <DraggableCard
@@ -854,17 +742,7 @@ export default function App() {
                   isClosingZoom={isClosingZoom}
                   selectedIds={selectedIds}
                   isSelected={selectedIds.has(item.id)}
-                  onToggleSelect={(id) => {
-                    setSelectedIds((prev) => {
-                      const next = new Set(prev);
-                      if (next.has(id)) {
-                        next.delete(id);
-                      } else {
-                        next.add(id);
-                      }
-                      return next;
-                    });
-                  }}
+                  onToggleSelect={handleToggleSelect}
                   onFlip={handleFlip}
                   onZoom={setZoomData}
                   updateNotes={updateNotes}
@@ -872,10 +750,13 @@ export default function App() {
               ))}
             </div>
           </SortableContext>
+
           {showScrollTop && (
             <button
-              className={`scroll-to-top ${showScrollTop ? "visible" : ""}`}
-              onClick={scrollToTop}
+              className="scroll-to-top visible"
+              onClick={() =>
+                galleryRef.current.scrollTo({ top: 0, behavior: "smooth" })
+              }
             >
               ↑
             </button>
@@ -896,48 +777,22 @@ export default function App() {
             </div>
           )}
         </DragOverlay>
-        {zoomData && (
-          <div className="zoom-overlay" onPointerDown={handleCloseZoom}>
-            {zoomData.type === "img" ? (
-              <div
-                className="zoomed-image-container"
-                onClick={(e) => e.stopPropagation()}
-              >
-                <img src={zoomData.url} alt="" className="zoomed-image" />
-                <button
-                  className="zoom-footer-close"
-                  onPointerDown={handleCloseZoom}
-                  onClick={(e) => e.stopPropagation()}
-                >
-                  Close Zoom
-                </button>
-              </div>
-            ) : (
-              <div
-                className="zoomed-notes-box"
-                onClick={(e) => e.stopPropagation()}
-              >
-                <h3>Notes</h3>
-                <textarea
-                  value={items.find((i) => i.id === zoomData.id)?.notes || ""}
-                  onPointerDown={(e) => e.stopPropagation()}
-                  onChange={(e) => updateNotes(zoomData.id, e.target.value)}
-                  autoFocus
-                />
-                <button
-                  className="notes-close-footer"
-                  onPointerDown={handleCloseZoom}
-                  onClick={(e) => {
-                    e.stopPropagation(); // Shield against ghost clicks
-                  }}
-                >
-                  Close Notes
-                </button>
-              </div>
-            )}
-          </div>
-        )}
+
+        <ZoomOverlay
+          data={zoomData}
+          items={items}
+          updateNotes={updateNotes}
+          onClose={() => {
+            setIsClosingZoom(true);
+            setZoomData(null);
+            setTimeout(() => setIsClosingZoom(false), 100);
+          }}
+        />
       </div>
     </DndContext>
   );
 }
+
+/*
+refactored jsx
+*/

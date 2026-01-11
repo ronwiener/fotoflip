@@ -1,20 +1,26 @@
-/* ---------- 1. BASE & RESET ---------- */
+/* ---------- 1. VARIABLES & RESET ---------- */
 :root {
+  --primary: #0077ff;
+  --primary-hover: #0056b3;
+  --danger: #ff4444;
+  --danger-bg: #ffebeb;
+  --text-main: #333;
+  --text-muted: #666;
+  --bg-app: aliceblue;
+  --bg-card: #ffffff;
+  --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.1);
+  --shadow-lg: 0 10px 30px rgba(0, 0, 0, 0.15);
+  --radius-md: 8px;
+  --radius-lg: 12px;
+  --transition: all 0.2s ease;
+
   overscroll-behavior: none;
-  font-family: system-ui, Avenir, Helvetica, Arial, sans-serif;
-  text-rendering: optimizeLegibility;
+  font-family: system-ui, Avenir, Helvetica, sans-serif;
   -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
 }
 
 * {
   box-sizing: border-box;
-}
-
-body {
-  overscroll-behavior: none;
-  /* Prevents the 'swipe to go back' gesture from killing the connection */
-  touch-action: pan-x pan-y;
 }
 
 body,
@@ -23,91 +29,27 @@ html {
   padding: 0;
   height: 100%;
   width: 100%;
-  background: aliceblue;
-  overflow: hidden; /* Keep this */
-  position: fixed; /* Add this to prevent 'bounce' scrolling on mobile */
-}
-
-textarea,
-input {
-  user-select: text;
-  -webkit-user-select: text;
-  touch-action: pan-y; /* Allows scrolling inside the textarea */
-}
-
-a {
-  font-weight: 500;
-  color: #646cff;
-  text-decoration: none;
-}
-
-/* ---------- LOADING & SPINNERS ---------- */
-.loading-overlay {
+  background: var(--bg-app);
+  overflow: hidden;
   position: fixed;
-  inset: 0;
-  background: rgba(255, 255, 255, 0.85);
-  backdrop-filter: blur(4px);
+  touch-action: pan-x pan-y;
+}
+
+/* ---------- 2. UTILITIES & ANIMATIONS ---------- */
+.flex-center {
   display: flex;
-  flex-direction: column;
   align-items: center;
   justify-content: center;
-  z-index: 9999;
+}
+.pulse-text {
+  animation: pulse 1.8s infinite ease-in-out;
+  font-weight: 600;
+  color: #1e293b;
 }
 
-.spinner {
-  width: 50px;
-  height: 50px;
-  border: 5px solid #f3f3f3;
-  border-top: 5px solid #0077ff;
-  border-radius: 50%;
-  animation: spin 1s linear infinite;
-  margin-bottom: 20px;
-}
-
-@keyframes spin {
-  to {
-    transform: rotate(360deg);
-  }
-}
-
-/* Container for the progress info in the Main gallery area */
-.gallery-upload-status {
-  background: #ffffff;
-  border: 1px solid #e2e8f0;
-  border-radius: 12px;
-  padding: 20px;
-  margin: 10px 0 25px 0;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
-  width: 100%;
-  position: relative;
-  z-index: 5;
-}
-
-/* The outer track of the progress bar */
-.progress-bar-container {
-  width: 100%;
-  max-width: 500px;
-  height: 10px;
-  background-color: #f1f5f9;
-  border-radius: 20px;
-  overflow: hidden;
-  margin-top: 12px;
-}
-
-/* The actual moving fill of the progress bar */
-.progress-bar-fill {
-  height: 100%;
-  background-color: #0f172a; /* Sleek dark blue/black */
-  transition: width 0.4s cubic-bezier(0.4, 0, 0.2, 1);
-  border-radius: 20px;
-}
-
-/* Pulsing text effect */
 @keyframes pulse {
-  0% {
+  0%,
+  100% {
     opacity: 0.5;
     transform: scale(1);
   }
@@ -115,179 +57,6 @@ a {
     opacity: 1;
     transform: scale(1.01);
   }
-  100% {
-    opacity: 0.5;
-    transform: scale(1);
-  }
-}
-
-.pulse-text {
-  animation: pulse 1.8s infinite ease-in-out;
-  font-weight: 600;
-  font-size: 1rem;
-  color: #1e293b;
-  margin: 0;
-}
-
-.selection-status-bar {
-  background: #e7f3ff;
-  border: 1px solid #b2d7ff;
-  padding: 10px 15px;
-  border-radius: 8px;
-  margin-bottom: 20px;
-  text-align: center;
-  /* min-height: 45px;  <-- REMOVE OR COMMENT OUT THIS LINE */
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  animation: slideDown 0.2s ease-out; /* Optional: adds a nice entrance */
-}
-
-@keyframes slideDown {
-  from {
-    opacity: 0;
-    transform: translateY(-10px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-.selection-text {
-  color: #0056b3;
-  margin: 0;
-  font-size: 0.95rem;
-}
-
-.selection-text-hint {
-  color: #666;
-  margin: 0;
-  font-size: 0.85rem;
-  font-style: italic;
-}
-
-/* Auth Container - Full Screen Centering */
-.auth-container {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 100%;
-  min-height: 100vh;
-  background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
-  background-color: #c7c8cb;
-}
-
-/* The Auth Card */
-.auth-box {
-  background: white;
-  padding: 40px;
-  border-radius: 12px;
-  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
-  width: 100%;
-  max-width: 400px;
-  text-align: center;
-}
-
-.auth-box h1 {
-  margin-bottom: 10px;
-  font-size: 2rem;
-  color: #333;
-}
-
-.auth-box p {
-  color: #666;
-  margin-bottom: 30px;
-}
-
-/* Google Button Styling */
-.google-btn {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 100%;
-  padding: 12px;
-  border: 1px solid #ddd;
-  border-radius: 8px;
-  background: white;
-  color: #444;
-  font-weight: 600;
-  cursor: pointer;
-  transition: background 0.2s;
-}
-
-.google-btn:hover {
-  background: #f9f9f9;
-}
-
-/* Divider (The "OR" line) */
-.divider {
-  margin: 25px 0;
-  display: flex;
-  align-items: center;
-  color: #aaa;
-  font-size: 0.8rem;
-}
-
-.divider::before,
-.divider::after {
-  content: "";
-  flex: 1;
-  height: 1px;
-  background: #eee;
-}
-
-.divider span {
-  padding: 0 10px;
-}
-
-/* Email Form Styling */
-.auth-box input {
-  width: 100%;
-  padding: 12px;
-  margin-bottom: 15px;
-  border: 1px solid #ddd;
-  border-radius: 8px;
-  font-size: 1rem;
-}
-
-/* Default state (Empty or Loading) */
-.auth-box form button {
-  width: 100%;
-  padding: 12px;
-  border: none;
-  border-radius: 8px;
-  background: #ccc; /* Muted gray when empty */
-  color: white;
-  font-weight: 600;
-  cursor: not-allowed;
-  transition: all 0.3s ease;
-}
-
-/* Highlighted state (When user has typed something) */
-.auth-box form button.btn-active {
-  background: #007bff; /* Bright blue highlight */
-  cursor: pointer;
-  box-shadow: 0 4px 12px rgba(0, 123, 255, 0.3);
-}
-
-.auth-box form button.btn-active:hover {
-  background: #0056b3;
-  transform: translateY(-1px);
-}
-
-.auth-box form button:hover {
-  background: #000;
-}
-
-.spinner-small {
-  width: 18px;
-  height: 18px;
-  border: 2px solid rgba(255, 255, 255, 0.3);
-  border-radius: 50%;
-  border-top-color: #fff;
-  animation: spin 0.8s linear infinite;
-  display: inline-block;
 }
 
 @keyframes spin {
@@ -296,14 +65,74 @@ a {
   }
 }
 
+/* ---------- 3. AUTH & OVERLAYS ---------- */
+.auth-container {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  min-height: 100vh;
+  background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+}
+
+.auth-box {
+  background: white;
+  padding: 40px;
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-lg);
+  width: 100%;
+  max-width: 400px;
+  text-align: center;
+}
+
+.google-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  width: 100%;
+  padding: 12px;
+  border: 1px solid #ddd;
+  border-radius: var(--radius-md);
+  background: white;
+  font-weight: 600;
+  cursor: pointer;
+  transition: var(--transition);
+}
+
+.auth-box input {
+  width: 100%;
+  padding: 12px;
+  margin-bottom: 15px;
+  border: 1px solid #ddd;
+  border-radius: var(--radius-md);
+}
+
+.auth-box form button {
+  width: 100%;
+  padding: 12px;
+  border: none;
+  border-radius: var(--radius-md);
+  background: #ccc;
+  color: white;
+  font-weight: 600;
+  cursor: not-allowed;
+}
+
+.auth-box form button.btn-active {
+  background: var(--primary);
+  cursor: pointer;
+  box-shadow: 0 4px 12px rgba(0, 123, 255, 0.3);
+}
+
+/* ---------- 4. APP LAYOUT ---------- */
 .app {
   display: flex;
   width: 100vw;
   height: 100dvh;
-  overflow: hidden; /* Ensure the app itself doesn't scroll */
+  overflow: hidden;
 }
 
-/* ---------- 2. SIDEBAR (Fixed Left) ---------- */
 .sidebar {
   width: 240px;
   background: white;
@@ -311,7 +140,7 @@ a {
   display: flex;
   flex-direction: column;
   padding: 15px;
-  flex-shrink: 0; /* Prevents sidebar from squishing */
+  flex-shrink: 0;
 }
 
 .sidebar-top {
@@ -321,14 +150,6 @@ a {
   flex-direction: column;
   gap: 10px;
 }
-
-.folders-list {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  margin-top: 10px;
-}
-
 .sidebar-bottom {
   border-top: 1px solid #eee;
   padding-top: 15px;
@@ -337,22 +158,30 @@ a {
   gap: 10px;
 }
 
-/* Sidebar Buttons & Folders */
+.main {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  position: relative;
+  overscroll-behavior-y: contain;
+}
+
+/* ---------- 5. UI COMPONENTS ---------- */
 .nav-btn,
 .folder-item,
 .util-btn {
   padding: 10px;
-  border-radius: 8px;
+  border-radius: var(--radius-md);
   background: #f0f0f0;
   border: none;
   cursor: pointer;
   font-size: 0.9rem;
-  text-align: center;
-  transition: background 0.2s;
+  transition: var(--transition);
 }
 
-.active {
-  background: #0077ff !important;
+.nav-btn.active {
+  background: var(--primary) !important;
   color: white;
 }
 
@@ -362,82 +191,35 @@ a {
   justify-content: space-between;
   padding: 0 10px;
   min-height: 44px;
-  background: #f5f5f5;
   border: 2px solid transparent;
-  gap: 10px;
-}
-
-.folder-name-btn {
-  background: none;
-  border: none;
-  flex: 1;
-  color: inherit;
-  text-align: left;
-  cursor: pointer;
-  padding: 8px 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  font-weight: 500;
 }
 
 .delete-folder-btn {
   width: 28px;
   height: 28px;
-  background: #ffeded;
-  color: #ff4444;
+  background: var(--danger-bg);
+  color: var(--danger);
   border: 1px solid #ffcccc;
   border-radius: 6px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-  flex-shrink: 0;
 }
 
-/* ---------- 3. MAIN CONTENT AREA (Scrollable) ---------- */
-.main {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  min-height: 0;
-  height: 100%; /* Force it to stay within the app's 100dvh */
-  overflow: hidden;
-  position: relative;
-  /* Prevent the body from scrolling instead of this container */
-  overscroll-behavior-y: contain;
+.trash-zone {
+  padding: 15px;
+  border-radius: var(--radius-md);
+  background: var(--danger-bg);
+  color: var(--danger);
+  text-align: center;
+  border: 2px dashed #ffcccc;
+  transition: var(--transition);
 }
 
-.main-text {
-  font-weight: 700;
-  font-size: 1.1rem;
+.trash-over {
+  background: var(--danger);
+  color: white;
+  transform: scale(1.05);
 }
 
-.flip-animation {
-  display: inline-block;
-  color: #1e90ff; /* A clean, blueish color */
-  font-weight: bold;
-  /* Animation: name | duration | timing-function | iteration-count */
-  animation: vertical-flip 3s ease-in-out infinite;
-  transform-style: preserve-3d;
-}
-
-@keyframes vertical-flip {
-  0%,
-  10% {
-    transform: rotateY(0deg);
-  }
-  40%,
-  60% {
-    transform: rotateY(360deg);
-  }
-  90%,
-  100% {
-    transform: rotateY(360deg);
-  }
-}
-
-/* Sticky Controls Header */
+/* ---------- 6. CONTROLS & GALLERY ---------- */
 .controls {
   padding: 15px 20px;
   background: white;
@@ -449,176 +231,50 @@ a {
   position: sticky;
   top: 0;
   z-index: 100;
-  justify-content: flex-start;
-}
-
-.upload-label {
-  background: #0077ff;
-  color: white;
-  padding: 10px 20px;
-  border-radius: 20px;
-  cursor: pointer;
-  font-weight: 600;
-}
-
-.delete-selected-btn {
-  animation: slideIn 0.2s ease-out;
-  font-weight: 600;
-  border: 1px solid #ffcccc;
-}
-
-.delete-selected-btn:hover {
-  background-color: #ff4444 !important;
-  color: white !important;
-}
-
-@keyframes slideIn {
-  from {
-    opacity: 0;
-    transform: translateX(-10px);
-  }
-  to {
-    opacity: 1;
-    transform: translateX(0);
-  }
-}
-
-.utility-actions {
-  display: flex;
-  gap: 10px;
-}
-
-.search-container {
-  position: relative;
-  width: 100%;
-  max-width: 500px;
-  margin-right: 50px;
-  margin-left: auto;
 }
 
 .search-input {
-  width: 100%;
-  padding: 10px 35px 10px 15px;
+  flex: 1;
+  min-width: 200px;
+  padding: 10px 20px;
   border-radius: 20px;
   border: 1px solid #ccc;
-  font-size: 0.9rem;
 }
 
-.clear-search-btn {
-  position: absolute;
-  right: 12px;
-  top: 50%;
-  transform: translateY(-50%);
-  background: none;
-  border: none;
-  cursor: pointer;
-  /* Color updates */
-  color: #ff4444;
-  font-weight: bold;
-  font-size: 1.1rem;
-  padding: 0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transition: color 0.2s, transform 0.2s;
-}
-
-.clear-search-btn:hover {
-  color: #cc0000;
-  transform: translateY(-50%) scale(1.2);
-}
-
-/* ---------- 4. GALLERY & CARDS ---------- */
 .gallery {
   padding: 20px;
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(160px, 200px));
-  gap: 25px;
   align-content: start;
+  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+  gap: 25px;
   overflow-y: auto;
   flex: 1;
-  min-height: 100%;
-  contain: layout;
   padding-bottom: 150px;
-  -webkit-overflow-scrolling: touch;
 }
 
-.card-wrapper.selected {
-  outline: 4px solid #0077ff;
-  outline-offset: 2px;
-  border-radius: 12px;
-}
-
-.select-indicator {
-  position: absolute;
-  top: 10px;
-  left: 10px;
-  width: 22px;
-  height: 22px;
-  border-radius: 4px; /* Your new square shape */
-
-  /* Add these to prevent click-leakage */
-  pointer-events: auto !important;
-  cursor: pointer !important;
-  z-index: 100 !important; /* Ensure it's above the image but below the zoom overlay */
-
-  /* Ensure the container doesn't expand */
-  display: flex;
-  align-items: center;
-  justify-content: center;
-
-  border: 2px solid rgba(255, 255, 255, 0.8);
-  background: rgba(0, 0, 0, 0.2);
-  transform: translateZ(50px);
-  z-index: 999;
-}
-
-.select-indicator:hover {
-  background: rgba(255, 255, 255, 0.9);
-  transform: scale(1.1);
-  border-color: white;
-}
-
-.select-indicator.active {
-  background: #0077ff;
-  border-color: #0077ff;
-  box-shadow: 0 2px 8px rgba(0, 119, 255, 0.4);
-}
-
+/* ---------- 7. DRAGGABLE CARD ---------- */
 .card-wrapper {
   aspect-ratio: 3/4;
   perspective: 1000px;
   touch-action: none !important;
-  user-select: none;
-  -webkit-user-select: none;
-  -webkit-tap-highlight-color: transparent;
-  transition: transform 0.2s cubic-bezier(0.2, 0, 0, 1);
   position: relative;
-  cursor: grab;
-  pointer-events: auto !important;
-  isolation: isolate;
-  overflow: visible;
+  transition: transform 0.2s cubic-bezier(0.2, 0, 0, 1);
 }
 
-.card-wrapper img {
-  /* Prevent the desktop browser from starting its own native drag */
-  -webkit-user-drag: none !important; /* Chrome, Safari, newer Edge */
-  user-select: none !important;
-  pointer-events: none !important;
+.card-wrapper.selected {
+  outline: 4px solid var(--primary);
+  outline-offset: 4px;
+  border-radius: var(--radius-lg);
+  transform: scale(1.02);
+  z-index: 10;
 }
 
 .card {
   width: 100%;
   height: 100%;
+  position: relative;
   transition: transform 0.6s cubic-bezier(0.4, 0, 0.2, 1);
   transform-style: preserve-3d;
-}
-.card-front img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-  display: block;
-  pointer-events: none !important;
 }
 
 .card.flipped {
@@ -629,24 +285,17 @@ a {
   position: absolute;
   inset: 0;
   backface-visibility: hidden;
-  -webkit-backface-visibility: hidden;
-  border-radius: 12px;
+  border-radius: var(--radius-lg);
   overflow: hidden;
-  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+  box-shadow: var(--shadow-sm);
   background: white;
-  transform: translateZ(0);
-  pointer-events: auto;
 }
 
-.card-front {
-  z-index: 2;
-  pointer-events: auto;
-}
-
-.zoom-btn,
-.card-back,
-.card-back * {
-  pointer-events: auto !important;
+.card-front img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  pointer-events: none;
 }
 
 .card-back {
@@ -654,117 +303,27 @@ a {
   padding: 15px;
   display: flex;
   flex-direction: column;
-  touch-action: initial !important;
-  pointer-events: all !important;
-  user-select: text !important;
-  -webkit-user-select: text !important;
 }
 
-.card-face img {
-  pointer-events: none;
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-  /* CRITICAL: Prevents the system "Save Image" popup from breaking the drag */
-  -webkit-touch-callout: none;
-  -webkit-user-drag: none;
-  user-select: none;
-
-  /* Lets the touch events pass through to the .drag-handle listener */
-  pointer-events: none;
-}
-
-/* Update these specific lines in styles.css */
-.card-face.card-front {
-  touch-action: none !important; /* Critical for dnd-kit */
-  cursor: grab;
-  pointer-events: auto !important; /* Changed from none to auto */
-}
-
-.card-face.card-front img {
-  pointer-events: none !important; /* Keeps the image from intercepting the drag */
-  -webkit-user-drag: none;
-  user-select: none;
-}
-
-/* Update this block in styles.css */
-.card-face.card-back {
-  transform: rotateY(180deg);
-  padding: 15px;
-  display: flex;
-  flex-direction: column;
-  /* Add these two lines */
-  touch-action: pan-y !important;
-  user-select: text !important;
-  pointer-events: none !important;
-  visibility: hidden;
-}
-
-.card-back textarea {
-  /* Ensure the textarea is easy to hit */
-  cursor: text !important;
-  position: relative;
-  z-index: 5;
-  touch-action: pan-y !important;
-}
-
-/* Highlight styling for selected images */
-.card-wrapper.selected {
-  outline: 4px solid #0077ff; /* High-visibility blue */
-  outline-offset: 4px;
-  border-radius: 12px;
-  position: relative;
-  z-index: 10; /* Ensure the highlight stays above non-selected cards */
-  transform: scale(1.02); /* Slight pop effect */
-  transition: all 0.2s ease;
-}
-
-/* Optional: Add a subtle blue tint overlay to the image when selected */
-.card-wrapper.selected .card-front::after {
-  content: "";
+.select-indicator {
   position: absolute;
-  inset: 0;
-  background: rgba(0, 119, 255, 0.1);
-  pointer-events: none;
+  top: 10px;
+  left: 10px;
+  width: 22px;
+  height: 22px;
+  border-radius: 4px;
+  border: 2px solid rgba(255, 255, 255, 0.8);
+  background: rgba(0, 0, 0, 0.2);
+  z-index: 99;
+  color: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
-.card.flipped .card-face.card-back {
-  pointer-events: auto !important;
-  visibility: visible;
-}
-
-.card.flipped .card-face.card-front {
-  pointer-events: none !important;
-  visibility: hidden;
-}
-
-.card.flipped .card-front {
-  pointer-events: none !important;
-  visibility: hidden;
-}
-
-.card.flipped .card-back {
-  opacity: 1 !important;
-  backface-visibility: hidden;
-  -webkit-backface-visibility: hidden;
-}
-.card-wrapper[data-dragging="true"] {
-  cursor: grabbing !important;
-  opacity: 0.5;
-  transform: scale(0.6);
-}
-/* Prevent the wrapper from dimming the card if it's flipped */
-.card-wrapper[data-flipped="true"] {
-  opacity: 1 !important;
-  z-index: 5;
-}
-
-/* Ensure the backside and its children always show the correct cursor */
-.card-back,
-.card-back textarea,
-.card-back button {
-  cursor: auto !important;
-  pointer-events: all !important;
+.select-indicator.active {
+  background: var(--primary);
+  border-color: var(--primary);
 }
 
 .zoom-btn {
@@ -777,135 +336,119 @@ a {
   border-radius: 50%;
   background: rgba(255, 255, 255, 0.9);
   border: 1px solid #ddd;
-  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
   display: flex;
   align-items: center;
   justify-content: center;
-  pointer-events: auto !important;
 }
 
-.notes-content {
+/* ---------- 8. ZOOM & MODALS ---------- */
+.zoom-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.9);
+  z-index: 9999;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  cursor: zoom-out;
+}
+
+.zoomed-image {
+  max-width: 95vw;
+  max-height: 80vh;
+  object-fit: contain;
+  border-radius: var(--radius-md);
+}
+
+.zoomed-notes-box {
+  background: white;
+  width: 95%;
+  max-width: 600px;
+  height: 80vh;
+  padding: 20px;
+  border-radius: var(--radius-lg);
   display: flex;
   flex-direction: column;
-  height: 100%;
 }
 
-.notes-content textarea {
+.zoomed-notes-box textarea {
   flex: 1;
   width: 100%;
-  border: none;
+  border: 1px solid #eee;
+  padding: 15px;
+  font-size: 1.1rem;
+  border-radius: var(--radius-md);
   resize: none;
-  background: transparent;
-  font-size: 0.85rem;
-  padding: 5px;
 }
 
-.notes-actions {
-  display: flex;
-  flex-direction: row;
-  gap: 8px;
-  margin-top: auto;
+/* ---------- 9. MOBILE RESPONSIVE ---------- */
+@media (max-width: 768px) {
+  .sidebar {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    width: 100%;
+    height: 140px;
+    z-index: 1000;
+    box-shadow: 0 -2px 10px rgba(0, 0, 0, 0.1);
+    padding-bottom: calc(10px + env(safe-area-inset-bottom));
+  }
+
+  .sidebar-top {
+    flex-direction: row;
+    overflow-x: auto;
+    padding: 5px;
+  }
+  .sidebar-bottom {
+    flex-direction: row;
+    padding-top: 10px;
+  }
+
+  .gallery {
+    grid-template-columns: repeat(2, 1fr);
+    padding-bottom: 160px; /* Space for fixed sidebar */
+  }
+
+  .gallery::after {
+    content: "";
+    display: block;
+    height: 100px;
+    grid-column: 1/-1;
+  }
+
+  .notes-actions {
+    flex-direction: column;
+    gap: 8px;
+  }
+  .notes-actions button {
+    min-height: 44px;
+  }
+
+  .scroll-to-top {
+    bottom: 160px;
+  }
+  .save-indicator {
+    bottom: 160px;
+    right: 50%;
+    transform: translateX(50%);
+  }
+}
+
+/* ---------- 10. SYSTEM STATUS ---------- */
+.progress-bar-container {
   width: 100%;
-  padding-top: 10px;
+  height: 8px;
+  background: #f1f5f9;
+  border-radius: 10px;
+  overflow: hidden;
+  margin-top: 10px;
 }
 
-.btn-zoom {
-  background-color: #0077ff !important; /* Vivid Blue */
-  color: white !important;
-  border-color: #0066db !important;
-}
-
-.btn-zoom:hover {
-  background-color: #0066db !important;
-}
-
-.notes-actions button {
-  flex: 1;
-  min-height: 40px;
-  padding: 8px 5px; /* Increase vertical padding for height */
-  font-size: 0.9rem;
-  font-weight: 700;
-  border-radius: 8px;
-  border: 1px solid transparent;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transition: all 0.2s ease;
-}
-
-.notes-actions .btn-zoom:hover {
-  background-color: #0056b3 !important;
-  transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(0, 119, 255, 0.3);
-}
-.btn-zoom {
-  background-color: #0077ff !important;
-  color: white !important;
-  border-color: #0066db !important;
-}
-
-.btn-flip {
-  background-color: #ffffff !important; /* Clean White */
-  color: #333 !important;
-  border-color: #ddd !important;
-}
-
-.notes-actions .btn-flip {
-  background-color: #f8fafc !important;
-  color: #64748b !important;
-  border-color: #ddd !important;
-}
-
-.notes-actions .btn-flip:hover {
-  background-color: #f1f5f9 !important;
-  border-color: #cbd5e1 !important;
-  transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
-}
-
-.btn-zoom:hover {
-  background-color: #0066db !important;
-}
-.btn-flip:hover {
-  background-color: #f0f0f0 !important;
-}
-
-/* Feedback when pressing the buttons */
-.notes-actions button:active {
-  transform: scale(0.95) translateY(0) !important;
-  filter: brightness(0.9);
-}
-
-.scroll-to-top {
-  position: fixed;
-  bottom: 30px;
-  right: 30px;
-  width: 50px;
-  height: 50px;
-  background-color: #0077ff;
-  color: white;
-  border: none;
-  border-radius: 50%;
-  cursor: pointer;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
-  z-index: 2000;
-
-  /* Key Changes: Flexbox centering */
-  display: flex;
-  align-items: center;
-  justify-content: center;
-
-  /* Font styling for the arrow */
-  font-size: 24px;
-  font-weight: bold;
-  line-height: 1; /* Prevents the circle from stretching */
-
-  /* Animation/Transition */
-  transition: all 0.3s ease-in-out;
-  opacity: 0;
-  visibility: hidden;
-  transform: translateY(20px);
+.progress-bar-fill {
+  height: 100%;
+  background: var(--primary);
+  transition: width 0.4s ease;
 }
 
 .save-indicator {
@@ -916,528 +459,10 @@ a {
   color: white;
   padding: 8px 16px;
   border-radius: 20px;
-  font-size: 0.85rem;
   z-index: 1000;
-  animation: fadeInOut 4s ease-in-out;
 }
 
-@keyframes fadeInOut {
-  0% {
-    opacity: 0;
-    transform: translateY(10px);
-  }
-  15% {
-    opacity: 1;
-    transform: translateY(0);
-  }
-  85% {
-    opacity: 1;
-    transform: translateY(0);
-  }
-  100% {
-    opacity: 0;
-    transform: translateY(-10px);
-  }
-}
-
-@media (max-width: 768px) {
-  .save-indicator {
-    bottom: 160px; /* Moves it above the mobile bottom nav */
-    right: 50%;
-    transform: translateX(50%); /* Centers it on mobile */
-  }
-}
-
-.scroll-to-top.visible {
-  opacity: 1;
-  visibility: visible;
-  transform: translateY(0);
-}
-
-.scroll-to-top:hover {
-  background-color: #0056b3;
-  transform: translateY(-5px);
-  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.3);
-}
-
-/* ---------- 5. DRAG & DROP ANIMATIONS ---------- */
-
-.card-drag-preview {
-  z-index: 9999 !important;
-  pointer-events: none;
-  position: fixed; /* Ensures it stays visible on mobile */
-  aspect-ratio: 3/4;
-  transform-origin: center;
-  background: white;
-  border-radius: 12px;
-  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.4);
-  overflow: hidden;
-  transform: scale(0.6); /* "Lifted" effect */
-  opacity: 0.9;
-}
-
-.card-drag-preview img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-  display: block;
-}
-
-.card-wrapper[data-dragging="true"] {
-  opacity: 0.5;
-  transform: scale(0.95);
-  z-index: 10;
-}
-
-.folder-hover-active {
-  background: #e1efff !important;
-  border: 2px solid #0077ff !important;
-  border-color: #0077ff !important;
-  transform: scale(1.02);
-  box-shadow: 0 4px 12px rgba(0, 119, 255, 0.2);
-  animation: pulse-folder 1.5s infinite;
-}
-
-@keyframes pulse-folder {
-  0%,
-  100% {
-    border-color: #0077ff;
-  }
-  50% {
-    border-color: #80bdff;
-  }
-}
-
-.trash-zone {
-  padding: 15px;
-  border-radius: 8px;
-  background: #ffebeb;
-  color: #ff4444;
-  text-align: center;
-  border: 2px dashed #ffcccc;
-  transition: all 0.3s;
-}
-
-.trash-over {
-  background: #ff4444;
-  color: white;
-  transform: scale(1.05);
-}
-
-.trash-dropped {
-  animation: shake 0.5s ease-in-out;
-}
-
-@keyframes shake {
-  0%,
-  100% {
-    transform: translateX(0);
-  }
-  25% {
-    transform: translateX(-5px);
-  }
-  75% {
-    transform: translateX(5px);
-  }
-}
-
-/* ---------- 6. OVERLAYS (Zoom & Preview) ---------- */
-.zoom-overlay {
-  position: fixed;
-  inset: 0;
-  background: rgba(0, 0, 0, 0.9);
-  z-index: 9999;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 20px;
-  touch-action: none;
-  user-select: none;
-  cursor: zoom-out;
-  pointer-events: all;
-}
-
-.zoomed-image-container {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 10px;
-  max-width: 90vw;
-  max-height: 90vh;
-}
-
-/* Styled button below the zoomed image */
-.zoom-footer-close {
-  padding: 10px 25px;
-  background: #0077ff;
-  color: white;
-  border: none;
-  border-radius: 5px;
-  font-weight: bold;
-  font-size: 1.1rem;
-  cursor: pointer;
-  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
-  /* Prevents the button from being accidentally highlighted */
-  user-select: none;
-  touch-action: none;
-}
-
-.zoom-footer-close:active {
-  transform: scale(0.95);
-  background: #005ecb;
-}
-
-.zoom-footer-close:hover {
-  background: #005ecb;
-  transform: scale(1.05);
-}
-
-.zoom-footer-close,
-.notes-close-footer {
-  pointer-events: auto !important;
-  isolation: isolate;
-}
-
-/* Ensure the Notes footer button looks consistent */
-.notes-close-footer {
-  margin-top: 15px;
-  padding: 12px;
-  background: #0077ff;
-  color: white;
-  border: none;
-  border-radius: 8px;
-  font-weight: bold;
-  font-size: 1rem;
-  cursor: pointer;
-}
-
-.zoomed-image {
-  max-width: 95vw;
-  max-height: calc(90vh - 70px);
-  object-fit: contain;
-  border-radius: 8px;
-  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
-  cursor: default;
-}
-
-.zoomed-notes-box {
-  background: white;
-  width: 95%;
-  max-width: 600px;
-  height: 80vh;
-  padding: 20px;
-  border-radius: 12px;
-  display: flex;
-  flex-direction: column;
-  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.05);
-}
-
-.zoomed-notes-box h3 {
-  margin-top: 0;
-  color: #1e90ff; /* Matches your "Flip" blue */
-}
-
-.zoomed-notes-box textarea {
-  flex: 1; /* Stretches the text area to fill the box */
-  width: 100%;
-  border: 1px solid #eee;
-  padding: 15px;
-  font-size: 18px; /* Larger text for easier mobile editing */
-  line-height: 1.5;
-  border-radius: 8px;
-  resize: none;
-  outline: none;
-}
-
-.zoomed-notes-box button {
-  margin-top: 15px;
-  padding: 12px;
-  background: #1e90ff;
-  color: white;
-  border: none;
-  border-radius: 8px;
-  font-weight: bold;
-  font-size: 1rem;
-}
-
-.card-drag-preview {
-  width: 160px; /* Sized to look like a picked-up card */
-  aspect-ratio: 3/4;
-  background: white;
-  border-radius: 12px;
-  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.3);
-  overflow: hidden;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  pointer-events: none;
-  z-index: 5000;
-  /* Scale up to give the "lifted" 3D effect */
-  transform: scale(1.1);
-  opacity: 1;
-}
-
-.card-drag-preview img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-  display: block;
-}
-
-/* ---------- 7. MOBILE OVERRIDES ---------- */
-@media (max-width: 768px) {
-  .app {
-    flex-direction: column;
-  }
-
-  .sidebar {
-    position: fixed;
-    bottom: 0;
-    left: 0;
-    width: 100%;
-    height: 140px;
-    background: white;
-    display: flex;
-    flex-direction: column;
-    gap: 4px;
-    z-index: 1000;
-    box-shadow: 0 -2px 10px rgba(0, 0, 0, 0.1);
-    padding-left: 15px;
-    padding-right: 15px;
-    padding-top: 8px;
-    padding-bottom: calc(15px + env(safe-area-inset-bottom));
-  }
-
-  .sidebar-top::-webkit-scrollbar {
-    display: none; /* Hides the scrollbar for a cleaner look */
-  }
-
-  .sidebar-top {
-    width: 100%;
-    min-height: 44px;
-    display: flex;
-    flex-direction: row;
-    align-items: center;
-    overflow-x: auto;
-    gap: 10px;
-    padding: 0dvb 0 5px 8px 5px;
-    -webkit-overflow-scrolling: touch;
-    -ms-overflow-style: none; /* IE and Edge */
-    scrollbar-width: none; /* Firefox */
-  }
-
-  .sidebar-bottom {
-    display: flex;
-    flex-direction: row; /* Puts Logout and Trash side-by-side to save height */
-    justify-content: space-between;
-    max-width: 500px;
-    margin: 0;
-    align-items: center;
-    border-top: 1px solid #eee;
-    padding-top: 10px;
-    gap: 8px;
-    width: 100%;
-  }
-
-  .main {
-    height: 100dvh;
-    display: flex;
-    flex-direction: column;
-    overflow: hidden;
-    padding-bottom: 0;
-    -webkit-overflow-scrolling: touch;
-  }
-
-  .gallery {
-    height: 100%;
-    display: grid;
-    grid-template-columns: repeat(2, 1fr);
-    gap: 24px;
-    padding: 20px;
-    padding-bottom: 20px;
-    overscroll-behavior-y: contain;
-    -webkit-overflow-scrolling: touch;
-  }
-
-  .gallery::after {
-    content: "";
-    display: block;
-    grid-column: 1 / -1; /* Span across all columns */
-    height: 250px !important;
-  }
-
-  .select-indicator {
-    position: absolute;
-    top: 10px;
-    left: 10px;
-    width: 22px;
-    height: 22px;
-
-    /* Change this from 50% to a small value for a square */
-    border-radius: 4px;
-
-    border: 2px solid rgba(255, 255, 255, 0.8);
-    background: rgba(0, 0, 0, 0.2);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    color: white;
-    font-size: 14px;
-    transition: all 0.2s ease;
-    z-index: 10;
-  }
-
-  .select-indicator.active {
-    background: #0077ff;
-    border-color: #0077ff;
-  }
-
-  .select-indicator:hover {
-    transform: scale(1.1);
-    background: rgba(255, 255, 255, 0.3);
-    border-color: white;
-  }
-
-  .card-wrapper {
-    aspect-ratio: 2 / 3;
-    width: 95%;
-    margin: auto;
-    perspective: 1000px;
-    /* Prevents the browser from stealing the touch for scrolling/context menus */
-    touch-action: pan-y;
-    /* Prevents the 'save image' popup on long-press */
-    -webkit-touch-callout: none;
-    user-select: none;
-    -webkit-user-select: none;
-  }
-
-  .notes-actions {
-    display: flex;
-    flex-direction: column !important;
-    gap: 10px;
-    margin-top: auto;
-    width: 100%;
-  }
-
-  .notes-actions button {
-    flex: 1; /* Makes both buttons equal width */
-    min-height: 50px; /* Standard mobile touch target height */
-    padding: 12px;
-    font-size: 1rem;
-    font-weight: 700;
-    border-radius: 8px;
-    border: 1px solid transparent;
-    cursor: pointer;
-    display: flex;
-    align-items: center;
-    justify-content: center; /* Meets standard mobile touch-target guidelines */
-  }
-
-  .notes-actions .btn-zoom:hover,
-  .notes-actions .btn-zoom:active {
-    background-color: #0056b3 !important;
-  }
-
-  .notes-actions .btn-flip:hover,
-  .notes-actions .btn-flip:active {
-    background-color: #f0f0f0 !important;
-  }
-
-  .sidebar-bottom .nav-btn,
-  .sidebar-bottom .logout-btn,
-  .trash-zone {
-    flex: 1; /* Forces equal width */
-    height: 44px; /* Standard comfortable touch-target size */
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 0.85rem;
-    padding: 0;
-    margin: 0;
-  }
-
-  .nav-btn {
-    min-height: 38px !important;
-    height: 38px !important;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    padding: 0 12px !important; /* Tighten horizontal padding */
-    margin: 0;
-    font-size: 0.85rem !important;
-  }
-
-  .zoom-btn {
-    width: 44px !important; /* Larger touch target */
-    height: 44px !important;
-    top: 5px;
-    right: 5px;
-    font-size: 1.2rem;
-    z-index: 100 !important; /* Ensure it stays above everything */
-
-    /* Crucial: prevent the browser from thinking a tap is a drag/scroll */
-    touch-action: none;
-    pointer-events: auto !important;
-  }
-  .zoomed-image {
-    width: auto;
-    height: auto;
-    max-width: 100%;
-    max-height: 80vh;
-    object-fit: contain;
-  }
-
-  .zoomed-notes-box {
-    width: 95%;
-    height: 60vh;
-    padding: 15px;
-  }
-
-  .card-drag-preview {
-    z-index: 9999 !important;
-    position: fixed !important;
-  }
-
-  .main-text {
-    font-size: 0.85rem !important;
-    font-weight: 500; /* Match folder weight */
-    margin: 0;
-    line-height: 1;
-    display: block;
-  }
-
-  .folders-list {
-    margin-top: 0;
-    display: flex;
-    align-items: center;
-  }
-
-  .nav-btn,
-  .folder-item {
-    min-height: 36px; /* Reduced from 44px */
-    padding: 6px 10px;
-    font-size: 0.85rem;
-  }
-  .folder-item {
-    height: 38px !important;
-    min-height: 38px !important;
-    min-width: 120px;
-    display: flex;
-    flex-shrink: 0;
-    align-items: center;
-    justify-content: center;
-    height: 44px !important;
-    background: #f5f5f5;
-    border-radius: 8px;
-    padding: 0 8px;
-  }
-
-  .scroll-to-top {
-    /* Push it higher so it sits above your 140px bottom navbar */
-    bottom: 160px;
-    right: 20px;
-    width: 45px;
-    height: 45px;
-    background-color: rgba(0, 119, 255, 0.9); /* Slight transparency */
-  }
-}
+/*
+refactored css file 
+maybe try with refactored app2.jsx
+*/
