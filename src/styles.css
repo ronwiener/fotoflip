@@ -423,6 +423,25 @@ html {
   resize: none;
 }
 
+/* ---------- ZOOMED NOTES BUTTON UX ---------- */
+.notes-close-footer {
+  width: 100%;
+  margin-top: 15px;
+  padding: 14px 0; /* Increased height */
+  background: #64748b; /* Matching the Slate Grey of the Flip button */
+  color: white;
+  border: none;
+  border-radius: var(--radius-md);
+  font-weight: 600;
+  font-size: 1rem;
+  cursor: pointer;
+  transition: var(--transition);
+}
+
+.notes-close-footer:hover {
+  background: #475569;
+}
+
 /* ---------- 9. MOBILE RESPONSIVE ---------- */
 @media (max-width: 768px) {
   .sidebar {
