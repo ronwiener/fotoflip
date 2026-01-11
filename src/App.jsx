@@ -676,9 +676,9 @@ export default function App() {
             </label>
             <button
               className="util-btn"
-              onClick={() => exportGalleryZip(items)}
+              onClick={() => exportGalleryZip(items, selectedIds)}
             >
-              📤 Export
+              📤 Export {selectedIds.size > 0 ? `(${selectedIds.size})` : "All"}
             </button>
             <label className="util-btn">
               📥 Import{" "}

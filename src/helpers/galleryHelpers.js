@@ -48,17 +48,28 @@ export function filterItems(items, activeFolder, search) {
 
 /* ---------- ZIP EXPORT (Supabase Version) ---------- */
 
-export async function exportGalleryZip(items) {
+/* ---------- ZIP EXPORT (Selected Items Version) ---------- */
+export async function exportGalleryZip(items, selectedIds) {
   const zip = new JSZip();
   const meta = [];
 
-  for (const item of items) {
+  // If selectedIds is provided and has items, filter the items list
+  const itemsToExport =
+    selectedIds && selectedIds.size > 0
+      ? items.filter((item) => selectedIds.has(item.id))
+      : items; // Default to all if nothing is selected (or you can change this to return)
+
+  if (itemsToExport.length === 0) {
+    alert("No items selected to export!");
+    return;
+  }
+
+  for (const item of itemsToExport) {
     try {
       const response = await fetch(item.imageURL);
       if (!response.ok) throw new Error("Image download failed");
       const blob = await response.blob();
 
-      // Standardize the filename inside the ZIP
       const cleanFilename = item.image_path.split("/").pop();
       const zipPath = item.folder
         ? `${item.folder}/${cleanFilename}`
@@ -82,7 +93,7 @@ export async function exportGalleryZip(items) {
 
   const link = document.createElement("a");
   link.href = URL.createObjectURL(blob);
-  link.download = `gallery_backup_${
+  link.download = `gallery_export_${
     new Date().toISOString().split("T")[0]
   }.zip`;
   link.click();
