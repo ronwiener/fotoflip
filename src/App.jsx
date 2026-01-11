@@ -166,6 +166,7 @@ function TrashDropZone({ selectedCount, isDropping }) {
   );
 }
 
+/* ---------- UI SUB-COMPONENTS ---------- */
 function ZoomOverlay({ data, items, updateNotes, onClose }) {
   if (!data) return null;
   const item = items.find((i) => i.id === data.id);
@@ -178,13 +179,7 @@ function ZoomOverlay({ data, items, updateNotes, onClose }) {
           onClick={(e) => e.stopPropagation()}
         >
           <img src={data.url} alt="" className="zoomed-image" />
-          <button
-            className="zoom-footer-close"
-            onPointerDown={onClose}
-            onClick={(e) => e.stopPropagation()}
-          >
-            Close Zoom
-          </button>
+          {/* Close button removed as requested - click overlay to return */}
         </div>
       ) : (
         <div className="zoomed-notes-box" onClick={(e) => e.stopPropagation()}>
@@ -259,6 +254,7 @@ function DraggableCard({
       {...listeners}
     >
       <div className={`card ${item.flipped ? "flipped" : ""}`}>
+        {/* FRONT */}
         <div className="card-face card-front" onPointerUp={handleFrontClick}>
           <div
             className={`select-indicator ${isSelected ? "active" : ""}`}
@@ -293,6 +289,7 @@ function DraggableCard({
           <img src={item.imageURL} alt="" />
         </div>
 
+        {/* BACK */}
         <div className="card-face card-back" data-no-dnd="true">
           <div className="notes-content">
             <textarea
@@ -309,7 +306,7 @@ function DraggableCard({
                   onZoom({ type: "notes", id: item.id });
                 }}
               >
-                🔍 Zoom
+                Zoom
               </button>
               <button
                 className="btn-flip"
@@ -792,7 +789,3 @@ export default function App() {
     </DndContext>
   );
 }
-
-/*
-refactored jsx
-*/

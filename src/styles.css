@@ -59,12 +59,6 @@ html {
   }
 }
 
-@keyframes spin {
-  to {
-    transform: rotate(360deg);
-  }
-}
-
 /* ---------- 3. AUTH & OVERLAYS ---------- */
 .auth-container {
   display: flex;
@@ -164,7 +158,6 @@ html {
   flex-direction: column;
   overflow: hidden;
   position: relative;
-  overscroll-behavior-y: contain;
 }
 
 /* ---------- 5. UI COMPONENTS ---------- */
@@ -258,7 +251,6 @@ html {
   perspective: 1000px;
   touch-action: none !important;
   position: relative;
-  transition: transform 0.2s cubic-bezier(0.2, 0, 0, 1);
 }
 
 .card-wrapper.selected {
@@ -298,13 +290,63 @@ html {
   pointer-events: none;
 }
 
+/* CARD BACK & NOTES UX */
 .card-back {
   transform: rotateY(180deg);
-  padding: 15px;
+  padding: 12px;
   display: flex;
   flex-direction: column;
+  background: #fdfdfd;
 }
 
+.notes-content {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  width: 100%;
+}
+
+.notes-content textarea {
+  flex: 1;
+  width: 100%;
+  border: 1px solid #eee;
+  border-radius: var(--radius-md);
+  padding: 10px;
+  font-size: 0.9rem;
+  resize: none;
+  margin-bottom: 12px;
+  background: #fff;
+  color: var(--text-main);
+}
+
+.notes-actions {
+  display: flex;
+  gap: 8px;
+  width: 100%;
+  margin-top: auto;
+}
+
+.notes-actions button {
+  flex: 1;
+  padding: 10px 0;
+  border: none;
+  border-radius: 6px;
+  font-weight: 600;
+  font-size: 0.85rem;
+  cursor: pointer;
+  transition: var(--transition);
+}
+
+.btn-zoom {
+  background: var(--primary);
+  color: white;
+}
+.btn-flip {
+  background: #64748b;
+  color: white;
+}
+
+/* INDICATORS */
 .select-indicator {
   position: absolute;
   top: 10px;
@@ -320,7 +362,6 @@ html {
   align-items: center;
   justify-content: center;
 }
-
 .select-indicator.active {
   background: var(--primary);
   border-color: var(--primary);
@@ -407,29 +448,27 @@ html {
 
   .gallery {
     grid-template-columns: repeat(2, 1fr);
-    padding-bottom: 160px; /* Space for fixed sidebar */
+    padding-bottom: 160px;
   }
 
-  .gallery::after {
-    content: "";
-    display: block;
-    height: 100px;
-    grid-column: 1/-1;
+  .card-back {
+    padding: 8px;
   }
 
+  /* Buttons stay side-by-side on mobile for better centering */
   .notes-actions {
-    flex-direction: column;
-    gap: 8px;
+    flex-direction: row;
   }
   .notes-actions button {
     min-height: 44px;
+    font-size: 0.9rem;
   }
 
-  .scroll-to-top {
+  .scroll-to-top,
+  .save-indicator {
     bottom: 160px;
   }
   .save-indicator {
-    bottom: 160px;
     right: 50%;
     transform: translateX(50%);
   }
@@ -444,7 +483,6 @@ html {
   overflow: hidden;
   margin-top: 10px;
 }
-
 .progress-bar-fill {
   height: 100%;
   background: var(--primary);
@@ -461,8 +499,3 @@ html {
   border-radius: 20px;
   z-index: 1000;
 }
-
-/*
-refactored css file 
-maybe try with refactored app2.jsx
-*/
