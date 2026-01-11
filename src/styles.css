@@ -290,6 +290,25 @@ html {
   pointer-events: none;
 }
 
+/* ---------- DRAG OVERLAY PREVIEW ---------- */
+.card-drag-preview {
+  /* Half the typical card width */
+  width: 90px;
+  aspect-ratio: 3/4;
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  box-shadow: var(--shadow-lg);
+  opacity: 0.8;
+  pointer-events: none;
+  z-index: 9999;
+}
+
+.card-drag-preview img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
 /* CARD BACK & NOTES UX */
 .card-back {
   transform: rotateY(180deg);
