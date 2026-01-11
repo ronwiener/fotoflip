@@ -618,7 +618,6 @@ a {
   height: 100%;
   object-fit: cover;
   display: block;
-  pointer-events: none !important;
 }
 
 .card.flipped {
@@ -641,6 +640,12 @@ a {
 .card-front {
   z-index: 2;
   pointer-events: auto;
+}
+.card-front,
+.card-front img {
+  pointer-events: none !important;
+  -webkit-user-drag: none;
+  user-select: none;
 }
 
 .zoom-btn,
@@ -751,7 +756,7 @@ a {
 .card-wrapper[data-dragging="true"] {
   cursor: grabbing !important;
   opacity: 0.5;
-  transform: scale(0.6);
+  transform: scale(1.05);
 }
 /* Prevent the wrapper from dimming the card if it's flipped */
 .card-wrapper[data-flipped="true"] {
@@ -966,14 +971,14 @@ a {
   z-index: 9999 !important;
   pointer-events: none;
   position: fixed; /* Ensures it stays visible on mobile */
+  width: 160px;
   aspect-ratio: 3/4;
-  transform-origin: center;
   background: white;
   border-radius: 12px;
   box-shadow: 0 20px 50px rgba(0, 0, 0, 0.4);
   overflow: hidden;
-  transform: scale(0.6); /* "Lifted" effect */
-  opacity: 0.9;
+  transform: scale(1.1); /* "Lifted" effect */
+  opacity: 1;
 }
 
 .card-drag-preview img {
@@ -1441,3 +1446,7 @@ a {
     background-color: rgba(0, 119, 255, 0.9); /* Slight transparency */
   }
 }
+
+/*
+this file works with App1
+*/
