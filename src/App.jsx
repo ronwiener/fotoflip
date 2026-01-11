@@ -318,11 +318,15 @@ export default function App() {
     useSensor(PointerSensor, {
       activationConstraint: { distance: 3 },
       onActivation: (event) => {
-        // If the user clicks the checkbox or zoom button, DO NOT start a drag
-        const target = event.nativeEvent.target;
+        // Use event.active.eventTarget or check for nativeEvent safely
+        const target = event.active?.eventTarget || event.nativeEvent?.target;
+
         if (
-          target.closest(".select-indicator") ||
-          target.closest(".zoom-btn")
+          target &&
+          (target.closest(".select-indicator") ||
+            target.closest(".zoom-btn") ||
+            target.closest("button") ||
+            target.closest("textarea"))
         ) {
           return false;
         }
@@ -331,10 +335,14 @@ export default function App() {
     useSensor(TouchSensor, {
       activationConstraint: { delay: 200, tolerance: 5 },
       onActivation: (event) => {
-        const target = event.nativeEvent.target;
+        const target = event.active?.eventTarget || event.nativeEvent?.target;
+
         if (
-          target.closest(".select-indicator") ||
-          target.closest(".zoom-btn")
+          target &&
+          (target.closest(".select-indicator") ||
+            target.closest(".zoom-btn") ||
+            target.closest("button") ||
+            target.closest("textarea"))
         ) {
           return false;
         }
