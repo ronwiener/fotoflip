@@ -5,6 +5,7 @@ import React, {
   useCallback,
   useRef,
 } from "react";
+window.React = React;
 import FilerobotImageEditor, {
   TABS,
   TOOLS,
