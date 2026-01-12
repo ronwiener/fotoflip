@@ -5,6 +5,10 @@ import React, {
   useCallback,
   useRef,
 } from "react";
+import FilerobotImageEditor, {
+  TABS,
+  TOOLS,
+} from "react-filerobot-image-editor";
 import {
   DndContext,
   PointerSensor,
@@ -212,9 +216,9 @@ function DraggableCard({
   onToggleSelect,
   onFlip,
   onZoom,
+  onEdit,
   updateNotes,
 }) {
-  if (!item) return null;
   const {
     attributes,
     listeners,
@@ -223,9 +227,10 @@ function DraggableCard({
     transition,
     isDragging,
   } = useSortable({
-    id: item.id,
-    disabled: item.flipped,
+    id: item.id || "temp",
+    disabled: !item || item.flipped,
   });
+  if (!item) return null;
 
   const style = {
     transform: CSS.Transform.toString(transform),
@@ -267,10 +272,6 @@ function DraggableCard({
               e.stopPropagation();
               onToggleSelect(item.id);
             }}
-            onClick={(e) => {
-              e.preventDefault();
-              e.stopPropagation();
-            }}
           >
             {isSelected ? "✓" : ""}
           </div>
@@ -285,6 +286,18 @@ function DraggableCard({
             }}
           >
             🔍
+          </button>
+          {/* Inside DraggableCard Front Face */}
+          <button
+            className="edit-btn"
+            data-no-dnd="true"
+            onPointerDown={(e) => e.stopPropagation()}
+            onClick={(e) => {
+              e.stopPropagation();
+              onEdit(item); // We'll pass this prop down
+            }}
+          >
+            🎨
           </button>
           <img src={item.imageURL} alt="" />
         </div>
@@ -346,6 +359,7 @@ export default function App() {
   const [showScrollTop, setShowScrollTop] = useState(false);
   const [isSaved, setIsSaved] = useState(false);
   const [isClosingZoom, setIsClosingZoom] = useState(false);
+  const [editingItem, setEditingItem] = useState(null);
 
   // --- Refs & Sensors ---
   const galleryRef = useRef(null);
@@ -742,6 +756,7 @@ export default function App() {
                   onToggleSelect={handleToggleSelect}
                   onFlip={handleFlip}
                   onZoom={setZoomData}
+                  onEdit={setEditingItem}
                   updateNotes={updateNotes}
                 />
               ))}
@@ -785,6 +800,38 @@ export default function App() {
             setTimeout(() => setIsClosingZoom(false), 100);
           }}
         />
+        {editingItem && (
+          <FilerobotImageEditor
+            source={editingItem.imageURL}
+            onSave={async (editedImageObject) => {
+              // 1. Get the edited image as a blob
+              const response = await fetch(editedImageObject.imageBase64);
+              const blob = await response.blob();
+
+              // 2. Define a new file path (overwriting or creating new)
+
+              const filePath = editingItem.image_path; // This overwrites the existing file
+
+              // 3. Upload to Supabase Storage
+              const { error: uploadError } = await supabase.storage
+                .from("gallery")
+                .upload(filePath, blob, { upsert: true });
+
+              if (!uploadError) {
+                // Refresh the gallery to show the new version
+                await fetchItems(session.user.id);
+                setEditingItem(null);
+              }
+            }}
+            onClose={() => setEditingItem(null)}
+            annotationsCommon={{ fill: "#ff0000" }}
+            tabsIds={[TABS.ADJUST, TABS.FILTERS, TABS.ANNOTATE]}
+            defaultTabId={TABS.ADJUST}
+            defaultToolId={TOOLS.CROP}
+            savingPixelRatio={4}
+            previewPixelRatio={4}
+          />
+        )}
       </div>
     </DndContext>
   );
