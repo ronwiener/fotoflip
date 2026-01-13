@@ -405,14 +405,20 @@ export default function App() {
       .select("*")
       .eq("user_id", userId)
       .order("created_at", { ascending: false });
+
     if (error) return console.error(error.message);
 
     const formatted = data.map((item) => {
       const { data: urlData } = supabase.storage
         .from("gallery")
         .getPublicUrl(item.image_path);
-      return { ...item, imageURL: urlData.publicUrl };
+
+      // This is the magic line: it adds a unique timestamp to the URL
+      // so the browser always fetches the latest version after an edit.
+      const cacheBuster = new Date().getTime();
+      return { ...item, imageURL: `${urlData.publicUrl}?t=${cacheBuster}` };
     });
+
     setItems(formatted);
   }, []);
 
