@@ -94,10 +94,10 @@ export async function exportGalleryZip(items, selectedIds) {
     <title>Photo Flip Gallery</title>
     <style>
         body { font-family: sans-serif; background: #f4f7f6; padding: 20px; color: #333; }
-        .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 30px; }
+        .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); max-width: 1000px; margin: 0 auto; gap: 30px; }
         .card { background: white; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 10px rgba(0,0,0,0.1); }
-        img { width: 100%; height: 250px; object-fit: cover; border-bottom: 1px solid #eee; }
-        .content { padding: 15px; }
+        img { width: 100%; height: auto;  object-fit: contain; display: block;  background: #000: border-bottom: 1px solid #eee; }
+        .content { padding: 15px; background: white;}
         .folder { font-size: 0.7rem; text-transform: uppercase; color: #0077ff; font-weight: bold; margin-bottom: 5px; }
         .notes { font-size: 0.95rem; line-height: 1.5; white-space: pre-wrap; }
     </style>
