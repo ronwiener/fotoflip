@@ -538,7 +538,7 @@ html {
 
 /* This forces a gutter around the image so you can move your cursor */
 .filerobot-canvas-stage {
-  padding: 120px !important;
+  padding: 150px !important;
   background-color: #f1f5f9 !important; /* Makes the workspace visible */
   display: flex !important;
   align-items: center !important;
@@ -552,10 +552,12 @@ html {
   z-index: 1000 !important;
 }
 canvas.filerobot-canvas {
-  max-width: 60% !important; /* Drastically smaller to give you cursor room */
-  max-height: 60% !important;
+  max-width: 50% !important; /* Drastically smaller to give you cursor room */
+  max-height: 50% !important;
   object-fit: contain !important;
   box-shadow: 0 8px 30px rgba(0, 0, 0, 0.2) !important;
+  margin: auto !important;
+  display: block !important;
 }
 
 /* 1. The Full-Screen Dark Backdrop */
@@ -574,11 +576,9 @@ canvas.filerobot-canvas {
 
 /* 2. The Container holding the Editor */
 .editor-wrapper-container {
-  width: 90% !important; /* Make it think the screen is massive */
-  height: 90% !important; /* Huge virtual canvas */
+  width: 95% !important; /* Make it think the screen is massive */
+  height: 95% !important; /* Huge virtual canvas */
   position: absolute;
-  top: 50%;
-  left: 50%;
   transform: translate(-50%, -50%) scale(0.5); /* Shrink it back down to fit your eyes */
   background: white;
   border-radius: 12px;
