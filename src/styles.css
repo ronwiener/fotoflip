@@ -568,6 +568,7 @@ html {
   display: flex !important;
   align-items: center !important;
   justify-content: center !important;
+  padding: 0;
 }
 
 /* Ensure crop handles don't disappear in the gutter */
@@ -599,13 +600,13 @@ canvas.filerobot-canvas {
 .editor-wrapper-container {
   width: 90vw;
   height: 90vh;
-  padding: 80px;
   box-sizing: border-box;
-  background: #1e293b; /* The color of the "moat" around the image */
+  background: white;
+  border-radius: 12px;
+  overflow: hidden;
+  position: relative;
   display: flex;
   flex-direction: column;
-  position: relative;
-  overflow: hidden;
 }
 
 /* ---------- 7. DRAGGABLE CARD ---------- */
