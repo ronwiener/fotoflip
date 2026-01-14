@@ -756,31 +756,8 @@ export default function App1() {
           />
 
           {editingItem && (
-            <div
-              className="editor-overlay"
-              style={{
-                position: "fixed",
-                top: 0,
-                left: 0,
-                width: "100vw",
-                height: "100vh",
-                boxSizing: "border-box",
-                backgroundColor: "rgba(0, 0, 0, 0.4)", // Dim the background
-                zIndex: 99999, // Ensure it stays on top of everything
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-              }}
-            >
-              <div
-                className="editor-wrapper-container"
-                style={{
-                  width: "90%",
-                  height: "90%",
-                  borderRadius: "8px",
-                  overflow: "hidden",
-                }}
-              >
+            <div className="editor-overlay">
+              <div className="editor-wrapper-container">
                 <FilerobotImageEditor
                   source={editingItem.imageURL}
                   onSave={async (obj) => {
@@ -796,15 +773,17 @@ export default function App1() {
                   defaultTabId={TABS.ADJUST}
                   defaultToolId={TOOLS.CROP}
                   config={{
-                    // This is the key: it forces a 150px "no-go zone" inside the white box.
-                    // The image will shrink to fit inside this zone, leaving room for handles.
+                    useCloudimageResponsive: false,
+                    loadNativeImage: true,
+                    noScaleUp: true,
+                    // THIS IS THE FIX: Forces the auto-sizer to leave a 100px gutter
                     imageGrid: {
-                      padding: 150,
+                      padding: 100,
                     },
-                    // Prevent the editor from auto-zooming to fill the edges
                     initialZoom: 0.1,
                     adjust: {
-                      // Allows you to drag crop handles into that 150px empty space
+                      // Allows your cursor to move outside the image pixels
+                      // into the gutter to grab crop handles
                       allowNegativeCrop: true,
                     },
                   }}

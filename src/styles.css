@@ -536,35 +536,60 @@ html {
   cursor: pointer;
 }
 
-/* This forces a gutter around the image so you can move your cursor */
+/* ---------- 6a. FILEROBOT EDITOR OVERRIDES ---------- */
+
+/* The Main Backdrop - Centered and Dark */
+.editor-overlay {
+  position: fixed;
+  inset: 0;
+  background-color: rgba(0, 0, 0, 0.85);
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  z-index: 9999;
+}
+
+/* The White Modal Box - Standard size */
+.editor-wrapper-container {
+  width: 90vw;
+  height: 90vh;
+  background: white;
+  border-radius: 12px;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  position: relative;
+}
+
+/* THE FIX: Internal padding forces the image away from the edges */
 .filerobot-canvas-stage {
-  padding: 150px !important;
-  background-color: #f1f5f9 !important; /* Makes the workspace visible */
+  padding: 100px !important;
+  background-color: #f1f5f9 !important;
+  box-sizing: border-box !important;
   display: flex !important;
   align-items: center !important;
   justify-content: center !important;
 }
 
+/* Ensure crop handles don't disappear in the gutter */
 .filerobot-canvas-container {
   overflow: visible !important;
 }
-.filerobot-item-handler {
-  z-index: 1000 !important;
-}
+
+/* Forces the image drawing surface to stay within the padding */
 canvas.filerobot-canvas {
-  max-width: 50% !important; /* Drastically smaller to give you cursor room */
-  max-height: 50% !important;
+  max-width: 90% !important;
+  max-height: 90% !important;
   object-fit: contain !important;
-  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.2) !important;
   margin: auto !important;
-  display: block !important;
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.15) !important;
 }
 
 /* 1. The Full-Screen Dark Backdrop */
 .editor-overlay {
   position: fixed;
   inset: 0;
-  background-color: rgba(0, 0, 0, 0.8);
+  background-color: rgba(0, 0, 0, 0.4);
   display: flex !important;
   align-items: center !important;
   justify-content: center !important;
