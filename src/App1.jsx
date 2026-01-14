@@ -773,18 +773,12 @@ export default function App1() {
                   defaultTabId={TABS.ADJUST}
                   defaultToolId={TOOLS.CROP}
                   config={{
-                    useCloudimageResponsive: false,
+                    useCloudimageResponsive: true,
                     loadNativeImage: true,
-                    noScaleUp: true,
+                    noScaleUp: false,
                     // THIS IS THE FIX: Forces the auto-sizer to leave a 100px gutter
                     imageGrid: {
-                      padding: 100,
-                    },
-                    initialZoom: 0.1,
-                    adjust: {
-                      // Allows your cursor to move outside the image pixels
-                      // into the gutter to grab crop handles
-                      allowNegativeCrop: true,
+                      padding: 0,
                     },
                   }}
                 />
