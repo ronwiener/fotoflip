@@ -563,7 +563,6 @@ html {
 
 /* THE FIX: Internal padding forces the image away from the edges */
 .filerobot-canvas-stage {
-  padding: 100px !important;
   background-color: #f1f5f9 !important;
   box-sizing: border-box !important;
   display: flex !important;
@@ -600,12 +599,13 @@ canvas.filerobot-canvas {
 .editor-wrapper-container {
   width: 90vw;
   height: 90vh;
-  background: white;
-  border-radius: 12px;
-  overflow: hidden;
-  position: relative; /* Removes the top/left/transform mess */
+  padding: 80px;
+  box-sizing: border-box;
+  background: #1e293b; /* The color of the "moat" around the image */
   display: flex;
   flex-direction: column;
+  position: relative;
+  overflow: hidden;
 }
 
 /* ---------- 7. DRAGGABLE CARD ---------- */

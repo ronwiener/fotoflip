@@ -778,8 +778,8 @@ export default function App1() {
                     noScaleUp: false, // Allows smaller images to expand to fill the workspace
                     reduceBeforeEdit: {
                       mode: "auto",
-                      widthLimit: 1200,
-                      heightLimit: 800,
+                      widthLimit: 1000,
+                      heightLimit: 600,
                     },
                   }}
                   savingPixelRatio={window.devicePixelRatio || 2} // Use device ratio instead of hardcoding 4
