@@ -766,6 +766,11 @@ export default function App1() {
                 fetchItems(session.user.id);
                 setEditingItem(null);
               }}
+              config={{
+                imageGrid: {
+                  padding: 50,
+                },
+              }}
               onClose={() => setEditingItem(null)}
               tabsIds={[TABS.ADJUST, TABS.FILTERS, TABS.ANNOTATE]}
               defaultTabId={TABS.ADJUST}
