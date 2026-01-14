@@ -2,7 +2,8 @@ import React from "react";
 
 export default function LandingPage({ onEnter }) {
   return (
-    <div className="min-h-screen bg-gray-50 text-gray-900 font-sans overflow-x-hidden">
+    // Add "flex flex-col items-center overflow-y-auto"
+    <div className="w-full bg-gray-50 text-gray-900 font-sans overflow-y-auto flex flex-col items-center">
       {/* Navigation */}
       <nav className="flex items-center justify-between px-6 py-4 max-w-7xl mx-auto">
         <div className="text-2xl font-extrabold tracking-tighter text-indigo-600 flex items-center gap-2">

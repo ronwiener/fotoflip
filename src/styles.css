@@ -327,6 +327,17 @@ html {
   pointer-events: none;
 }
 
+/* Enable hover flipping for gallery cards */
+.card-wrapper.hover-flip:hover .card {
+  transform: rotateY(180deg);
+}
+
+/* Ensure the back face is hidden until flipped */
+.card-back {
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+}
+
 /* ---------- DRAG OVERLAY PREVIEW ---------- */
 .card-drag-preview {
   /* Half the typical card width */
