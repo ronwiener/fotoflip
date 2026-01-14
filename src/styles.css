@@ -538,20 +538,25 @@ html {
 
 /* This forces a gutter around the image so you can move your cursor */
 .filerobot-canvas-stage {
-  transform: scale(0.85) !important;
-  transform-origin: center center !important;
+  padding: 100px !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  box-sizing: border-box !important;
+  background-color: #f8fafc !important; /* Subtle contrast to see the edges */
 }
 
 .filerobot-canvas-container {
-  background-color: #f0f2f5 !important; /* Makes the "gutter" a different color */
-  padding: 50px !important;
+  overflow: visible !important;
 }
 .filerobot-item-handler {
   z-index: 1000 !important;
 }
 canvas.filerobot-canvas {
-  max-width: calc(100% - 40px) !important;
-  max-height: calc(100% - 40px) !important;
+  max-width: 70% !important;
+  max-height: 70% !important;
+  object-fit: contain !important;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15) !important;
 }
 
 /* 1. The Full-Screen Dark Backdrop */

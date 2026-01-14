@@ -796,15 +796,10 @@ export default function App1() {
                   defaultTabId={TABS.ADJUST}
                   defaultToolId={TOOLS.CROP}
                   config={{
-                    initialZoom: 0.5,
-                    adjust: {
-                      crop: {
-                        ratio: "custom",
-                      },
-                    },
                     imageGrid: {
                       padding: 100,
                     },
+                    initialZoom: 0.1,
                   }}
                 />
               </div>
