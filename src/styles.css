@@ -538,8 +538,8 @@ html {
 
 /* This forces a gutter around the image so you can move your cursor */
 .filerobot-canvas-stage {
-  padding: 80px !important;
-  box-sizing: border-box !important;
+  transform: scale(0.85) !important;
+  transform-origin: center center !important;
 }
 canvas.filerobot-canvas {
   max-width: calc(100% - 40px) !important;
