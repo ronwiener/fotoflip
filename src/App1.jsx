@@ -245,7 +245,7 @@ function DraggableCard({
   };
 
   const handleFrontClick = (e) => {
-    if (isDragging || isClosingZoomRef) return;
+    if (isDragging || isClosingZoomRef.current) return;
     if (isSelected || selectedIds.size > 0) {
       onToggleSelect(item.id);
     } else {
@@ -706,7 +706,7 @@ export default function App1() {
                   <DraggableCard
                     key={item.id}
                     item={item}
-                    isClosingZoom={isClosingZoom}
+                    isClosingZoomRef={isClosingZoomRef}
                     selectedIds={selectedIds}
                     isSelected={selectedIds.has(item.id)}
                     onToggleSelect={handleToggleSelect}
@@ -745,7 +745,9 @@ export default function App1() {
             onClose={() => {
               isClosingZoomRef.current = true;
               setZoomData(null);
-              setTimeout(() => isClosingZoomRef.current(false), 300);
+              setTimeout(() => {
+                isClosingZoomRef.current = false;
+              }, 300);
             }}
           />
 
