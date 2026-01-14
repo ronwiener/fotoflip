@@ -763,31 +763,39 @@ export default function App1() {
                 left: 0,
                 width: "100vw",
                 height: "100vh",
-                padding: "60px", // Forces the editor workspace to be smaller
+                padding: "80px", // THIS creates the cursor room outside the editor
                 boxSizing: "border-box",
-                backgroundColor: "rgba(0,0,0,0.8)", // Darken background to see the edges
-                zIndex: 2000,
+                backgroundColor: "rgba(0, 0, 0, 0.4)", // Dim the background
+                zIndex: 99999, // Ensure it stays on top of everything
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
               }}
             >
-              <FilerobotImageEditor
-                source={editingItem.imageURL}
-                onSave={async (obj) => {
-                  const blob = await (await fetch(obj.imageBase64)).blob();
-                  await supabase.storage
-                    .from("gallery")
-                    .upload(editingItem.image_path, blob, { upsert: true });
-                  fetchItems(session.user.id);
-                  setEditingItem(null);
+              <div
+                style={{
+                  width: "100%",
+                  height: "100%",
+                  borderRadius: "8px",
+                  overflow: "hidden",
                 }}
-                onClose={() => setEditingItem(null)}
-                tabsIds={[TABS.ADJUST, TABS.FILTERS, TABS.ANNOTATE]}
-                defaultTabId={TABS.ADJUST}
-                defaultToolId={TOOLS.CROP}
-                // Simplified config to prioritize fit
-                config={{
-                  initialZoom: 0.1, // Force it even smaller
-                }}
-              />
+              >
+                <FilerobotImageEditor
+                  source={editingItem.imageURL}
+                  onSave={async (obj) => {
+                    const blob = await (await fetch(obj.imageBase64)).blob();
+                    await supabase.storage
+                      .from("gallery")
+                      .upload(editingItem.image_path, blob, { upsert: true });
+                    fetchItems(session.user.id);
+                    setEditingItem(null);
+                  }}
+                  onClose={() => setEditingItem(null)}
+                  tabsIds={[TABS.ADJUST, TABS.FILTERS, TABS.ANNOTATE]}
+                  defaultTabId={TABS.ADJUST}
+                  defaultToolId={TOOLS.CROP}
+                />
+              </div>
             </div>
           )}
         </div>
