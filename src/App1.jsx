@@ -756,27 +756,39 @@ export default function App1() {
           />
 
           {editingItem && (
-            <FilerobotImageEditor
-              source={editingItem.imageURL}
-              onSave={async (obj) => {
-                const blob = await (await fetch(obj.imageBase64)).blob();
-                await supabase.storage
-                  .from("gallery")
-                  .upload(editingItem.image_path, blob, { upsert: true });
-                fetchItems(session.user.id);
-                setEditingItem(null);
+            <div
+              style={{
+                position: "fixed",
+                top: 0,
+                left: 0,
+                width: "100vw",
+                height: "100vh",
+                padding: "60px", // Forces the editor workspace to be smaller
+                boxSizing: "border-box",
+                backgroundColor: "rgba(0,0,0,0.8)", // Darken background to see the edges
+                zIndex: 2000,
               }}
-              config={{
-                initialZoom: 0.15,
-                imageGrid: {
-                  padding: 60,
-                },
-              }}
-              onClose={() => setEditingItem(null)}
-              tabsIds={[TABS.ADJUST, TABS.FILTERS, TABS.ANNOTATE]}
-              defaultTabId={TABS.ADJUST}
-              defaultToolId={TOOLS.CROP}
-            />
+            >
+              <FilerobotImageEditor
+                source={editingItem.imageURL}
+                onSave={async (obj) => {
+                  const blob = await (await fetch(obj.imageBase64)).blob();
+                  await supabase.storage
+                    .from("gallery")
+                    .upload(editingItem.image_path, blob, { upsert: true });
+                  fetchItems(session.user.id);
+                  setEditingItem(null);
+                }}
+                onClose={() => setEditingItem(null)}
+                tabsIds={[TABS.ADJUST, TABS.FILTERS, TABS.ANNOTATE]}
+                defaultTabId={TABS.ADJUST}
+                defaultToolId={TOOLS.CROP}
+                // Simplified config to prioritize fit
+                config={{
+                  initialZoom: 0.1, // Force it even smaller
+                }}
+              />
+            </div>
           )}
         </div>
       </DndContext>
