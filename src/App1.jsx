@@ -796,10 +796,12 @@ export default function App1() {
                   defaultTabId={TABS.ADJUST}
                   defaultToolId={TOOLS.CROP}
                   config={{
-                    imageGrid: {
-                      padding: 100,
+                    adjust: {
+                      allowNegativeCrop: true, // Allows you to pull crop handles into the grey area
                     },
-                    initialZoom: 0.1,
+                    imageGrid: {
+                      padding: 150,
+                    },
                   }}
                 />
               </div>

@@ -538,12 +538,8 @@ html {
 
 /* This forces a gutter around the image so you can move your cursor */
 .filerobot-canvas-stage {
-  padding: 100px !important;
-  display: flex !important;
-  align-items: center !important;
-  justify-content: center !important;
-  box-sizing: border-box !important;
-  background-color: #f8fafc !important; /* Subtle contrast to see the edges */
+  padding: 300px !important; /* Huge padding for the 'large' screen */
+  background-color: #f1f5f9 !important;
 }
 
 .filerobot-canvas-container {
@@ -575,8 +571,12 @@ canvas.filerobot-canvas {
 
 /* 2. The Container holding the Editor */
 .editor-wrapper-container {
-  width: 90%;
-  height: 90%;
+  width: 180% !important; /* Make it think the screen is massive */
+  height: 180% !important; /* Huge virtual canvas */
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%) scale(0.5); /* Shrink it back down to fit your eyes */
   background: white;
   border-radius: 12px;
   overflow: hidden;
