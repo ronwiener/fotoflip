@@ -773,15 +773,17 @@ export default function App1() {
                   defaultTabId={TABS.ADJUST}
                   defaultToolId={TOOLS.CROP}
                   config={{
-                    // This is the most likely candidate for the "old" behavior
-                    adjust: {
-                      allowNegativeCrop: true,
+                    useCloudimageResponsive: true, // Legacy "auto-fit" relies on this
+                    loadNativeImage: true,
+                    noScaleUp: false, // Allows smaller images to expand to fill the workspace
+                    reduceBeforeEdit: {
+                      mode: "auto",
+                      widthLimit: 1200,
+                      heightLimit: 800,
                     },
-                    // Tells the editor to prioritize fitting the container over image resolution
-                    useCloudimageResponsive: true,
                   }}
-                  savingPixelRatio={4}
-                  previewPixelRatio={4}
+                  savingPixelRatio={window.devicePixelRatio || 2} // Use device ratio instead of hardcoding 4
+                  previewPixelRatio={window.devicePixelRatio || 2}
                 />
               </div>
             </div>
