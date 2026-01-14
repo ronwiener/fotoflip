@@ -27,11 +27,9 @@ body,
 html {
   margin: 0;
   padding: 0;
-  height: 100%;
+  min-height: 100%; /* Changed from height to min-height */
   width: 100%;
   background: var(--bg-app);
-  overflow: hidden;
-  position: fixed;
   touch-action: pan-x pan-y;
 }
 
@@ -119,6 +117,182 @@ html {
   box-shadow: 0 4px 12px rgba(0, 123, 255, 0.3);
 }
 
+/* --- Landing Page Layout --- */
+.landing-page-container {
+  width: 100%;
+  min-height: 100vh;
+  background-color: #f8fafc;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  overflow-y: auto;
+  color: #1a202c;
+  padding-bottom: 50px;
+}
+
+.landing-content {
+  width: 100%;
+  max-width: 1100px;
+  padding: 0 24px;
+  box-sizing: border-box;
+}
+
+/* --- Navigation --- */
+.landing-nav {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 24px 0;
+}
+
+.landing-logo {
+  font-size: 24px;
+  font-weight: 800;
+  color: #4f46e5;
+}
+
+.landing-login-btn {
+  background: #4f46e5;
+  color: white;
+  padding: 10px 20px;
+  border-radius: 99px;
+  border: none;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+/* --- Hero Section --- */
+.landing-hero {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 48px;
+  padding: 80px 0;
+  align-items: center;
+}
+
+/* Mobile responsive hero */
+@media (max-width: 768px) {
+  .landing-hero {
+    grid-template-columns: 1fr;
+    text-align: center;
+    padding: 40px 0;
+  }
+}
+
+.hero-text h1 {
+  font-size: 48px;
+  line-height: 1.1;
+  margin-bottom: 24px;
+  font-weight: 900;
+}
+
+.accent-text {
+  color: #4f46e5;
+  font-style: italic;
+}
+
+.hero-text p {
+  font-size: 18px;
+  color: #4a5568;
+  margin-bottom: 32px;
+}
+
+.cta-button {
+  background: #4f46e5;
+  color: white;
+  padding: 16px 32px;
+  border-radius: 12px;
+  font-size: 18px;
+  font-weight: 700;
+  border: none;
+  cursor: pointer;
+  transition: transform 0.2s;
+}
+
+.cta-button:hover {
+  transform: translateY(-2px);
+}
+
+/* --- 3D Flip Demo --- */
+.demo-container {
+  display: flex;
+  justify-content: center;
+}
+
+.flip-card-group {
+  width: 280px;
+  height: 380px;
+  perspective: 1000px;
+}
+
+.flip-card-inner {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  transition: transform 0.6s;
+  transform-style: preserve-3d;
+  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1);
+  border-radius: 16px;
+}
+
+.flip-card-group:hover .flip-card-inner {
+  transform: rotateY(180deg);
+}
+
+.flip-card-front,
+.flip-card-back {
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+  border-radius: 16px;
+  overflow: hidden;
+  inset: 0;
+}
+
+.flip-card-front img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.hover-hint {
+  position: absolute;
+  bottom: 16px;
+  left: 16px;
+  background: rgba(255, 255, 255, 0.9);
+  padding: 4px 12px;
+  border-radius: 4px;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.flip-card-back {
+  background: #eef2ff;
+  transform: rotateY(180deg);
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  padding: 32px;
+  border: 4px solid white;
+  box-sizing: border-box;
+}
+
+.back-label {
+  color: #4f46e5;
+  text-transform: uppercase;
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 1px;
+}
+
+.back-quote {
+  font-size: 18px;
+  font-style: italic;
+  color: #2d3748;
+}
+
 .back-to-landing-btn {
   position: absolute;
   top: 20px;
@@ -140,12 +314,92 @@ html {
   transform: translateX(-2px);
 }
 
+/* --- Features Grid --- */
+.features-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 32px;
+  padding: 80px 0;
+  border-top: 1px solid #e2e8f0;
+}
+
+@media (max-width: 768px) {
+  .features-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.feature-item h3 {
+  margin-bottom: 8px;
+  font-weight: 700;
+}
+.feature-item p {
+  color: #718096;
+  font-size: 14px;
+}
+
+/* --- Business Section --- */
+.business-pitch {
+  background: #312e81;
+  color: white;
+  padding: 60px 40px;
+  border-radius: 24px;
+  text-align: center;
+  margin-bottom: 60px;
+}
+
+.outline-button {
+  background: transparent;
+  border: 2px solid #818cf8;
+  color: white;
+  padding: 12px 32px;
+  border-radius: 8px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.landing-footer {
+  padding: 40px 0;
+  text-align: center;
+  color: #a0aec0;
+  font-size: 12px;
+}
+
+/* The 3D container */
+.group {
+  perspective: 1000px;
+}
+
+/* The card that actually rotates */
+.group:hover .relative {
+  transform: rotateY(180deg);
+}
+
+.relative {
+  transition: transform 0.6s;
+  transform-style: preserve-3d;
+}
+
+/* Hide the back of the card when looking at the front */
+.absolute.inset-0 {
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+}
+
+/* Position the back face correctly */
+.bg-indigo-50 {
+  transform: rotateY(180deg);
+}
+
 /* ---------- 4. APP LAYOUT ---------- */
 .app {
   display: flex;
   width: 100vw;
   height: 100dvh;
   overflow: hidden;
+  top: 0;
+  left: 0;
+  position: fixed;
 }
 
 .sidebar {
