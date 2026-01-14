@@ -767,8 +767,9 @@ export default function App1() {
                 setEditingItem(null);
               }}
               config={{
+                initialZoom: 0.15,
                 imageGrid: {
-                  padding: 50,
+                  padding: 60,
                 },
               }}
               onClose={() => setEditingItem(null)}
