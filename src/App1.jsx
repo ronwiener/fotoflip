@@ -385,18 +385,13 @@ export default function App1() {
     let isMounted = true;
 
     const initializeAuth = async () => {
-      // 1. Get the session (Supabase handles the URL hash automatically here)
       const {
         data: { session: initialSession },
       } = await supabase.auth.getSession();
-
-      if (isMounted) {
-        if (initialSession) {
-          setSession(initialSession);
-          // Explicitly force the view switch here
-          setView("gallery");
-          fetchItems(initialSession.user.id);
-        }
+      if (isMounted && initialSession) {
+        setSession(initialSession);
+        setView("gallery");
+        fetchItems(initialSession.user.id);
       }
     };
 
@@ -408,13 +403,20 @@ export default function App1() {
       if (!isMounted) return;
 
       if (currentSession) {
+        // 1. Update State
         setSession(currentSession);
-        setView("gallery"); // Switch on sign-in event
+        setView("gallery");
         fetchItems(currentSession.user.id);
+
+        // 2. Clean URL (Remove #access_token so it doesn't re-trigger)
+        if (window.location.hash) {
+          window.history.replaceState(null, null, window.location.pathname);
+        }
       } else {
+        // 3. Handle Logout
         setSession(null);
         setItems([]);
-        setView("landing"); // Switch on sign-out event
+        setView("landing");
       }
     });
 
