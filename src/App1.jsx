@@ -383,13 +383,17 @@ export default function App1() {
 
   useEffect(() => {
     let isMounted = true;
+
     const initializeAuth = async () => {
       const {
         data: { session: initialSession },
       } = await supabase.auth.getSession();
       if (isMounted) {
         setSession(initialSession);
-        if (initialSession?.user) fetchItems(initialSession.user.id);
+        if (initialSession) {
+          setView("gallery"); // Switch view if already logged in
+          fetchItems(initialSession.user.id);
+        }
       }
     };
     initializeAuth();
@@ -398,9 +402,16 @@ export default function App1() {
       data: { subscription },
     } = supabase.auth.onAuthStateChange(async (event, currentSession) => {
       if (!isMounted) return;
+
       setSession(currentSession);
-      if (currentSession?.user) fetchItems(currentSession.user.id);
-      else setItems([]);
+
+      if (currentSession) {
+        setView("gallery");
+        fetchItems(currentSession.user.id);
+      } else {
+        setItems([]);
+        setView("landing");
+      }
     });
 
     return () => {
@@ -478,6 +489,14 @@ export default function App1() {
         return i;
       })
     );
+  }, []);
+
+  const handleToggleSelect = useCallback((id) => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      next.has(id) ? next.delete(id) : next.add(id);
+      return next;
+    });
   }, []);
 
   const handleDragEnd = async (event) => {
@@ -740,13 +759,9 @@ export default function App1() {
     );
   }
 
-  // IF NOT LOGGED IN -> Show Landing or Auth
+  // IF NOT LOGGED IN and view is landing -> Show Landing
   if (view === "landing") {
-    return view === "landing" ? (
-      <LandingPage onEnter={() => setView("auth")} />
-    ) : (
-      <Auth />
-    );
+    return <LandingPage onEnter={() => setView("auth")} />;
   }
 
   // GATE 3: THE AUTH SCREEN
