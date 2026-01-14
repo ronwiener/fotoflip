@@ -536,6 +536,18 @@ html {
   cursor: pointer;
 }
 
+/* This forces a gutter around the image so you can move your cursor */
+.filerobot-canvas-stage {
+  padding: 60px !important;
+  box-sizing: border-box !important;
+}
+
+/* Optional: Ensure the editor modal stays a good size on your screen */
+.editor-wrapper-container {
+  width: 90vw;
+  height: 90vh;
+}
+
 /* ---------- 7. DRAGGABLE CARD ---------- */
 .card-wrapper {
   aspect-ratio: 3/4;

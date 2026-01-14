@@ -757,13 +757,13 @@ export default function App1() {
 
           {editingItem && (
             <div
+              className="editor-overlay"
               style={{
                 position: "fixed",
                 top: 0,
                 left: 0,
                 width: "100vw",
                 height: "100vh",
-                padding: "80px", // THIS creates the cursor room outside the editor
                 boxSizing: "border-box",
                 backgroundColor: "rgba(0, 0, 0, 0.4)", // Dim the background
                 zIndex: 99999, // Ensure it stays on top of everything
@@ -773,9 +773,10 @@ export default function App1() {
               }}
             >
               <div
+                className="editor-wrapper-container"
                 style={{
-                  width: "100%",
-                  height: "100%",
+                  width: "90%",
+                  height: "90%",
                   borderRadius: "8px",
                   overflow: "hidden",
                 }}
