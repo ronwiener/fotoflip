@@ -245,7 +245,11 @@ function DraggableCard({
   };
 
   const handleFrontClick = (e) => {
-    if (isDragging || isClosingZoomRef.current) return;
+    e.stopPropagation();
+    if (isDragging || isClosingZoomRef.current) {
+      console.log("Shield blocked a flip");
+      return;
+    }
     if (isSelected || selectedIds.size > 0) {
       onToggleSelect(item.id);
     } else {
@@ -264,7 +268,7 @@ function DraggableCard({
       {...listeners}
     >
       <div className={`card ${item.flipped ? "flipped" : ""}`}>
-        <div className="card-face card-front" onPointerUp={handleFrontClick}>
+        <div className="card-face card-front" onClick={handleFrontClick}>
           <div
             className={`select-indicator ${isSelected ? "active" : ""}`}
             onPointerUp={(e) => {
