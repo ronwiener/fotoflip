@@ -541,6 +541,14 @@ html {
   transform: scale(0.85) !important;
   transform-origin: center center !important;
 }
+
+.filerobot-canvas-container {
+  background-color: #f0f2f5 !important; /* Makes the "gutter" a different color */
+  padding: 50px !important;
+}
+.filerobot-item-handler {
+  z-index: 1000 !important;
+}
 canvas.filerobot-canvas {
   max-width: calc(100% - 40px) !important;
   max-height: calc(100% - 40px) !important;
