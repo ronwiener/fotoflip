@@ -773,14 +773,15 @@ export default function App1() {
                   defaultTabId={TABS.ADJUST}
                   defaultToolId={TOOLS.CROP}
                   config={{
-                    useCloudimageResponsive: true,
-                    loadNativeImage: true,
-                    noScaleUp: false,
-                    // THIS IS THE FIX: Forces the auto-sizer to leave a 100px gutter
-                    imageGrid: {
-                      padding: 0,
+                    // This is the most likely candidate for the "old" behavior
+                    adjust: {
+                      allowNegativeCrop: true,
                     },
+                    // Tells the editor to prioritize fitting the container over image resolution
+                    useCloudimageResponsive: true,
                   }}
+                  savingPixelRatio={4}
+                  previewPixelRatio={4}
                 />
               </div>
             </div>
