@@ -538,14 +538,36 @@ html {
 
 /* This forces a gutter around the image so you can move your cursor */
 .filerobot-canvas-stage {
-  padding: 60px !important;
+  padding: 80px !important;
   box-sizing: border-box !important;
 }
+canvas.filerobot-canvas {
+  max-width: calc(100% - 40px) !important;
+  max-height: calc(100% - 40px) !important;
+}
 
-/* Optional: Ensure the editor modal stays a good size on your screen */
+/* 1. The Full-Screen Dark Backdrop */
+.editor-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  background-color: rgba(0, 0, 0, 0.85); /* Darken to focus on image */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 9999;
+}
+
+/* 2. The Container holding the Editor */
 .editor-wrapper-container {
-  width: 90vw;
-  height: 90vh;
+  width: 90%;
+  height: 90%;
+  background: white;
+  border-radius: 12px;
+  overflow: hidden;
+  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.2);
 }
 
 /* ---------- 7. DRAGGABLE CARD ---------- */
