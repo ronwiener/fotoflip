@@ -172,7 +172,6 @@ function TrashDropZone({ selectedCount, isDropping }) {
   );
 }
 
-/* ---------- UI SUB-COMPONENTS ---------- */
 function ZoomOverlay({ data, items, updateNotes, onClose }) {
   if (!data) return null;
   const item = items.find((i) => i.id === data.id);
@@ -208,7 +207,6 @@ function ZoomOverlay({ data, items, updateNotes, onClose }) {
   );
 }
 
-/* ---------- DRAGGABLE CARD ---------- */
 function DraggableCard({
   item,
   isSelected,
@@ -254,22 +252,14 @@ function DraggableCard({
       ref={setNodeRef}
       style={style}
       className={`card-wrapper ${isSelected ? "selected" : ""}`}
-      data-dragging={isDragging}
-      data-flipped={item.flipped}
       {...attributes}
       {...listeners}
     >
       <div className={`card ${item.flipped ? "flipped" : ""}`}>
-        {/* FRONT */}
         <div className="card-face card-front" onPointerUp={handleFrontClick}>
           <div
             className={`select-indicator ${isSelected ? "active" : ""}`}
-            onPointerDown={(e) => {
-              e.stopPropagation();
-              if (e.nativeEvent) e.nativeEvent.stopImmediatePropagation();
-            }}
             onPointerUp={(e) => {
-              e.preventDefault();
               e.stopPropagation();
               onToggleSelect(item.id);
             }}
@@ -278,9 +268,6 @@ function DraggableCard({
           </div>
           <button
             className="zoom-btn"
-            data-no-dnd="true"
-            onPointerDown={(e) => e.stopPropagation()}
-            onPointerUp={(e) => e.stopPropagation()}
             onClick={(e) => {
               e.stopPropagation();
               onZoom({ type: "img", url: item.imageURL });
@@ -288,14 +275,11 @@ function DraggableCard({
           >
             🔍
           </button>
-          {/* Inside DraggableCard Front Face */}
           <button
             className="edit-btn"
-            data-no-dnd="true"
-            onPointerDown={(e) => e.stopPropagation()}
             onClick={(e) => {
               e.stopPropagation();
-              onEdit(item); // We'll pass this prop down
+              onEdit(item);
             }}
           >
             🎨
@@ -303,8 +287,7 @@ function DraggableCard({
           <img src={item.imageURL} alt="" />
         </div>
 
-        {/* BACK */}
-        <div className="card-face card-back" data-no-dnd="true">
+        <div className="card-face card-back">
           <div className="notes-content">
             <textarea
               value={item.notes}
@@ -340,9 +323,10 @@ function DraggableCard({
 }
 
 /* ---------- MAIN APP ---------- */
-export default function App() {
-  // --- State ---
+export default function App1() {
+  // --- States ---
   const [session, setSession] = useState(null);
+  const [view, setView] = useState("landing"); // New View State
   const [items, setItems] = useState([]);
   const [folders, setFolders] = useState(() => loadFolders() || []);
   const [activeFolder, setActiveFolder] = useState("Select Folder");
@@ -362,42 +346,17 @@ export default function App() {
   const [isClosingZoom, setIsClosingZoom] = useState(false);
   const [editingItem, setEditingItem] = useState(null);
 
-  // --- Refs & Sensors ---
   const galleryRef = useRef(null);
   const timerRef = useRef(null);
 
   const sensors = useSensors(
-    useSensor(PointerSensor, {
-      activationConstraint: { distance: 3 },
-      onActivation: (event) => {
-        const target = event.active?.eventTarget || event.nativeEvent?.target;
-        if (
-          target &&
-          (target.closest(".select-indicator") ||
-            target.closest(".zoom-btn") ||
-            target.closest("button") ||
-            target.closest("textarea"))
-        )
-          return false;
-      },
-    }),
+    useSensor(PointerSensor, { activationConstraint: { distance: 3 } }),
     useSensor(TouchSensor, {
       activationConstraint: { delay: 200, tolerance: 5 },
-      onActivation: (event) => {
-        const target = event.active?.eventTarget || event.nativeEvent?.target;
-        if (
-          target &&
-          (target.closest(".select-indicator") ||
-            target.closest(".zoom-btn") ||
-            target.closest("button") ||
-            target.closest("textarea"))
-        )
-          return false;
-      },
     })
   );
 
-  // --- Helpers & Logic ---
+  // --- Logic Functions ---
   const fetchItems = useCallback(async (userId) => {
     if (!userId) return;
     const { data, error } = await supabase
@@ -412,28 +371,17 @@ export default function App() {
       const { data: urlData } = supabase.storage
         .from("gallery")
         .getPublicUrl(item.image_path);
-
-      // This is the magic line: it adds a unique timestamp to the URL
-      // so the browser always fetches the latest version after an edit.
-      const cacheBuster = new Date().getTime();
-      return { ...item, imageURL: `${urlData.publicUrl}?t=${cacheBuster}` };
+      return {
+        ...item,
+        imageURL: `${urlData.publicUrl}?t=${new Date().getTime()}`,
+      };
     });
-
     setItems(formatted);
   }, []);
 
   useEffect(() => {
     let isMounted = true;
     const initializeAuth = async () => {
-      const queryParams = new URLSearchParams(window.location.search);
-      const tokenHash = queryParams.get("token_hash");
-      if (tokenHash && queryParams.get("type") === "magiclink") {
-        await supabase.auth.verifyOtp({
-          token_hash: tokenHash,
-          type: "magiclink",
-        });
-        window.history.replaceState({}, document.title, window.location.origin);
-      }
       const {
         data: { session: initialSession },
       } = await supabase.auth.getSession();
@@ -449,12 +397,8 @@ export default function App() {
     } = supabase.auth.onAuthStateChange(async (event, currentSession) => {
       if (!isMounted) return;
       setSession(currentSession);
-      if (
-        (event === "SIGNED_IN" || event === "TOKEN_REFRESHED") &&
-        currentSession?.user
-      )
-        fetchItems(currentSession.user.id);
-      else if (event === "SIGNED_OUT") setItems([]);
+      if (currentSession?.user) fetchItems(currentSession.user.id);
+      else setItems([]);
     });
 
     return () => {
@@ -469,7 +413,7 @@ export default function App() {
     const handleScroll = () => setShowScrollTop(galleryEl.scrollTop > 300);
     galleryEl.addEventListener("scroll", handleScroll);
     return () => galleryEl.removeEventListener("scroll", handleScroll);
-  }, []);
+  }, [session]);
 
   const handleUpload = async (event) => {
     const files = event.target.files;
@@ -479,23 +423,22 @@ export default function App() {
     let completedCount = 0;
 
     for (const file of files) {
-      const fileName = `${Date.now()}-${Math.random()}.${file.name
-        .split(".")
-        .pop()}`;
-      const filePath = `${session.user.id}/${fileName}`;
+      const filePath = `${session.user.id}/${Date.now()}-${file.name}`;
       const { error: uploadError } = await supabase.storage
         .from("gallery")
         .upload(filePath, file);
       if (!uploadError) {
-        await supabase.from("items").insert([
-          {
-            image_path: filePath,
-            user_id: session.user.id,
-            notes: "",
-            flipped: false,
-            folder: activeFolder === "Select Folder" ? "" : activeFolder,
-          },
-        ]);
+        await supabase
+          .from("items")
+          .insert([
+            {
+              image_path: filePath,
+              user_id: session.user.id,
+              notes: "",
+              flipped: false,
+              folder: activeFolder === "Select Folder" ? "" : activeFolder,
+            },
+          ]);
         completedCount++;
         setUploadProgress({ current: completedCount, total: files.length });
       }
@@ -535,14 +478,6 @@ export default function App() {
         return i;
       })
     );
-  }, []);
-
-  const handleToggleSelect = useCallback((id) => {
-    setSelectedIds((prev) => {
-      const next = new Set(prev);
-      next.has(id) ? next.delete(id) : next.add(id);
-      return next;
-    });
   }, []);
 
   const handleDragEnd = async (event) => {
@@ -597,8 +532,29 @@ export default function App() {
     return filterItems(items, activeFolder, "");
   }, [items, activeFolder, search]);
 
-  if (!session) return <Auth />;
+  /* ---------- VIEW CONTROLLER ---------- */
 
+  // 1. Landing Page
+  if (!session && view === "landing") {
+    return <LandingPage onEnter={() => setView("auth")} />;
+  }
+
+  // 2. Auth Page
+  if (!session && view === "auth") {
+    return (
+      <div className="relative">
+        <button
+          onClick={() => setView("landing")}
+          className="back-to-landing-btn"
+        >
+          ← Back
+        </button>
+        <Auth />
+      </div>
+    );
+  }
+
+  // 3. Main Gallery (Only if logged in)
   return (
     <DndContext
       sensors={sensors}
@@ -656,11 +612,7 @@ export default function App() {
             </button>
             <button
               className="nav-btn logout-btn"
-              onClick={async () => {
-                await supabase.auth.signOut();
-                setSession(null);
-                setItems([]);
-              }}
+              onClick={() => supabase.auth.signOut()}
             >
               Sign Out
             </button>
@@ -699,7 +651,7 @@ export default function App() {
               className="util-btn"
               onClick={() => exportGalleryZip(items, selectedIds)}
             >
-              📤 Export {selectedIds.size > 0 ? `(${selectedIds.size})` : "All"}
+              📤 Export
             </button>
             <label className="util-btn">
               📥 Import{" "}
@@ -732,14 +684,7 @@ export default function App() {
               value={search}
               onChange={(e) => setSearch(e.target.value)}
             />
-            {selectedIds.size > 0 && (
-              <div className="selection-status-bar">
-                <p className="selection-text">
-                  <strong>{selectedIds.size}</strong> items selected
-                </p>
-              </div>
-            )}
-            {isSaved && <div className="save-indicator">✓ Saved to Cloud</div>}
+            {isSaved && <div className="save-indicator">✓ Saved</div>}
           </div>
 
           <SortableContext
@@ -760,7 +705,13 @@ export default function App() {
                   isClosingZoom={isClosingZoom}
                   selectedIds={selectedIds}
                   isSelected={selectedIds.has(item.id)}
-                  onToggleSelect={handleToggleSelect}
+                  onToggleSelect={(id) =>
+                    setSelectedIds((prev) => {
+                      const next = new Set(prev);
+                      next.has(id) ? next.delete(id) : next.add(id);
+                      return next;
+                    })
+                  }
                   onFlip={handleFlip}
                   onZoom={setZoomData}
                   onEdit={setEditingItem}
@@ -807,43 +758,25 @@ export default function App() {
             setTimeout(() => setIsClosingZoom(false), 100);
           }}
         />
+
         {editingItem && (
           <FilerobotImageEditor
             source={editingItem.imageURL}
-            onSave={async (editedImageObject) => {
-              // 1. Get the edited image as a blob
-              const response = await fetch(editedImageObject.imageBase64);
-              const blob = await response.blob();
-
-              // 2. Define a new file path (overwriting or creating new)
-
-              const filePath = editingItem.image_path; // This overwrites the existing file
-
-              // 3. Upload to Supabase Storage
-              const { error: uploadError } = await supabase.storage
+            onSave={async (obj) => {
+              const blob = await (await fetch(obj.imageBase64)).blob();
+              await supabase.storage
                 .from("gallery")
-                .upload(filePath, blob, { upsert: true });
-
-              if (!uploadError) {
-                // Refresh the gallery to show the new version
-                await fetchItems(session.user.id);
-                setEditingItem(null);
-              }
+                .upload(editingItem.image_path, blob, { upsert: true });
+              fetchItems(session.user.id);
+              setEditingItem(null);
             }}
             onClose={() => setEditingItem(null)}
-            annotationsCommon={{ fill: "#ff0000" }}
             tabsIds={[TABS.ADJUST, TABS.FILTERS, TABS.ANNOTATE]}
             defaultTabId={TABS.ADJUST}
             defaultToolId={TOOLS.CROP}
-            savingPixelRatio={4}
-            previewPixelRatio={4}
           />
         )}
       </div>
     </DndContext>
   );
 }
-
-/*
-this is the correct current app file
-*/
