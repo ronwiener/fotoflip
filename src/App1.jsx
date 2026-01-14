@@ -177,7 +177,13 @@ function ZoomOverlay({ data, items, updateNotes, onClose }) {
   const item = items.find((i) => i.id === data.id);
 
   return (
-    <div className="zoom-overlay" onPointerDown={onClose}>
+    <div
+      className="zoom-overlay"
+      onPointerDown={(e) => {
+        e.stopPropagation(); // Prevents the down event from hitting the card
+        onClose();
+      }}
+    >
       {data.type === "img" ? (
         <div
           className="zoomed-image-container"
@@ -211,7 +217,7 @@ function DraggableCard({
   item,
   isSelected,
   selectedIds,
-  isClosingZoom,
+  isClosingZoomRef,
   onToggleSelect,
   onFlip,
   onZoom,
@@ -239,7 +245,7 @@ function DraggableCard({
   };
 
   const handleFrontClick = (e) => {
-    if (isDragging || isClosingZoom) return;
+    if (isDragging || isClosingZoomRef) return;
     if (isSelected || selectedIds.size > 0) {
       onToggleSelect(item.id);
     } else {
@@ -345,11 +351,11 @@ export default function App1() {
   });
   const [showScrollTop, setShowScrollTop] = useState(false);
   const [isSaved, setIsSaved] = useState(false);
-  const [isClosingZoom, setIsClosingZoom] = useState(false);
   const [editingItem, setEditingItem] = useState(null);
 
   const galleryRef = useRef(null);
   const timerRef = useRef(null);
+  const isClosingZoomRef = useRef(false);
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 3 } }),
@@ -737,9 +743,9 @@ export default function App1() {
             items={items}
             updateNotes={updateNotes}
             onClose={() => {
-              setIsClosingZoom(true);
+              isClosingZoomRef.current = true;
               setZoomData(null);
-              setTimeout(() => setIsClosingZoom(false), 100);
+              setTimeout(() => isClosingZoomRef.current(false), 300);
             }}
           />
 
