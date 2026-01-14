@@ -796,15 +796,15 @@ export default function App1() {
                   defaultTabId={TABS.ADJUST}
                   defaultToolId={TOOLS.CROP}
                   config={{
-                    // This is the most important part: it forces a massive internal margin
-                    // so the image can't touch the edges of the white box.
+                    // This is the key: it forces a 150px "no-go zone" inside the white box.
+                    // The image will shrink to fit inside this zone, leaving room for handles.
                     imageGrid: {
-                      padding: 150, // Increase this to 200 if 150 isn't enough
+                      padding: 150,
                     },
-                    // This tells the editor to ignore the "Fit to Screen" rule on load
+                    // Prevent the editor from auto-zooming to fill the edges
                     initialZoom: 0.1,
                     adjust: {
-                      // This allows the crop handles to move into the 'empty' space
+                      // Allows you to drag crop handles into that 150px empty space
                       allowNegativeCrop: true,
                     },
                   }}
