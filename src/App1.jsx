@@ -780,12 +780,12 @@ export default function App1() {
                     noScaleUp: false, // Allows the image to scale UP to fit the 90vw/85vh box
                     reduceBeforeEdit: {
                       mode: "auto",
-                      widthLimit: 1200,
-                      heightLimit: 800,
+                      widthLimit: 1150,
+                      heightLimit: 750,
                     },
                     // Adding internal padding the NATIVE way
                     imageGrid: {
-                      padding: 0,
+                      padding: 20,
                     },
                     adjust: {
                       allowNegativeCrop: true,
