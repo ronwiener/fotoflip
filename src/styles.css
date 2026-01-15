@@ -541,7 +541,7 @@ html {
 .editor-overlay {
   position: fixed;
   inset: 0;
-  background-color: rgba(0, 0, 0, 0.8);
+  background-color: rgba(0, 0, 0, 0.4);
   display: flex !important; /* Forces centering */
   align-items: center;
   justify-content: center;
@@ -551,7 +551,10 @@ html {
 .editor-wrapper-container {
   /* Defined dimensions as per Filerobot requirements */
   width: 95vw;
-  height: 85vh;
+  height: 80vh;
+  max-width: 1000px;
+  max-height: 80vh;
+
   background: #212121; /* Darker background helps see the canvas edges */
   border-radius: 12px;
   margin: auto;

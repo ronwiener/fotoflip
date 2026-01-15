@@ -780,8 +780,8 @@ export default function App1() {
                     noScaleUp: false, // Allows the image to scale UP to fit the 90vw/85vh box
                     reduceBeforeEdit: {
                       mode: "auto",
-                      widthLimit: 1150,
-                      heightLimit: 750,
+                      widthLimit: 1200,
+                      heightLimit: 800,
                     },
                     // Adding internal padding the NATIVE way
                     imageGrid: {
@@ -793,8 +793,8 @@ export default function App1() {
                       cropPresets: [
                         { title: "Default", ratio: "custom" },
                         { title: "Square", ratio: 1 },
-                        { title: "4:3", ratio: 4 / 3 },
-                        { title: "16:9", ratio: 16 / 9 },
+                        { title: "Vertical Post", ratio: 4 / 3 },
+                        { title: "Wide Banner", ratio: 16 / 9 },
                       ],
                     },
                   }}
