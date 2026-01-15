@@ -759,6 +759,7 @@ export default function App1() {
             <div className="editor-overlay">
               <div className="editor-wrapper-container">
                 <FilerobotImageEditor
+                  key={editingItem.id}
                   source={editingItem.imageURL}
                   onSave={async (obj) => {
                     const blob = await (await fetch(obj.imageBase64)).blob();
@@ -784,6 +785,16 @@ export default function App1() {
                     // Adding internal padding the NATIVE way
                     imageGrid: {
                       padding: 0,
+                    },
+                    adjust: {
+                      allowNegativeCrop: true,
+                      // CROP PRESETS: Helps the auto-sizer find a valid boundary
+                      cropPresets: [
+                        { title: "Default", ratio: "custom" },
+                        { title: "Square", ratio: 1 },
+                        { title: "4:3", ratio: 4 / 3 },
+                        { title: "16:9", ratio: 16 / 9 },
+                      ],
                     },
                   }}
                   // Using device pixel ratio prevents the "stretching" caused by over-rendering
