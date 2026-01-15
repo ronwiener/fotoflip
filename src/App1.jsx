@@ -682,18 +682,28 @@ export default function App1() {
                 ☁️ Upload{" "}
                 <input type="file" multiple onChange={handleUpload} hidden />
               </label>
+
+              {selectedIds.size > 0 && (
+                <div className="selection-status-inline">
+                  <span className="count-badge">{selectedIds.size}</span>
+                  <span className="status-text">
+                    Selected — Drag to folder or Trash
+                  </span>
+                  <button
+                    className="clear-selection-btn"
+                    onClick={() => setSelectedIds(new Set())}
+                  >
+                    ✕
+                  </button>
+                </div>
+              )}
               <button
                 className="util-btn"
                 onClick={() => exportGalleryZip(items, selectedIds)}
               >
                 📤 Export {selectedIds.size > 0 ? `(${selectedIds.size})` : ""}
               </button>
-              {/* Selection Pop-up / Action Bar */}
-              {selectedIds.size > 0 && (
-                <div className="selection-action-bar">
-                  <span>{selectedIds.size} move to trash or folders</span>
-                </div>
-              )}
+
               <label className="util-btn">
                 📥 Import{" "}
                 <input
