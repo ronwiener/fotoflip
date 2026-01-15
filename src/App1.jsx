@@ -305,10 +305,7 @@ function DraggableCard({
             src={item.imageURL}
             alt=""
             {...listeners}
-            onClick={(e) => {
-              e.stopPropagation();
-              handleFrontClick(e);
-            }}
+            onClick={handleFrontClick}
             style={{ cursor: "grab", touchAction: "none" }}
           />
         </div>
