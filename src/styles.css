@@ -722,7 +722,10 @@ button[class*="close-button"] {
   resize: none;
   margin-bottom: 12px;
   background: #fff;
-  color: var(--text-main);
+  flex: italic; /* Makes the text italic */
+  color: #2d3748; /* Matches the dark slate color from your landing page */
+  font-family: "Georgia", serif; /* Optional: adds a more "script-like" serif font */
+  line-height: 1.6;
 }
 
 .notes-actions {
@@ -873,6 +876,8 @@ button[class*="close-button"] {
   border-radius: var(--radius-lg);
   display: flex;
   flex-direction: column;
+  font-style: italic;
+  color: #2d3748;
 }
 
 .zoomed-notes-box textarea {
