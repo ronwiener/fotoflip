@@ -773,25 +773,22 @@ export default function App1() {
                   defaultTabId={TABS.ADJUST}
                   defaultToolId={TOOLS.CROP}
                   config={{
-                    // Switch back to false if the 'responsive' mode was causing jumps
-                    useCloudimageResponsive: false,
+                    useCloudimageResponsive: true, // Let the lib handle the heavy lifting
                     loadNativeImage: true,
-                    noScaleUp: true,
-                    // Use internal padding instead of CSS padding
-                    imageGrid: {
-                      padding: 40,
-                    },
+                    noScaleUp: false, // Allows the image to scale UP to fit the 90vw/85vh box
                     reduceBeforeEdit: {
                       mode: "auto",
-                      widthLimit: 1200,
-                      heightLimit: 800,
+                      widthLimit: 1500,
+                      heightLimit: 1000,
                     },
-                    // This allows you to drag the crop handles even if they are
-                    // near the edge of your 90vh box
-                    adjust: {
-                      allowNegativeCrop: true,
+                    // Adding internal padding the NATIVE way
+                    imageGrid: {
+                      padding: 0,
                     },
                   }}
+                  // Using device pixel ratio prevents the "stretching" caused by over-rendering
+                  savingPixelRatio={window.devicePixelRatio || 2}
+                  previewPixelRatio={window.devicePixelRatio || 2}
                   savingPixelRatio={window.devicePixelRatio || 2} // Use device ratio instead of hardcoding 4
                   previewPixelRatio={window.devicePixelRatio || 2}
                 />
