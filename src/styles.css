@@ -712,20 +712,19 @@ button[class*="close-button"] {
   width: 100%;
 }
 
-.notes-content textarea {
+.notes-content textarea,
+.zoomded-notes-box textarea {
   flex: 1;
   width: 100%;
-  border: 1px solid #eee;
-  border-radius: var(--radius-md);
-  padding: 10px;
-  font-size: 0.9rem;
-  resize: none;
-  margin-bottom: 12px;
-  background: #fff;
-  flex: italic; /* Makes the text italic */
-  color: #2d3748; /* Matches the dark slate color from your landing page */
-  font-family: "Georgia", serif; /* Optional: adds a more "script-like" serif font */
+  font-family: "Georgia", "Times New Roman", serif;
+  font-style: italic !important;
+  color: #2d3748;
   line-height: 1.6;
+  border: 1px solid #e2e8f0;
+  padding: 15px;
+  border-radius: 8px;
+  background-color: #fff;
+  resize: none;
 }
 
 .notes-actions {
@@ -868,6 +867,7 @@ button[class*="close-button"] {
 }
 
 .zoomed-notes-box {
+  position: relative;
   background: white;
   width: 95%;
   max-width: 600px;
@@ -878,16 +878,6 @@ button[class*="close-button"] {
   flex-direction: column;
   font-style: italic;
   color: #2d3748;
-}
-
-.zoomed-notes-box textarea {
-  flex: 1;
-  width: 100%;
-  border: 1px solid #eee;
-  padding: 15px;
-  font-size: 1.1rem;
-  border-radius: var(--radius-md);
-  resize: none;
 }
 
 /* ---------- ZOOMED NOTES BUTTON UX ---------- */
@@ -947,13 +937,29 @@ button[class*="close-button"] {
   transform: scale(1.1);
 }
 
-.scroll-to-top,
-.save-indicator {
+.scroll-to-top {
   bottom: 160px;
 }
-.save-indicator {
-  right: 50%;
-  transform: translateX(50%);
+
+.save-indicator-inline {
+  background: #dcfce7; /* Light green background */
+  color: #166534; /* Dark green text */
+  padding: 4px 10px;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 700;
+  animation: fadeInDown 0.4s ease forwards;
+  box-shadow: 0 0 0 0 rgba(34, 197, 94, 0.4);
+}
+@keyframes fadeInDown {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 @media (max-width: 768px) {

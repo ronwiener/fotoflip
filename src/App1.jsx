@@ -172,7 +172,7 @@ function TrashDropZone({ selectedCount, isDropping }) {
   );
 }
 
-function ZoomOverlay({ data, items, updateNotes, onClose }) {
+function ZoomOverlay({ data, items, updateNotes, isSaved, onClose }) {
   if (!data) return null;
   const item = items.find((i) => i.id === data.id);
 
@@ -194,6 +194,7 @@ function ZoomOverlay({ data, items, updateNotes, onClose }) {
       ) : (
         <div className="zoomed-notes-box" onClick={(e) => e.stopPropagation()}>
           <h3>Notes</h3>
+          {isSaved && <div className="save-indicator">✓ Saved</div>}
           <textarea
             value={item?.notes || ""}
             onPointerDown={(e) => e.stopPropagation()}
@@ -500,7 +501,7 @@ export default function App1() {
         .eq("id", id);
       if (!error) {
         setIsSaved(true);
-        setTimeout(() => setIsSaved(false), 4000);
+        setTimeout(() => setIsSaved(false), 3000);
       }
     }, 1000);
   }, []);
@@ -722,7 +723,6 @@ export default function App1() {
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
               />
-              {isSaved && <div className="save-indicator">✓ Saved</div>}
             </div>
 
             <SortableContext
@@ -776,6 +776,7 @@ export default function App1() {
             data={zoomData}
             items={items}
             updateNotes={updateNotes}
+            isSaved={isSaved}
             onClose={() => {
               isClosingZoomRef.current = true;
               setZoomData(null);
