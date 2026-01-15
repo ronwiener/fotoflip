@@ -945,6 +945,52 @@ button[class*="close-button"] {
     font-size: 0.9rem;
   }
 
+  /* ---------- SCROLL TO TOP ---------- */
+  .scroll-to-top {
+    position: fixed;
+    bottom: 30px;
+    right: 30px;
+    width: 45px;
+    height: 45px;
+    background: var(--primary);
+    color: white;
+    border: none;
+    border-radius: 50%;
+    font-size: 20px;
+    font-weight: bold;
+    cursor: pointer;
+    box-shadow: var(--shadow-lg);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    /* Start hidden */
+    opacity: 0;
+    visibility: hidden;
+    transform: translateY(20px);
+    transition: all 0.3s ease;
+    z-index: 1000;
+  }
+
+  .scroll-to-top.visible {
+    opacity: 1;
+    visibility: visible;
+    transform: translateY(0);
+  }
+
+  .scroll-to-top:hover {
+    background: var(--primary-hover);
+    transform: scale(1.1);
+  }
+
+  /* Adjust for Mobile so it doesn't overlap the sidebar */
+  @media (max-width: 768px) {
+    .scroll-to-top {
+      bottom: 160px; /* Moves it above the 140px mobile sidebar */
+      right: 20px;
+    }
+  }
+
   .scroll-to-top,
   .save-indicator {
     bottom: 160px;
