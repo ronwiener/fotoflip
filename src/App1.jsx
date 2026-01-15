@@ -265,12 +265,12 @@ function DraggableCard({
       data-dragging={isDragging}
       data-flipped={item.flipped}
       {...attributes}
-      {...listeners}
     >
       <div className={`card ${item.flipped ? "flipped" : ""}`}>
         <div className="card-face card-front" onClick={handleFrontClick}>
           <div
             className={`select-indicator ${isSelected ? "active" : ""}`}
+            onPointerDown={(e) => e.stopPropagation()}
             onPointerUp={(e) => {
               e.stopPropagation();
               onToggleSelect(item.id);
@@ -280,6 +280,7 @@ function DraggableCard({
           </div>
           <button
             className="zoom-btn"
+            onPointerDown={(e) => e.stopPropagation()}
             onClick={(e) => {
               e.stopPropagation();
               onZoom({ type: "img", url: item.imageURL });
@@ -289,6 +290,7 @@ function DraggableCard({
           </button>
           <button
             className="edit-btn"
+            onPointerDown={(e) => e.stopPropagation()}
             onClick={(e) => {
               e.stopPropagation();
               onEdit(item);
@@ -296,7 +298,7 @@ function DraggableCard({
           >
             🎨
           </button>
-          <img src={item.imageURL} alt="" />
+          <img src={item.imageURL} alt="" {...listeners} />
         </div>
 
         <div className="card-face card-back">
