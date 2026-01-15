@@ -456,7 +456,7 @@ export default function App1() {
     const handleScroll = () => setShowScrollTop(galleryEl.scrollTop > 300);
     galleryEl.addEventListener("scroll", handleScroll);
     return () => galleryEl.removeEventListener("scroll", handleScroll);
-  }, [session]);
+  }, [items]);
 
   const handleUpload = async (event) => {
     const files = event.target.files;
