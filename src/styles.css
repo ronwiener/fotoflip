@@ -550,18 +550,52 @@ html {
 
 .editor-wrapper-container {
   /* Defined dimensions as per Filerobot requirements */
-  width: 95vw;
-  height: 80vh;
-  max-width: 1000px;
-  max-height: 80vh;
-
-  background: #212121; /* Darker background helps see the canvas edges */
+  width: 98vw;
+  height: 95vh;
+  max-width: 1400px;
+  max-height: 95vh;
+  background: #1e293b; /* Darker background helps see the canvas edges */
   border-radius: 12px;
   margin: auto;
   overflow: hidden;
   position: relative;
   display: flex;
   flex-direction: column;
+  box-shadow: var(--shadow-lg);
+}
+
+@media (max-width: 768px) {
+  .editor-wrapper-container {
+    height: 90vh; /* Slightly shorter on phones */
+    width: 100vw; /* Edge-to-edge on phones */
+    border-radius: 0; /* Looks cleaner on mobile */
+  }
+}
+
+.custom-editor-close-btn {
+  position: absolute;
+  top: 15px;
+  right: 15px;
+  z-index: 10001; /* Must be higher than Filerobot's internal layers */
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.2);
+  color: white;
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  font-size: 18px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  backdrop-filter: blur(4px); /* Modern frosted-glass effect */
+}
+
+.custom-editor-close-btn:hover {
+  background: rgba(255, 44, 44, 0.8); /* Turns red on hover */
+  border-color: #ff4444;
+  transform: scale(1.1);
 }
 
 /* Ensure the stage uses all available space provided by the wrapper */

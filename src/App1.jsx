@@ -758,6 +758,12 @@ export default function App1() {
           {editingItem && (
             <div className="editor-overlay">
               <div className="editor-wrapper-container">
+                <button
+                  className="custom-editor-close-btn"
+                  onClick={() => setEditingItem(null)}
+                >
+                  ✕
+                </button>
                 <FilerobotImageEditor
                   key={editingItem.id}
                   source={editingItem.imageURL}
@@ -780,12 +786,12 @@ export default function App1() {
                     noScaleUp: false, // Allows the image to scale UP to fit the 90vw/85vh box
                     reduceBeforeEdit: {
                       mode: "auto",
-                      widthLimit: 1200,
-                      heightLimit: 800,
+                      widthLimit: 2000,
+                      heightLimit: 1500,
                     },
                     // Adding internal padding the NATIVE way
                     imageGrid: {
-                      padding: 20,
+                      padding: 30,
                     },
                     adjust: {
                       allowNegativeCrop: true,
