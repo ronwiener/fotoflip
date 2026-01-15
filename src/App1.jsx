@@ -774,7 +774,8 @@ export default function App1() {
                   defaultTabId={TABS.ADJUST}
                   defaultToolId={TOOLS.CROP}
                   config={{
-                    useCloudimageResponsive: true, // Let the lib handle the heavy lifting
+                    useCloudimageResponsive: true,
+                    observePluginContainerSize: true, // Let the lib handle the heavy lifting
                     loadNativeImage: true,
                     noScaleUp: false, // Allows the image to scale UP to fit the 90vw/85vh box
                     reduceBeforeEdit: {

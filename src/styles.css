@@ -550,10 +550,11 @@ html {
 
 .editor-wrapper-container {
   /* Defined dimensions as per Filerobot requirements */
-  width: 90vw;
+  width: 95vw;
   height: 85vh;
   background: #212121; /* Darker background helps see the canvas edges */
   border-radius: 12px;
+  margin: auto;
   overflow: hidden;
   position: relative;
   display: flex;
