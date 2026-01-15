@@ -778,8 +778,8 @@ export default function App1() {
                     noScaleUp: false, // Allows the image to scale UP to fit the 90vw/85vh box
                     reduceBeforeEdit: {
                       mode: "auto",
-                      widthLimit: 1500,
-                      heightLimit: 1000,
+                      widthLimit: 1200,
+                      heightLimit: 800,
                     },
                     // Adding internal padding the NATIVE way
                     imageGrid: {
@@ -787,8 +787,6 @@ export default function App1() {
                     },
                   }}
                   // Using device pixel ratio prevents the "stretching" caused by over-rendering
-                  savingPixelRatio={window.devicePixelRatio || 2}
-                  previewPixelRatio={window.devicePixelRatio || 2}
                   savingPixelRatio={window.devicePixelRatio || 2} // Use device ratio instead of hardcoding 4
                   previewPixelRatio={window.devicePixelRatio || 2}
                 />

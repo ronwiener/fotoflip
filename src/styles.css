@@ -536,77 +536,33 @@ html {
   cursor: pointer;
 }
 
-/* ---------- 6a. FILEROBOT EDITOR OVERRIDES ---------- */
+/* ---------- 6a. STABLE EDITOR LAYOUT ---------- */
 
-/* The Main Backdrop - Centered and Dark */
 .editor-overlay {
   position: fixed;
   inset: 0;
-  background-color: rgba(0, 0, 0, 0.85);
-  display: flex !important;
-  align-items: center !important;
-  justify-content: center !important;
+  background-color: rgba(0, 0, 0, 0.8);
+  display: flex !important; /* Forces centering */
+  align-items: center;
+  justify-content: center;
   z-index: 9999;
 }
 
-/* The White Modal Box - Standard size */
 .editor-wrapper-container {
+  /* Defined dimensions as per Filerobot requirements */
   width: 90vw;
-  height: 90vh;
-  background: white;
+  height: 85vh;
+  background: #212121; /* Darker background helps see the canvas edges */
   border-radius: 12px;
   overflow: hidden;
-  display: flex;
-  flex-direction: column;
   position: relative;
+  /* Do NOT add padding here; it breaks the canvas internal math */
 }
 
-/* THE FIX: Internal padding forces the image away from the edges */
+/* Ensure the stage uses all available space provided by the wrapper */
 .filerobot-canvas-stage {
-  background-color: #f1f5f9 !important;
-  box-sizing: border-box !important;
-  display: flex !important;
-  align-items: center !important;
-  justify-content: center !important;
-  padding: 0;
-}
-
-/* Ensure crop handles don't disappear in the gutter */
-.filerobot-canvas-container {
-  overflow: visible !important;
-}
-
-/* Forces the image drawing surface to stay within the padding */
-canvas.filerobot-canvas {
-  max-width: 90% !important;
-  max-height: 90% !important;
-  object-fit: contain !important;
-  margin: auto !important;
-  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.15) !important;
-}
-
-/* 1. The Full-Screen Dark Backdrop */
-.editor-overlay {
-  position: fixed;
-  inset: 0;
-  background-color: rgba(0, 0, 0, 0.4);
-  display: flex !important;
-  align-items: center !important;
-  justify-content: center !important;
-  z-index: 9999;
-}
-
-/* 2. The Container holding the Editor */
-.editor-wrapper-container {
-  width: 90vw;
-  height: 90vh;
-  box-sizing: border-box;
-  background: white;
-  border-radius: 12px;
-  overflow: hidden;
-  position: relative;
-  display: flex;
-  flex-direction: column;
+  width: 100% !important;
+  height: 100% !important;
 }
 
 /* ---------- 7. DRAGGABLE CARD ---------- */
