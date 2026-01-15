@@ -235,6 +235,7 @@ function DraggableCard({
     id: item.id || "temp",
     disabled: !item || item.flipped,
   });
+
   if (!item) return null;
 
   const style = {
@@ -244,12 +245,12 @@ function DraggableCard({
     touchAction: "none",
   };
 
+  // Improved click handler to distinguish from drag
   const handleFrontClick = (e) => {
     e.stopPropagation();
-    if (isDragging || isClosingZoomRef.current) {
-      console.log("Shield blocked a flip");
-      return;
-    }
+    // If we just finished a drag, don't flip
+    if (isDragging || isClosingZoomRef.current) return;
+
     if (isSelected || selectedIds.size > 0) {
       onToggleSelect(item.id);
     } else {
@@ -262,22 +263,27 @@ function DraggableCard({
       ref={setNodeRef}
       style={style}
       className={`card-wrapper ${isSelected ? "selected" : ""}`}
-      data-dragging={isDragging}
-      data-flipped={item.flipped}
       {...attributes}
     >
       <div className={`card ${item.flipped ? "flipped" : ""}`}>
-        <div className="card-face card-front" onClick={handleFrontClick}>
+        {/* We attach listeners here so the whole front face is draggable */}
+        <div
+          className="card-face card-front"
+          onClick={handleFrontClick}
+          {...listeners}
+        >
+          {/* SELECT BUTTON: Must stop propagation on PointerDown */}
           <div
             className={`select-indicator ${isSelected ? "active" : ""}`}
-            onPointerDown={(e) => e.stopPropagation()}
-            onPointerUp={(e) => {
-              e.stopPropagation();
+            onPointerDown={(e) => {
+              e.stopPropagation(); // Stops dnd-kit drag
               onToggleSelect(item.id);
             }}
           >
             {isSelected ? "✓" : ""}
           </div>
+
+          {/* ZOOM BUTTON */}
           <button
             className="zoom-btn"
             onPointerDown={(e) => e.stopPropagation()}
@@ -288,6 +294,8 @@ function DraggableCard({
           >
             🔍
           </button>
+
+          {/* EDIT BUTTON */}
           <button
             className="edit-btn"
             onPointerDown={(e) => e.stopPropagation()}
@@ -298,21 +306,24 @@ function DraggableCard({
           >
             🎨
           </button>
-          <img src={item.imageURL} alt="" {...listeners} />
+
+          <img src={item.imageURL} alt="" />
         </div>
 
+        {/* BACK SIDE */}
         <div className="card-face card-back">
           <div className="notes-content">
             <textarea
               value={item.notes}
-              onPointerUp={(e) => e.stopPropagation()}
+              onPointerDown={(e) => e.stopPropagation()} // Allow typing without dragging
               onChange={(e) => updateNotes(item.id, e.target.value)}
               placeholder="Zoom to write..."
             />
             <div className="notes-actions">
               <button
                 className="btn-zoom"
-                onPointerUp={(e) => {
+                onPointerDown={(e) => e.stopPropagation()}
+                onClick={(e) => {
                   e.stopPropagation();
                   onZoom({ type: "notes", id: item.id });
                 }}
@@ -321,7 +332,8 @@ function DraggableCard({
               </button>
               <button
                 className="btn-flip"
-                onPointerUp={(e) => {
+                onPointerDown={(e) => e.stopPropagation()}
+                onClick={(e) => {
                   e.stopPropagation();
                   onFlip(item.id);
                 }}
