@@ -266,13 +266,7 @@ function DraggableCard({
       {...attributes}
     >
       <div className={`card ${item.flipped ? "flipped" : ""}`}>
-        {/* We attach listeners here so the whole front face is draggable */}
-        <div
-          className="card-face card-front"
-          onClick={handleFrontClick}
-          {...listeners}
-        >
-          {/* SELECT BUTTON: Must stop propagation on PointerDown */}
+        <div className="card-face card-front">
           <div
             className={`select-indicator ${isSelected ? "active" : ""}`}
             onPointerDown={(e) => {
@@ -307,7 +301,13 @@ function DraggableCard({
             🎨
           </button>
 
-          <img src={item.imageURL} alt="" />
+          <img
+            src={item.imageURL}
+            alt=""
+            {...listeners}
+            onClick={handleFrontClick}
+            style={{ cursor: "grab" }}
+          />
         </div>
 
         {/* BACK SIDE */}
