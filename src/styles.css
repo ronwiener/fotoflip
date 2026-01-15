@@ -1006,6 +1006,10 @@ button[class*="close-button"] {
   z-index: 20;
   pointer-events: none; /* Prevents it from blocking clicks */
 }
+.zoomed-notes-box,
+.notes-content {
+  position: relative;
+}
 
 /* ---------- 9. MOBILE RESPONSIVE ---------- */
 @media (max-width: 768px) {
@@ -1065,9 +1069,8 @@ button[class*="close-button"] {
 }
 
 .save-indicator {
-  position: fixed;
-  bottom: 20px;
-  right: 20px;
+  font-size: 12px;
+  font-weight: 700;
   background: #28a745;
   color: white;
   padding: 8px 16px;

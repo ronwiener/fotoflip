@@ -373,7 +373,7 @@ export default function App1() {
     total: 0,
   });
   const [showScrollTop, setShowScrollTop] = useState(false);
-  const [isSaved, setIsSaved] = useState(false);
+  const [isSavedItemId, setIsSavedItemId] = useState(false);
   const [editingItem, setEditingItem] = useState(null);
 
   const galleryRef = useRef(null);
@@ -504,8 +504,8 @@ export default function App1() {
         .update({ notes })
         .eq("id", id);
       if (!error) {
-        setIsSaved(true);
-        setTimeout(() => setIsSaved(false), 3000);
+        setIsSavedItemId(true);
+        setTimeout(() => setIsSavedItemId(false), 3000);
       }
     }, 1000);
   }, []);
@@ -752,7 +752,7 @@ export default function App1() {
                     onZoom={setZoomData}
                     onEdit={setEditingItem}
                     updateNotes={updateNotes}
-                    isSaved={isSaved}
+                    isSaved={isSavedItemId}
                   />
                 ))}
               </div>
@@ -781,7 +781,7 @@ export default function App1() {
             data={zoomData}
             items={items}
             updateNotes={updateNotes}
-            isSaved={isSaved}
+            isSaved={isSavedItemId}
             onClose={() => {
               isClosingZoomRef.current = true;
               setZoomData(null);
