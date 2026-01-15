@@ -803,6 +803,7 @@ export default function App1() {
                         { title: "Wide Banner", ratio: 16 / 9 },
                       ],
                     },
+                    showNavigationControls: false,
                   }}
                   // Using device pixel ratio prevents the "stretching" caused by over-rendering
                   savingPixelRatio={window.devicePixelRatio || 2} // Use device ratio instead of hardcoding 4

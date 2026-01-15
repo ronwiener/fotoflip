@@ -602,6 +602,13 @@ html {
   box-shadow: 0 4px 12px rgba(255, 0, 0, 0.4);
 }
 
+/* Target the internal Filerobot close button specifically */
+.FIE_topbar-close-button,
+button[aria-label="Close"],
+.SfxModal-close {
+  display: none !important;
+}
+
 /* Ensure the stage uses all available space provided by the wrapper */
 .filerobot-canvas-stage {
   width: 100% !important;
