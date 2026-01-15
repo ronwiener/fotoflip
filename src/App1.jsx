@@ -173,17 +173,25 @@ function TrashDropZone({ selectedCount, isDropping }) {
 }
 
 function ZoomOverlay({ data, items, updateNotes, isSaved, onClose }) {
+  const [isSuccessClosing, setIsSuccessClosing] = useState(false);
+
   if (!data) return null;
   const item = items.find((i) => i.id === data.id);
 
+  const handleCloseClick = (e) => {
+    if (e) e.stopPropagation();
+
+    // 1. Trigger the "Saved" visual state
+    setIsSuccessClosing(true);
+
+    // 2. Wait 1000ms (1 second) before calling the actual onClose from props
+    setTimeout(() => {
+      setIsSuccessClosing(false); // Reset for next time
+      onClose();
+    }, 1000);
+  };
   return (
-    <div
-      className="zoom-overlay"
-      onPointerDown={(e) => {
-        e.stopPropagation(); // Prevents the down event from hitting the card
-        onClose();
-      }}
-    >
+    <div className="zoom-overlay" onPointerDown={handleCloseClick}>
       {data.type === "img" ? (
         <div
           className="zoomed-image-container"
@@ -195,7 +203,7 @@ function ZoomOverlay({ data, items, updateNotes, isSaved, onClose }) {
         <div className="zoomed-notes-box" onClick={(e) => e.stopPropagation()}>
           <div className="zoomed-notes-header">
             <h3>Notes</h3>
-            {isSaved && <div className="save-indicator">✓ Saved</div>}
+            {isSuccessClosing && <div className="save-indicator">✓ Saved</div>}
           </div>
           <textarea
             value={item?.notes || ""}
@@ -206,9 +214,13 @@ function ZoomOverlay({ data, items, updateNotes, isSaved, onClose }) {
           <button
             className="notes-close-footer"
             onPointerDown={onClose}
-            onClick={(e) => e.stopPropagation()}
+            onClick={handleCloseClick}
+            style={{
+              backgroundColor: isSuccessClosing ? "#28a745" : "#64748b",
+              transition: "background-color 0.3s ease",
+            }}
           >
-            Close Notes
+            {isSuccessClosing ? "Saved!" : "Close Notes"}
           </button>
         </div>
       )}
