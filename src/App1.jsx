@@ -379,7 +379,7 @@ export default function App1() {
   const isClosingZoomRef = useRef(false);
 
   const sensors = useSensors(
-    useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
+    useSensor(PointerSensor, { activationConstraint: { distance: 10 } }),
     useSensor(TouchSensor, {
       activationConstraint: { delay: 200, tolerance: 5 },
     })
@@ -694,11 +694,7 @@ export default function App1() {
               {/* Selection Pop-up / Action Bar */}
               {selectedIds.size > 0 && (
                 <div className="selection-action-bar">
-                  <span>{selectedIds.size} items selected</span>
-                  <button onClick={() => setSelectedIds(new Set())}>
-                    Clear
-                  </button>
-                  {/* Add other actions like 'Move to Folder' here if needed */}
+                  <span>{selectedIds.size} move to trash or folders</span>
                 </div>
               )}
               <label className="util-btn">
