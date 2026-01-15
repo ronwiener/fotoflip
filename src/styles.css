@@ -583,15 +583,15 @@ html {
   color: #ff0000;
   font-weight: 900;
   font-size: 24px;
-  background: transparent;
+  background: white;
   border: none;
   text-shadow: 0px 0px 3px rgba(255, 255, 255, 0.8);
-
   display: flex;
   align-items: center;
   justify-content: center;
   cursor: pointer;
   transition: all 0.2s ease;
+  z-index: 999999 !important;
 }
 
 .custom-editor-close-btn:hover {
@@ -602,11 +602,17 @@ html {
   box-shadow: 0 4px 12px rgba(255, 0, 0, 0.4);
 }
 
-/* Target the internal Filerobot close button specifically */
+/* Target the specific Filerobot close button container and the button itself */
 .FIE_topbar-close-button,
-button[aria-label="Close"],
-.SfxModal-close {
+.FIE_topbar-close-button-container,
+[aria-label="Close"],
+button[class*="close-button"] {
   display: none !important;
+  visibility: hidden !important;
+  pointer-events: none !important;
+  width: 0 !important;
+  padding: 0 !important;
+  margin: 0 !important;
 }
 
 /* Ensure the stage uses all available space provided by the wrapper */
