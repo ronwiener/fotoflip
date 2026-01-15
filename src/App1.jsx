@@ -756,47 +756,54 @@ export default function App1() {
           />
 
           {editingItem && (
-            <FilerobotImageEditor
-              key={editingItem.id}
-              source={editingItem.imageURL}
-              onSave={async (obj) => {
-                const blob = await (await fetch(obj.imageBase64)).blob();
-                await supabase.storage
-                  .from("gallery")
-                  .upload(editingItem.image_path, blob, { upsert: true });
-                fetchItems(session.user.id);
-                setEditingItem(null);
-              }}
-              onClose={() => setEditingItem(null)}
-              tabsIds={[TABS.ADJUST, TABS.FILTERS, TABS.ANNOTATE]}
-              defaultTabId={TABS.ADJUST}
-              defaultToolId={TOOLS.CROP}
-              config={{
-                useCloudimageResponsive: true,
-                observePluginContainerSize: true,
-                loadNativeImage: true,
-                noScaleUp: false,
-                reduceBeforeEdit: {
-                  mode: "auto",
-                  widthLimit: 1200,
-                  heightLimit: 800,
-                },
-                imageGrid: {
-                  padding: 0,
-                },
-                adjust: {
-                  allowNegativeCrop: true,
-                  cropPresets: [
-                    { title: "Default", ratio: "custom" },
-                    { title: "Square", ratio: 1 },
-                    { title: "4:3", ratio: 4 / 3 },
-                    { title: "16:9", ratio: 16 / 9 },
-                  ],
-                },
-              }}
-              savingPixelRatio={window.devicePixelRatio || 2}
-              previewPixelRatio={window.devicePixelRatio || 2}
-            />
+            <div className="editor-overlay">
+              <div className="editor-wrapper-container">
+                <FilerobotImageEditor
+                  key={editingItem.id}
+                  source={editingItem.imageURL}
+                  onSave={async (obj) => {
+                    const blob = await (await fetch(obj.imageBase64)).blob();
+                    await supabase.storage
+                      .from("gallery")
+                      .upload(editingItem.image_path, blob, { upsert: true });
+                    fetchItems(session.user.id);
+                    setEditingItem(null);
+                  }}
+                  onClose={() => setEditingItem(null)}
+                  tabsIds={[TABS.ADJUST, TABS.FILTERS, TABS.ANNOTATE]}
+                  defaultTabId={TABS.ADJUST}
+                  defaultToolId={TOOLS.CROP}
+                  config={{
+                    useCloudimageResponsive: true,
+                    observePluginContainerSize: true, // Let the lib handle the heavy lifting
+                    loadNativeImage: true,
+                    noScaleUp: false, // Allows the image to scale UP to fit the 90vw/85vh box
+                    reduceBeforeEdit: {
+                      mode: "auto",
+                      widthLimit: 1200,
+                      heightLimit: 800,
+                    },
+                    // Adding internal padding the NATIVE way
+                    imageGrid: {
+                      padding: 0,
+                    },
+                    adjust: {
+                      allowNegativeCrop: true,
+                      // CROP PRESETS: Helps the auto-sizer find a valid boundary
+                      cropPresets: [
+                        { title: "Default", ratio: "custom" },
+                        { title: "Square", ratio: 1 },
+                        { title: "4:3", ratio: 4 / 3 },
+                        { title: "16:9", ratio: 16 / 9 },
+                      ],
+                    },
+                  }}
+                  // Using device pixel ratio prevents the "stretching" caused by over-rendering
+                  savingPixelRatio={window.devicePixelRatio || 2} // Use device ratio instead of hardcoding 4
+                  previewPixelRatio={window.devicePixelRatio || 2}
+                />
+              </div>
+            </div>
           )}
         </div>
       </DndContext>
