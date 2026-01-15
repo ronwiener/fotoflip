@@ -17,7 +17,7 @@ export default function LandingPage({ onEnter }) {
           <div className="hero-text">
             <h1>
               Your photos have a story. <br />
-              <span className="accent-text">Give them a backside.</span>
+              <span className="accent-text">Give them a flip side.</span>
             </h1>
             <p>
               Write notes, technical specs, or memories directly onto your
