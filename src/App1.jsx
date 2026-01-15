@@ -305,8 +305,11 @@ function DraggableCard({
             src={item.imageURL}
             alt=""
             {...listeners}
-            onClick={handleFrontClick}
-            style={{ cursor: "grab" }}
+            onClick={(e) => {
+              e.stopPropagation();
+              handleFrontClick(e);
+            }}
+            style={{ cursor: "grab", touchAction: "none" }}
           />
         </div>
 
@@ -376,7 +379,7 @@ export default function App1() {
   const isClosingZoomRef = useRef(false);
 
   const sensors = useSensors(
-    useSensor(PointerSensor, { activationConstraint: { distance: 15 } }),
+    useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
     useSensor(TouchSensor, {
       activationConstraint: { delay: 200, tolerance: 5 },
     })
@@ -686,8 +689,18 @@ export default function App1() {
                 className="util-btn"
                 onClick={() => exportGalleryZip(items, selectedIds)}
               >
-                📤 Export
+                📤 Export {selectedIds.size > 0 ? `(${selectedIds.size})` : ""}
               </button>
+              {/* Selection Pop-up / Action Bar */}
+              {selectedIds.size > 0 && (
+                <div className="selection-action-bar">
+                  <span>{selectedIds.size} items selected</span>
+                  <button onClick={() => setSelectedIds(new Set())}>
+                    Clear
+                  </button>
+                  {/* Add other actions like 'Move to Folder' here if needed */}
+                </div>
+              )}
               <label className="util-btn">
                 📥 Import{" "}
                 <input
