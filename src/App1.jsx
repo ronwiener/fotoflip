@@ -317,9 +317,7 @@ function DraggableCard({
         {/* BACK SIDE */}
         <div className="card-face card-back">
           <div className="notes-content">
-            {isSelected && isSaved && (
-              <div className="save-indicator-card">✓ Saved</div>
-            )}
+            {isSaved && <div className="save-indicator-card">✓ Saved</div>}
             <textarea
               value={item.notes}
               onPointerDown={(e) => e.stopPropagation()} // Allow typing without dragging
