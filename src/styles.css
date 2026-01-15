@@ -1,4 +1,6 @@
 /* ---------- 1. VARIABLES & RESET ---------- */
+
+@import url("https://fonts.googleapis.com/css2?family=Dancing+Script:wght@400..700&display=swap");
 :root {
   --primary: #0077ff;
   --primary-hover: #0056b3;
@@ -716,10 +718,11 @@ button[class*="close-button"] {
 .zoomded-notes-box textarea {
   flex: 1;
   width: 100%;
-  font-family: "Georgia", "Times New Roman", serif;
+  font-family: "Dancing Script", cursive !important;
   font-style: italic !important;
   color: #2d3748;
   line-height: 1.6;
+  font-size: 1.3rem;
   border: 1px solid #e2e8f0;
   padding: 15px;
   border-radius: 8px;
@@ -866,6 +869,18 @@ button[class*="close-button"] {
   border-radius: var(--radius-md);
 }
 
+.zoomed-textarea {
+  flex: 1; /* This makes the box fill the whole middle area */
+  width: 100%;
+  padding: 15px;
+  font-size: 1.6rem;
+  font-family: "Dancing Script", cursive !important;
+  font-style: italic !important;
+  border: 1px solid #eee;
+  border-radius: 8px;
+  resize: none;
+}
+
 .zoomed-notes-box {
   position: relative;
   background: white;
@@ -878,6 +893,12 @@ button[class*="close-button"] {
   flex-direction: column;
   font-style: italic;
   color: #2d3748;
+}
+.zoomed-notes-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 10px;
 }
 
 /* ---------- ZOOMED NOTES BUTTON UX ---------- */

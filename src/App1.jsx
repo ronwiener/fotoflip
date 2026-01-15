@@ -193,8 +193,10 @@ function ZoomOverlay({ data, items, updateNotes, isSaved, onClose }) {
         </div>
       ) : (
         <div className="zoomed-notes-box" onClick={(e) => e.stopPropagation()}>
-          <h3>Notes</h3>
-          {isSaved && <div className="save-indicator">✓ Saved</div>}
+          <div className="zoomed-notes-header">
+            <h3>Notes</h3>
+            {isSaved && <div className="save-indicator">✓ Saved</div>}
+          </div>
           <textarea
             value={item?.notes || ""}
             onPointerDown={(e) => e.stopPropagation()}
@@ -224,6 +226,7 @@ function DraggableCard({
   onZoom,
   onEdit,
   updateNotes,
+  isSaved,
 }) {
   const {
     attributes,
@@ -314,6 +317,9 @@ function DraggableCard({
         {/* BACK SIDE */}
         <div className="card-face card-back">
           <div className="notes-content">
+            {isSelected && isSaved && (
+              <div className="save-indicator-card">✓ Saved</div>
+            )}
             <textarea
               value={item.notes}
               onPointerDown={(e) => e.stopPropagation()} // Allow typing without dragging
@@ -748,6 +754,7 @@ export default function App1() {
                     onZoom={setZoomData}
                     onEdit={setEditingItem}
                     updateNotes={updateNotes}
+                    isSaved={isSaved}
                   />
                 ))}
               </div>
