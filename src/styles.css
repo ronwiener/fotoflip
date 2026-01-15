@@ -556,7 +556,8 @@ html {
   border-radius: 12px;
   overflow: hidden;
   position: relative;
-  /* Do NOT add padding here; it breaks the canvas internal math */
+  display: flex;
+  flex-direction: column;
 }
 
 /* Ensure the stage uses all available space provided by the wrapper */
