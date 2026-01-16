@@ -516,8 +516,8 @@ export default function App1() {
         .update({ notes })
         .eq("id", id);
       if (!error) {
-        setIsSavedItemId(true);
-        setTimeout(() => setIsSavedItemId(false), 3000);
+        setIsSavedItemId(id);
+        setTimeout(() => setIsSavedItemId(null), 3000);
       }
     }, 1000);
   }, []);
@@ -764,7 +764,7 @@ export default function App1() {
                     onZoom={setZoomData}
                     onEdit={setEditingItem}
                     updateNotes={updateNotes}
-                    isSaved={isSavedItemId}
+                    isSaved={isSavedItemId === item.id}
                   />
                 ))}
               </div>
