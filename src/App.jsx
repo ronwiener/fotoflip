@@ -18,7 +18,6 @@ import {
   useSensors,
   DragOverlay,
   useDroppable,
-  defaultDropAnimationSideEffects,
 } from "@dnd-kit/core";
 import {
   SortableContext,
@@ -172,13 +171,26 @@ function TrashDropZone({ selectedCount, isDropping }) {
   );
 }
 
-/* ---------- UI SUB-COMPONENTS ---------- */
 function ZoomOverlay({ data, items, updateNotes, onClose }) {
+  const [isSuccessClosing, setIsSuccessClosing] = useState(false);
+
   if (!data) return null;
   const item = items.find((i) => i.id === data.id);
 
+  const handleCloseClick = (e) => {
+    if (e) e.stopPropagation();
+
+    // 1. Trigger the "Saved" visual state
+    setIsSuccessClosing(true);
+
+    // 2. Wait 1000ms (1 second) before calling the actual onClose from props
+    setTimeout(() => {
+      setIsSuccessClosing(false); // Reset for next time
+      onClose();
+    }, 1000);
+  };
   return (
-    <div className="zoom-overlay" onPointerDown={onClose}>
+    <div className="zoom-overlay" onPointerDown={handleCloseClick}>
       {data.type === "img" ? (
         <div
           className="zoomed-image-container"
@@ -188,7 +200,10 @@ function ZoomOverlay({ data, items, updateNotes, onClose }) {
         </div>
       ) : (
         <div className="zoomed-notes-box" onClick={(e) => e.stopPropagation()}>
-          <h3>Notes</h3>
+          <div className="zoomed-notes-header">
+            <h3>Notes</h3>
+            {isSuccessClosing && <div className="save-indicator">✓ Saved</div>}
+          </div>
           <textarea
             value={item?.notes || ""}
             onPointerDown={(e) => e.stopPropagation()}
@@ -197,10 +212,13 @@ function ZoomOverlay({ data, items, updateNotes, onClose }) {
           />
           <button
             className="notes-close-footer"
-            onPointerDown={onClose}
-            onClick={(e) => e.stopPropagation()}
+            onClick={handleCloseClick}
+            style={{
+              backgroundColor: isSuccessClosing ? "#28a745" : "#64748b",
+              transition: "background-color 0.3s ease",
+            }}
           >
-            Close Notes
+            {isSuccessClosing ? "Saved!" : "Close Notes"}
           </button>
         </div>
       )}
@@ -208,17 +226,17 @@ function ZoomOverlay({ data, items, updateNotes, onClose }) {
   );
 }
 
-/* ---------- DRAGGABLE CARD ---------- */
 function DraggableCard({
   item,
   isSelected,
   selectedIds,
-  isClosingZoom,
+  isClosingZoomRef,
   onToggleSelect,
   onFlip,
   onZoom,
   onEdit,
   updateNotes,
+  isSaved,
 }) {
   const {
     attributes,
@@ -231,6 +249,7 @@ function DraggableCard({
     id: item.id || "temp",
     disabled: !item || item.flipped,
   });
+
   if (!item) return null;
 
   const style = {
@@ -240,8 +259,12 @@ function DraggableCard({
     touchAction: "none",
   };
 
+  // Improved click handler to distinguish from drag
   const handleFrontClick = (e) => {
-    if (isDragging || isClosingZoom) return;
+    e.stopPropagation();
+    // If we just finished a drag, don't flip
+    if (isDragging || isClosingZoomRef.current) return;
+
     if (isSelected || selectedIds.size > 0) {
       onToggleSelect(item.id);
     } else {
@@ -254,33 +277,24 @@ function DraggableCard({
       ref={setNodeRef}
       style={style}
       className={`card-wrapper ${isSelected ? "selected" : ""}`}
-      data-dragging={isDragging}
-      data-flipped={item.flipped}
       {...attributes}
-      {...listeners}
     >
       <div className={`card ${item.flipped ? "flipped" : ""}`}>
-        {/* FRONT */}
-        <div className="card-face card-front" onPointerUp={handleFrontClick}>
+        <div className="card-face card-front">
           <div
             className={`select-indicator ${isSelected ? "active" : ""}`}
             onPointerDown={(e) => {
-              e.stopPropagation();
-              if (e.nativeEvent) e.nativeEvent.stopImmediatePropagation();
-            }}
-            onPointerUp={(e) => {
-              e.preventDefault();
-              e.stopPropagation();
+              e.stopPropagation(); // Stops dnd-kit drag
               onToggleSelect(item.id);
             }}
           >
             {isSelected ? "✓" : ""}
           </div>
+
+          {/* ZOOM BUTTON */}
           <button
             className="zoom-btn"
-            data-no-dnd="true"
             onPointerDown={(e) => e.stopPropagation()}
-            onPointerUp={(e) => e.stopPropagation()}
             onClick={(e) => {
               e.stopPropagation();
               onZoom({ type: "img", url: item.imageURL });
@@ -288,34 +302,43 @@ function DraggableCard({
           >
             🔍
           </button>
-          {/* Inside DraggableCard Front Face */}
+
+          {/* EDIT BUTTON */}
           <button
             className="edit-btn"
-            data-no-dnd="true"
             onPointerDown={(e) => e.stopPropagation()}
             onClick={(e) => {
               e.stopPropagation();
-              onEdit(item); // We'll pass this prop down
+              onEdit(item);
             }}
           >
             🎨
           </button>
-          <img src={item.imageURL} alt="" />
+
+          <img
+            src={item.imageURL}
+            alt=""
+            {...listeners}
+            onClick={handleFrontClick}
+            style={{ cursor: "grab", touchAction: "none" }}
+          />
         </div>
 
-        {/* BACK */}
-        <div className="card-face card-back" data-no-dnd="true">
+        {/* BACK SIDE */}
+        <div className="card-face card-back">
           <div className="notes-content">
+            {isSaved && <div className="save-indicator-card">✓ Saved</div>}
             <textarea
               value={item.notes}
-              onPointerUp={(e) => e.stopPropagation()}
+              onPointerDown={(e) => e.stopPropagation()} // Allow typing without dragging
               onChange={(e) => updateNotes(item.id, e.target.value)}
               placeholder="Zoom to write..."
             />
             <div className="notes-actions">
               <button
                 className="btn-zoom"
-                onPointerUp={(e) => {
+                onPointerDown={(e) => e.stopPropagation()}
+                onClick={(e) => {
                   e.stopPropagation();
                   onZoom({ type: "notes", id: item.id });
                 }}
@@ -324,7 +347,8 @@ function DraggableCard({
               </button>
               <button
                 className="btn-flip"
-                onPointerUp={(e) => {
+                onPointerDown={(e) => e.stopPropagation()}
+                onClick={(e) => {
                   e.stopPropagation();
                   onFlip(item.id);
                 }}
@@ -340,9 +364,10 @@ function DraggableCard({
 }
 
 /* ---------- MAIN APP ---------- */
-export default function App() {
-  // --- State ---
+export default function App1() {
+  // --- States ---
   const [session, setSession] = useState(null);
+  const [view, setView] = useState("landing"); // New View State
   const [items, setItems] = useState([]);
   const [folders, setFolders] = useState(() => loadFolders() || []);
   const [activeFolder, setActiveFolder] = useState("Select Folder");
@@ -358,46 +383,21 @@ export default function App() {
     total: 0,
   });
   const [showScrollTop, setShowScrollTop] = useState(false);
-  const [isSaved, setIsSaved] = useState(false);
-  const [isClosingZoom, setIsClosingZoom] = useState(false);
+  const [isSavedItemId, setIsSavedItemId] = useState(false);
   const [editingItem, setEditingItem] = useState(null);
 
-  // --- Refs & Sensors ---
   const galleryRef = useRef(null);
   const timerRef = useRef(null);
+  const isClosingZoomRef = useRef(false);
 
   const sensors = useSensors(
-    useSensor(PointerSensor, {
-      activationConstraint: { distance: 3 },
-      onActivation: (event) => {
-        const target = event.active?.eventTarget || event.nativeEvent?.target;
-        if (
-          target &&
-          (target.closest(".select-indicator") ||
-            target.closest(".zoom-btn") ||
-            target.closest("button") ||
-            target.closest("textarea"))
-        )
-          return false;
-      },
-    }),
+    useSensor(PointerSensor, { activationConstraint: { distance: 10 } }),
     useSensor(TouchSensor, {
       activationConstraint: { delay: 200, tolerance: 5 },
-      onActivation: (event) => {
-        const target = event.active?.eventTarget || event.nativeEvent?.target;
-        if (
-          target &&
-          (target.closest(".select-indicator") ||
-            target.closest(".zoom-btn") ||
-            target.closest("button") ||
-            target.closest("textarea"))
-        )
-          return false;
-      },
     })
   );
 
-  // --- Helpers & Logic ---
+  // --- Logic Functions ---
   const fetchItems = useCallback(async (userId) => {
     if (!userId) return;
     const { data, error } = await supabase
@@ -412,49 +412,51 @@ export default function App() {
       const { data: urlData } = supabase.storage
         .from("gallery")
         .getPublicUrl(item.image_path);
-
-      // This is the magic line: it adds a unique timestamp to the URL
-      // so the browser always fetches the latest version after an edit.
-      const cacheBuster = new Date().getTime();
-      return { ...item, imageURL: `${urlData.publicUrl}?t=${cacheBuster}` };
+      return {
+        ...item,
+        imageURL: `${urlData.publicUrl}?t=${new Date().getTime()}`,
+      };
     });
-
     setItems(formatted);
   }, []);
 
   useEffect(() => {
     let isMounted = true;
+
     const initializeAuth = async () => {
-      const queryParams = new URLSearchParams(window.location.search);
-      const tokenHash = queryParams.get("token_hash");
-      if (tokenHash && queryParams.get("type") === "magiclink") {
-        await supabase.auth.verifyOtp({
-          token_hash: tokenHash,
-          type: "magiclink",
-        });
-        window.history.replaceState({}, document.title, window.location.origin);
-      }
       const {
         data: { session: initialSession },
       } = await supabase.auth.getSession();
-      if (isMounted) {
+      if (isMounted && initialSession) {
         setSession(initialSession);
-        if (initialSession?.user) fetchItems(initialSession.user.id);
+        setView("gallery");
+        fetchItems(initialSession.user.id);
       }
     };
+
     initializeAuth();
 
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange(async (event, currentSession) => {
       if (!isMounted) return;
-      setSession(currentSession);
-      if (
-        (event === "SIGNED_IN" || event === "TOKEN_REFRESHED") &&
-        currentSession?.user
-      )
+
+      if (currentSession) {
+        // 1. Update State
+        setSession(currentSession);
+        setView("gallery");
         fetchItems(currentSession.user.id);
-      else if (event === "SIGNED_OUT") setItems([]);
+
+        // 2. Clean URL (Remove #access_token so it doesn't re-trigger)
+        if (window.location.hash) {
+          window.history.replaceState(null, null, window.location.pathname);
+        }
+      } else {
+        // 3. Handle Logout
+        setSession(null);
+        setItems([]);
+        setView("landing");
+      }
     });
 
     return () => {
@@ -469,7 +471,7 @@ export default function App() {
     const handleScroll = () => setShowScrollTop(galleryEl.scrollTop > 300);
     galleryEl.addEventListener("scroll", handleScroll);
     return () => galleryEl.removeEventListener("scroll", handleScroll);
-  }, []);
+  }, [items]);
 
   const handleUpload = async (event) => {
     const files = event.target.files;
@@ -479,10 +481,7 @@ export default function App() {
     let completedCount = 0;
 
     for (const file of files) {
-      const fileName = `${Date.now()}-${Math.random()}.${file.name
-        .split(".")
-        .pop()}`;
-      const filePath = `${session.user.id}/${fileName}`;
+      const filePath = `${session.user.id}/${Date.now()}-${file.name}`;
       const { error: uploadError } = await supabase.storage
         .from("gallery")
         .upload(filePath, file);
@@ -515,8 +514,8 @@ export default function App() {
         .update({ notes })
         .eq("id", id);
       if (!error) {
-        setIsSaved(true);
-        setTimeout(() => setIsSaved(false), 4000);
+        setIsSavedItemId(id);
+        setTimeout(() => setIsSavedItemId(null), 3000);
       }
     }, 1000);
   }, []);
@@ -597,253 +596,303 @@ export default function App() {
     return filterItems(items, activeFolder, "");
   }, [items, activeFolder, search]);
 
-  if (!session) return <Auth />;
+  /* ---------- VIEW CONTROLLER ---------- */
 
-  return (
-    <DndContext
-      sensors={sensors}
-      onDragStart={(e) =>
-        setActiveDragItem(items.find((i) => i.id === e.active.id))
-      }
-      onDragEnd={handleDragEnd}
-      onDragCancel={() => {
-        setActiveDragItem(null);
-        setSelectedIds(new Set());
-      }}
-    >
-      <div className="app">
-        {isLoading && importProgress && (
-          <div className="loading-overlay">
-            <div className="spinner"></div>
-            <p className="pulse-text">{importProgress}</p>
-          </div>
-        )}
-
-        <aside className="sidebar">
-          <div className="sidebar-top">
-            <MainGalleryDropZone
-              activeFolder={activeFolder}
-              setActiveFolder={setActiveFolder}
-            />
-            <div className="folders-list">
-              {folders.map((f) => (
-                <FolderButton
-                  key={f}
-                  f={f}
-                  activeFolder={activeFolder}
-                  setActiveFolder={setActiveFolder}
-                  onDelete={(fol) => {
-                    const next = folders.filter((r) => r !== fol);
-                    setFolders(next);
-                    saveFolders(next);
-                  }}
-                />
-              ))}
-            </div>
-          </div>
-          <div className="sidebar-bottom">
-            <button
-              className="nav-btn"
-              onClick={() => {
-                const n = prompt("New Folder:");
-                if (n) {
-                  setFolders([...folders, n]);
-                  saveFolders([...folders, n]);
-                }
-              }}
-            >
-              ➕ Folder
-            </button>
-            <button
-              className="nav-btn logout-btn"
-              onClick={async () => {
-                await supabase.auth.signOut();
-                setSession(null);
-                setItems([]);
-              }}
-            >
-              Sign Out
-            </button>
-            <TrashDropZone
-              selectedCount={selectedIds.size}
-              isDropping={isDropping}
-            />
-          </div>
-        </aside>
-
-        <main className="main">
-          {isLoading && uploadProgress.total > 0 && !importProgress && (
-            <div className="gallery-upload-status">
-              <p className="pulse-text">
-                Uploading {uploadProgress.current} / {uploadProgress.total}
-              </p>
-              <div className="progress-bar-container">
-                <div
-                  className="progress-bar-fill"
-                  style={{
-                    width: `${
-                      (uploadProgress.current / uploadProgress.total) * 100
-                    }%`,
-                  }}
-                ></div>
-              </div>
+  // GATE 1: THE MASTER GATEKEEPER
+  // If there is a session, show the Gallery immediately, regardless of "view" state.
+  if (session) {
+    return (
+      <DndContext
+        sensors={sensors}
+        onDragStart={(e) =>
+          setActiveDragItem(items.find((i) => i.id === e.active.id))
+        }
+        onDragEnd={handleDragEnd}
+        onDragCancel={() => {
+          setActiveDragItem(null);
+          setSelectedIds(new Set());
+        }}
+      >
+        <div className="app">
+          {isLoading && importProgress && (
+            <div className="loading-overlay">
+              <div className="spinner"></div>
+              <p className="pulse-text">{importProgress}</p>
             </div>
           )}
 
-          <div className="controls">
-            <label className="upload-label">
-              ☁️ Upload{" "}
-              <input type="file" multiple onChange={handleUpload} hidden />
-            </label>
-            <button
-              className="util-btn"
-              onClick={() => exportGalleryZip(items, selectedIds)}
-            >
-              📤 Export {selectedIds.size > 0 ? `(${selectedIds.size})` : "All"}
-            </button>
-            <label className="util-btn">
-              📥 Import{" "}
-              <input
-                type="file"
-                accept=".zip"
-                onChange={async (e) => {
-                  const file = e.target.files[0];
-                  if (!file) return;
-                  setIsLoading(true);
-                  try {
-                    await importGalleryZip(file, (c, t) =>
-                      setImportProgress(`Importing ${c} of ${t}...`)
-                    );
-                    await fetchItems(session.user.id);
-                  } catch (err) {
-                    alert(err.message);
-                  } finally {
-                    setIsLoading(false);
-                    setImportProgress("");
+          <aside className="sidebar">
+            <div className="sidebar-top">
+              <MainGalleryDropZone
+                activeFolder={activeFolder}
+                setActiveFolder={setActiveFolder}
+              />
+              <div className="folders-list">
+                {folders.map((f) => (
+                  <FolderButton
+                    key={f}
+                    f={f}
+                    activeFolder={activeFolder}
+                    setActiveFolder={setActiveFolder}
+                    onDelete={(fol) => {
+                      const next = folders.filter((r) => r !== fol);
+                      setFolders(next);
+                      saveFolders(next);
+                    }}
+                  />
+                ))}
+              </div>
+            </div>
+            <div className="sidebar-bottom">
+              <button
+                className="nav-btn"
+                onClick={() => {
+                  const n = prompt("New Folder:");
+                  if (n) {
+                    setFolders([...folders, n]);
+                    saveFolders([...folders, n]);
                   }
                 }}
-                hidden
+              >
+                ➕ Folder
+              </button>
+              <button
+                className="nav-btn logout-btn"
+                onClick={async () => {
+                  await supabase.auth.signOut();
+                  setSession(null);
+                  setItems([]);
+                  setView("landing");
+                }}
+              >
+                Sign Out
+              </button>
+              <TrashDropZone
+                selectedCount={selectedIds.size}
+                isDropping={isDropping}
               />
-            </label>
-            <input
-              type="text"
-              className="search-input"
-              placeholder="Search..."
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-            />
-            {selectedIds.size > 0 && (
-              <div className="selection-status-bar">
-                <p className="selection-text">
-                  <strong>{selectedIds.size}</strong> items selected
+            </div>
+          </aside>
+
+          <main className="main">
+            {isLoading && uploadProgress.total > 0 && !importProgress && (
+              <div className="gallery-upload-status">
+                <p className="pulse-text">
+                  Uploading {uploadProgress.current} / {uploadProgress.total}
                 </p>
+                <div className="progress-bar-container">
+                  <div
+                    className="progress-bar-fill"
+                    style={{
+                      width: `${
+                        (uploadProgress.current / uploadProgress.total) * 100
+                      }%`,
+                    }}
+                  ></div>
+                </div>
               </div>
             )}
-            {isSaved && <div className="save-indicator">✓ Saved to Cloud</div>}
-          </div>
+            <div className="controls">
+              <label className="upload-label">
+                ☁️ Upload{" "}
+                <input type="file" multiple onChange={handleUpload} hidden />
+              </label>
 
-          <SortableContext
-            items={visibleItems.map((i) => i.id)}
-            strategy={rectSortingStrategy}
-          >
-            <div
-              className="gallery"
-              ref={galleryRef}
-              onPointerUp={(e) =>
-                e.target === galleryRef.current && setSelectedIds(new Set())
-              }
-            >
-              {visibleItems.map((item) => (
-                <DraggableCard
-                  key={item.id}
-                  item={item}
-                  isClosingZoom={isClosingZoom}
-                  selectedIds={selectedIds}
-                  isSelected={selectedIds.has(item.id)}
-                  onToggleSelect={handleToggleSelect}
-                  onFlip={handleFlip}
-                  onZoom={setZoomData}
-                  onEdit={setEditingItem}
-                  updateNotes={updateNotes}
+              {selectedIds.size > 0 && (
+                <div className="selection-status-inline">
+                  <span className="count-badge">{selectedIds.size}</span>
+                  <span className="status-text">
+                    Selected — Drag to folder or Trash
+                  </span>
+                  <button
+                    className="clear-selection-btn"
+                    onClick={() => setSelectedIds(new Set())}
+                  >
+                    ✕
+                  </button>
+                </div>
+              )}
+              <button
+                className="util-btn"
+                onClick={() => exportGalleryZip(items, selectedIds)}
+              >
+                📤 Export {selectedIds.size > 0 ? `(${selectedIds.size})` : ""}
+              </button>
+
+              <label className="util-btn">
+                📥 Import{" "}
+                <input
+                  type="file"
+                  accept=".zip"
+                  onChange={async (e) => {
+                    const file = e.target.files[0];
+                    if (!file) return;
+                    setIsLoading(true);
+                    try {
+                      await importGalleryZip(file, (c, t) =>
+                        setImportProgress(`Importing ${c} of ${t}...`)
+                      );
+                      // Ensure this uses the correct session ID
+                      await fetchItems(session.user.id);
+                    } catch (err) {
+                      alert("Import failed: " + err.message);
+                    } finally {
+                      setIsLoading(false);
+                      setImportProgress("");
+                      e.target.value = ""; // RESET: Allows re-importing the same file
+                    }
+                  }}
+                  hidden
                 />
-              ))}
+              </label>
+              <input
+                type="text"
+                className="search-input"
+                placeholder="Search..."
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+              />
             </div>
-          </SortableContext>
 
-          {showScrollTop && (
-            <button
-              className="scroll-to-top visible"
-              onClick={() =>
-                galleryRef.current.scrollTo({ top: 0, behavior: "smooth" })
-              }
+            <SortableContext
+              items={visibleItems.map((i) => i.id)}
+              strategy={rectSortingStrategy}
             >
-              ↑
-            </button>
-          )}
-        </main>
+              <div
+                className="gallery"
+                ref={galleryRef}
+                onPointerUp={(e) =>
+                  e.target === galleryRef.current && setSelectedIds(new Set())
+                }
+              >
+                {visibleItems.map((item) => (
+                  <DraggableCard
+                    key={item.id}
+                    item={item}
+                    isClosingZoomRef={isClosingZoomRef}
+                    selectedIds={selectedIds}
+                    isSelected={selectedIds.has(item.id)}
+                    onToggleSelect={handleToggleSelect}
+                    onFlip={handleFlip}
+                    onZoom={setZoomData}
+                    onEdit={setEditingItem}
+                    updateNotes={updateNotes}
+                    isSaved={isSavedItemId === item.id}
+                  />
+                ))}
+              </div>
+            </SortableContext>
+            {showScrollTop && (
+              <button
+                className="scroll-to-top visible"
+                onClick={() =>
+                  galleryRef.current.scrollTo({ top: 0, behavior: "smooth" })
+                }
+              >
+                ↑
+              </button>
+            )}
+          </main>
 
-        <DragOverlay
-          modifiers={[snapCenterToCursor]}
-          dropAnimation={{
-            sideEffects: defaultDropAnimationSideEffects({
-              styles: { active: { opacity: "0.5" } },
-            }),
-          }}
-        >
-          {activeDragItem && (
-            <div className="card-drag-preview">
-              <img src={activeDragItem.imageURL} alt="" />
+          <DragOverlay modifiers={[snapCenterToCursor]}>
+            {activeDragItem && (
+              <div className="card-drag-preview">
+                <img src={activeDragItem.imageURL} alt="" />
+              </div>
+            )}
+          </DragOverlay>
+
+          <ZoomOverlay
+            data={zoomData}
+            items={items}
+            updateNotes={updateNotes}
+            isSaved={isSavedItemId}
+            onClose={() => {
+              isClosingZoomRef.current = true;
+              setZoomData(null);
+              setTimeout(() => {
+                isClosingZoomRef.current = false;
+              }, 300);
+            }}
+          />
+
+          {editingItem && (
+            <div className="editor-overlay">
+              <div className="editor-wrapper-container">
+                <button
+                  className="custom-editor-close-btn"
+                  onClick={() => setEditingItem(null)}
+                >
+                  ✕
+                </button>
+                <FilerobotImageEditor
+                  key={editingItem.id}
+                  source={editingItem.imageURL}
+                  onSave={async (obj) => {
+                    const blob = await (await fetch(obj.imageBase64)).blob();
+                    await supabase.storage
+                      .from("gallery")
+                      .upload(editingItem.image_path, blob, { upsert: true });
+                    fetchItems(session.user.id);
+                    setEditingItem(null);
+                  }}
+                  onClose={() => setEditingItem(null)}
+                  tabsIds={[TABS.ADJUST, TABS.FILTERS, TABS.ANNOTATE]}
+                  defaultTabId={TABS.ADJUST}
+                  defaultToolId={TOOLS.CROP}
+                  config={{
+                    useCloudimageResponsive: true,
+                    observePluginContainerSize: true, // Let the lib handle the heavy lifting
+                    loadNativeImage: true,
+                    noScaleUp: false, // Allows the image to scale UP to fit the 90vw/85vh box
+                    reduceBeforeEdit: {
+                      mode: "auto",
+                      widthLimit: 2000,
+                      heightLimit: 1500,
+                    },
+                    // Adding internal padding the NATIVE way
+                    imageGrid: {
+                      padding: 30,
+                    },
+                    adjust: {
+                      allowNegativeCrop: true,
+                      // CROP PRESETS: Helps the auto-sizer find a valid boundary
+                      cropPresets: [
+                        { title: "Default", ratio: "custom" },
+                        { title: "Square", ratio: 1 },
+                        { title: "Vertical Post", ratio: 4 / 3 },
+                        { title: "Wide Banner", ratio: 16 / 9 },
+                      ],
+                    },
+                    showNavigationControls: false,
+                  }}
+                  // Using device pixel ratio prevents the "stretching" caused by over-rendering
+                  savingPixelRatio={window.devicePixelRatio || 2} // Use device ratio instead of hardcoding 4
+                  previewPixelRatio={window.devicePixelRatio || 2}
+                />
+              </div>
             </div>
           )}
-        </DragOverlay>
+        </div>
+      </DndContext>
+    );
+  }
 
-        <ZoomOverlay
-          data={zoomData}
-          items={items}
-          updateNotes={updateNotes}
-          onClose={() => {
-            setIsClosingZoom(true);
-            setZoomData(null);
-            setTimeout(() => setIsClosingZoom(false), 100);
-          }}
-        />
-        {editingItem && (
-          <FilerobotImageEditor
-            source={editingItem.imageURL}
-            onSave={async (editedImageObject) => {
-              // 1. Get the edited image as a blob
-              const response = await fetch(editedImageObject.imageBase64);
-              const blob = await response.blob();
+  // IF NOT LOGGED IN and view is landing -> Show Landing
+  if (view === "landing") {
+    return <LandingPage onEnter={() => setView("auth")} />;
+  }
 
-              // 2. Define a new file path (overwriting or creating new)
-
-              const filePath = editingItem.image_path; // This overwrites the existing file
-
-              // 3. Upload to Supabase Storage
-              const { error: uploadError } = await supabase.storage
-                .from("gallery")
-                .upload(filePath, blob, { upsert: true });
-
-              if (!uploadError) {
-                // Refresh the gallery to show the new version
-                await fetchItems(session.user.id);
-                setEditingItem(null);
-              }
-            }}
-            onClose={() => setEditingItem(null)}
-            annotationsCommon={{ fill: "#ff0000" }}
-            tabsIds={[TABS.ADJUST, TABS.FILTERS, TABS.ANNOTATE]}
-            defaultTabId={TABS.ADJUST}
-            defaultToolId={TOOLS.CROP}
-            savingPixelRatio={4}
-            previewPixelRatio={4}
-          />
-        )}
-      </div>
-    </DndContext>
+  // GATE 3: THE AUTH SCREEN
+  return (
+    <div className="relative">
+      <button
+        onClick={() => setView("landing")}
+        className="back-to-landing-btn"
+      >
+        ← Back to Info
+      </button>
+      <Auth />
+    </div>
   );
 }
-
-/*
-this is the correct current app file
-*/
