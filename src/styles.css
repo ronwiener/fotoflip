@@ -472,6 +472,23 @@ html {
   border-radius: 6px;
 }
 
+/* Better Folder Hover Highlights */
+.folder-item.folder-hover-active,
+.nav-btn.folder-hover-active {
+  background: #dbeafe !important; /* Light blue background */
+  border: 2px solid var(--primary) !important;
+  transform: scale(1.05);
+  transition: transform 0.2s ease;
+  z-index: 10;
+}
+
+.trash-zone.trash-over {
+  background: var(--danger) !important;
+  color: white !important;
+  border-style: solid;
+  transform: scale(1.05);
+}
+
 .trash-zone {
   padding: 15px;
   border-radius: var(--radius-md);

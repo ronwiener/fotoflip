@@ -12,6 +12,7 @@ import FilerobotImageEditor, {
 } from "react-filerobot-image-editor";
 import {
   DndContext,
+  rectIntersection,
   PointerSensor,
   TouchSensor,
   useSensor,
@@ -391,9 +392,9 @@ export default function App() {
   const isClosingZoomRef = useRef(false);
 
   const sensors = useSensors(
-    useSensor(PointerSensor, { activationConstraint: { distance: 10 } }),
+    useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
     useSensor(TouchSensor, {
-      activationConstraint: { delay: 200, tolerance: 5 },
+      activationConstraint: { delay: 250, tolerance: 5 },
     }),
   );
 
@@ -604,6 +605,7 @@ export default function App() {
     return (
       <DndContext
         sensors={sensors}
+        collisionDetection={rectIntersection}
         onDragStart={(e) =>
           setActiveDragItem(items.find((i) => i.id === e.active.id))
         }
