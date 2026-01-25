@@ -39,7 +39,7 @@ export default function LandingPage({ onEnter }) {
                     src="https://images.unsplash.com/photo-1501785888041-af3ef285b470?auto=format&fit=crop&w=500&q=80"
                     alt="Front"
                   />
-                  <div className="hover-hint">Hover to Flip 🔄</div>
+                  <div className="hover-hint">Hover or tap here to Flip 🔄</div>
                 </div>
                 {/* Back */}
                 <div className="flip-card-back">
