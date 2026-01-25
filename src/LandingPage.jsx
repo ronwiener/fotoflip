@@ -20,8 +20,8 @@ export default function LandingPage({ onEnter }) {
               <span className="accent-text">Give them a flip side.</span>
             </h1>
             <p>
-              Write notes, technical specs, or memories directly onto your
-              digital images. Just flip the card to see what's behind the
+              Write notes, dates, locations or memories directly onto your
+              digital images. Just flip the image to see what's behind the
               moment.
             </p>
             <button onClick={onEnter} className="cta-button">
@@ -60,7 +60,7 @@ export default function LandingPage({ onEnter }) {
           <div className="feature-item">
             <div className="feature-icon">🎨</div>
             <h3>Built-in Editor</h3>
-            <p>Crop, filter, and adjust photos natively before filing them.</p>
+            <p>Crop, filter, and adjust photos before filing them.</p>
           </div>
           <div className="feature-item">
             <div className="feature-icon">🔍</div>
@@ -73,7 +73,8 @@ export default function LandingPage({ onEnter }) {
             <div className="feature-icon">📦</div>
             <h3>Portable Exports</h3>
             <p>
-              Download your gallery as a ZIP with an offline viewer included.
+              Download your gallery as a ZIP file with an offline viewer
+              included.
             </p>
           </div>
         </section>
