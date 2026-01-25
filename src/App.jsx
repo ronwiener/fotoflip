@@ -364,7 +364,7 @@ function DraggableCard({
 }
 
 /* ---------- MAIN APP ---------- */
-export default function App1() {
+export default function App() {
   // --- States ---
   const [session, setSession] = useState(null);
   const [view, setView] = useState("landing"); // New View State
@@ -394,7 +394,7 @@ export default function App1() {
     useSensor(PointerSensor, { activationConstraint: { distance: 10 } }),
     useSensor(TouchSensor, {
       activationConstraint: { delay: 200, tolerance: 5 },
-    })
+    }),
   );
 
   // --- Logic Functions ---
@@ -532,7 +532,7 @@ export default function App1() {
           return updated;
         }
         return i;
-      })
+      }),
     );
   }, []);
 
@@ -559,15 +559,15 @@ export default function App1() {
     const targetFolder = isTrash
       ? "DELETE"
       : over.id === "Select Folder"
-      ? ""
-      : over.id;
+        ? ""
+        : over.id;
 
     setItems((prev) =>
       isTrash
         ? prev.filter((i) => !draggedIds.includes(i.id))
         : prev.map((i) =>
-            draggedIds.includes(i.id) ? { ...i, folder: targetFolder } : i
-          )
+            draggedIds.includes(i.id) ? { ...i, folder: targetFolder } : i,
+          ),
     );
     setSelectedIds(new Set());
 
@@ -591,7 +591,7 @@ export default function App1() {
   const visibleItems = useMemo(() => {
     if (search.trim())
       return items.filter((i) =>
-        i.notes.toLowerCase().includes(search.toLowerCase())
+        i.notes.toLowerCase().includes(search.toLowerCase()),
       );
     return filterItems(items, activeFolder, "");
   }, [items, activeFolder, search]);
@@ -730,7 +730,7 @@ export default function App1() {
                     setIsLoading(true);
                     try {
                       await importGalleryZip(file, (c, t) =>
-                        setImportProgress(`Importing ${c} of ${t}...`)
+                        setImportProgress(`Importing ${c} of ${t}...`),
                       );
                       // Ensure this uses the correct session ID
                       await fetchItems(session.user.id);
