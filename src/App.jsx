@@ -36,6 +36,7 @@ import {
   filterItems,
   exportGalleryZip,
   importGalleryZip,
+  convertPdfToImage,
 } from "./helpers/galleryHelpers";
 import LandingPage from "./LandingPage";
 
@@ -482,16 +483,41 @@ export default function App() {
     let completedCount = 0;
 
     for (const file of files) {
-      const filePath = `${session.user.id}/${Date.now()}-${file.name}`;
+      // 1. Initialize variables with default (original) values
+      let fileToUpload = file;
+      let fileName = file.name;
+      let initialNotes = "";
+
+      // 2. If it's a PDF, we update those variables
+      if (file.type === "application/pdf") {
+        try {
+          setImportProgress(`Converting ${file.name}...`);
+          const pdfBlob = await convertPdfToImage(file);
+
+          // Update the variables with the new data
+          fileToUpload = pdfBlob;
+          fileName = file.name.replace(/\.[^/.]+$/, "") + ".jpg";
+          initialNotes = `[PDF]: ${file.name}`;
+        } catch (err) {
+          console.error("PDF conversion failed:", err);
+        }
+      }
+
+      // 3. USE the variables (fileName) for the path
+      const filePath = `${session.user.id}/${Date.now()}-${fileName}`;
+
+      // 4. USE the variables (fileToUpload) for the storage upload
       const { error: uploadError } = await supabase.storage
         .from("gallery")
-        .upload(filePath, file);
+        .upload(filePath, fileToUpload);
+
       if (!uploadError) {
+        // 5. USE the variables (initialNotes) for the database record
         await supabase.from("items").insert([
           {
             image_path: filePath,
             user_id: session.user.id,
-            notes: "",
+            notes: initialNotes,
             flipped: false,
             folder: activeFolder === "Select Folder" ? "" : activeFolder,
           },
@@ -500,8 +526,10 @@ export default function App() {
         setUploadProgress({ current: completedCount, total: files.length });
       }
     }
+
     await fetchItems(session.user.id);
     setIsLoading(false);
+    setImportProgress("");
     event.target.value = null;
     setTimeout(() => setUploadProgress({ current: 0, total: 0 }), 2000);
   };

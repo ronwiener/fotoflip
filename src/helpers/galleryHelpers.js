@@ -1,5 +1,28 @@
+import React from "react";
 import JSZip from "jszip";
 import { supabase } from "../supabaseClient";
+import * as pdfjsLib from "pdfjs-dist";
+
+// This tells PDF.js where to find its "engine" (the worker)
+pdfjsLib.GlobalWorkerOptions.workerSrc = `//unpkg.com/pdfjs-dist@${pdfjsLib.version}/build/pdf.worker.min.mjs`;
+
+export const convertPdfToImage = async (file) => {
+  const arrayBuffer = await file.arrayBuffer();
+  const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+  const page = await pdf.getPage(1);
+  const viewport = page.getViewport({ scale: 2 }); // Scale 2 provides better quality for the editor
+
+  const canvas = document.createElement("canvas");
+  const context = canvas.getContext("2d");
+  canvas.height = viewport.height;
+  canvas.width = viewport.width;
+
+  await page.render({ canvasContext: context, viewport }).promise;
+
+  return new Promise((resolve) => {
+    canvas.toBlob((blob) => resolve(blob), "image/jpeg", 0.9);
+  });
+};
 
 /* ---------- FOLDER MANAGEMENT ---------- */
 // These stay in LocalStorage because they are UI preferences
@@ -117,7 +140,7 @@ export async function exportGalleryZip(items, selectedIds) {
                     }</div>
                 </div>
             </div>
-        `
+        `,
           )
           .join("")}
     </div>
@@ -174,7 +197,8 @@ export async function importGalleryZip(file, onProgress) {
 
       // Duplicate Check
       const isDuplicate = existingItems?.some(
-        (item) => item.image_path.includes(m.filename) && item.notes === m.notes
+        (item) =>
+          item.image_path.includes(m.filename) && item.notes === m.notes,
       );
 
       if (isDuplicate) continue;

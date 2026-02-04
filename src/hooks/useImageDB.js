@@ -47,7 +47,7 @@ export function useImageDB() {
     return new Promise((resolve, reject) => {
       const tx = db.transaction(STORE, "readwrite");
       const store = tx.objectStore(STORE);
-      const req = store.put(blob, id);
+      store.put(blob, id);
 
       tx.oncomplete = () => resolve();
       tx.onerror = () => reject(tx.error);

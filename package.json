@@ -19,6 +19,7 @@
     "@use-gesture/react": "^10.3.1",
     "file-saver": "^2.0.5",
     "jszip": "^3.10.1",
+    "pdfjs-dist": "^5.4.624",
     "react": "^19.2.0",
     "react-dom": "^19.2.0",
     "react-filerobot-image-editor": "^5.0.0-beta.147"
