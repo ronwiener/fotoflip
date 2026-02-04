@@ -497,7 +497,7 @@ export default function App() {
           // Update the variables with the new data
           fileToUpload = pdfBlob;
           fileName = file.name.replace(/\.[^/.]+$/, "") + ".jpg";
-          initialNotes = `[PDF]: ${file.name}`;
+          initialNotes = "";
         } catch (err) {
           console.error("PDF conversion failed:", err);
         }
