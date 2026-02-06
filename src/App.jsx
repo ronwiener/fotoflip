@@ -429,17 +429,26 @@ export default function App() {
       // 1. Check for session immediately
       const {
         data: { session: initialSession },
-        error,
       } = await supabase.auth.getSession();
 
-      if (isMounted && initialSession) {
-        setSession(initialSession);
-        setView("gallery");
-        fetchItems(initialSession.user.id);
-      }
-      // If no session, but we have a hash in the URL, don't show landing yet
-      else if (window.location.hash.includes("access_token")) {
-        setIsLoading(true); // Show a spinner while Safari parses the link
+      if (isMounted) {
+        if (initialSession) {
+          setSession(initialSession);
+          setView("gallery");
+          fetchItems(initialSession.user.id);
+        }
+        // 2. If no session yet, but we see the auth tokens in the URL,
+        // stay in a loading state and let onAuthStateChange handle it.
+        else if (
+          window.location.hash.includes("access_token") ||
+          window.location.href.includes("code=")
+        ) {
+          setIsLoading(true);
+        }
+        // 3. Otherwise, we are truly signed out
+        else {
+          setView("landing");
+        }
       }
     };
 
@@ -454,15 +463,19 @@ export default function App() {
         setSession(currentSession);
         setView("gallery");
         fetchItems(currentSession.user.id);
+        setIsLoading(false); // Ensure loading turns off once session is caught
 
-        // Clear hash so Safari doesn't loop
-        if (window.location.hash) {
+        if (window.location.hash || window.location.search.includes("code=")) {
           window.history.replaceState(null, null, window.location.pathname);
         }
-      } else if (event === "SIGNED_OUT") {
-        setSession(null);
-        setItems([]);
-        setView("landing");
+      } else if (event === "SIGNED_OUT" || event === "INITIAL_SESSION") {
+        // INITIAL_SESSION with no currentSession means we are definitely logged out
+        if (!currentSession) {
+          setSession(null);
+          setItems([]);
+          setView("landing");
+          setIsLoading(false);
+        }
       }
     });
 
