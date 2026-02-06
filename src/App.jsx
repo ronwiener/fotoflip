@@ -426,13 +426,20 @@ export default function App() {
     let isMounted = true;
 
     const initializeAuth = async () => {
+      // 1. Check for session immediately
       const {
         data: { session: initialSession },
+        error,
       } = await supabase.auth.getSession();
+
       if (isMounted && initialSession) {
         setSession(initialSession);
         setView("gallery");
         fetchItems(initialSession.user.id);
+      }
+      // If no session, but we have a hash in the URL, don't show landing yet
+      else if (window.location.hash.includes("access_token")) {
+        setIsLoading(true); // Show a spinner while Safari parses the link
       }
     };
 
@@ -444,17 +451,15 @@ export default function App() {
       if (!isMounted) return;
 
       if (currentSession) {
-        // 1. Update State
         setSession(currentSession);
         setView("gallery");
         fetchItems(currentSession.user.id);
 
-        // 2. Clean URL (Remove #access_token so it doesn't re-trigger)
+        // Clear hash so Safari doesn't loop
         if (window.location.hash) {
           window.history.replaceState(null, null, window.location.pathname);
         }
-      } else {
-        // 3. Handle Logout
+      } else if (event === "SIGNED_OUT") {
         setSession(null);
         setItems([]);
         setView("landing");
