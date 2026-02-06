@@ -459,6 +459,8 @@ export default function App() {
     } = supabase.auth.onAuthStateChange(async (event, currentSession) => {
       if (!isMounted) return;
 
+      console.log("Auth Event:", event);
+
       if (currentSession) {
         setSession(currentSession);
         setView("gallery");
@@ -470,11 +472,18 @@ export default function App() {
         }
       } else if (event === "SIGNED_OUT" || event === "INITIAL_SESSION") {
         // INITIAL_SESSION with no currentSession means we are definitely logged out
+        const hasCode =
+          window.location.search.includes("code=") ||
+          window.location.hash.includes("access_token");
         if (!currentSession) {
           setSession(null);
           setItems([]);
           setView("landing");
           setIsLoading(false);
+        } else if (hasCode) {
+          // Keep the loading spinner on while Safari finishes the handshake
+          setIsLoading(true);
+          console.log("Safari is exchanging code for session...");
         }
       }
     });
