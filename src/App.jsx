@@ -937,7 +937,14 @@ export default function App() {
 
   // IF NOT LOGGED IN and view is landing -> Show Landing
   if (view === "landing") {
-    return <LandingPage onEnter={() => setView("auth")} />;
+    return (
+      <div className="landing-wrapper">
+        <LandingPage onEnter={() => setView("auth")} />
+        <footer className="landing-footer">
+          <p>© {new Date().getFullYear()} Photo Flip. Patent Pending.</p>
+        </footer>
+      </div>
+    );
   }
 
   // GATE 3: THE AUTH SCREEN
