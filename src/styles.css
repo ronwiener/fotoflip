@@ -567,6 +567,21 @@ html {
   cursor: pointer;
 }
 
+.landing-wrapper {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+}
+
+.landing-footer {
+  margin-top: auto; /* Pushes the footer to the bottom */
+  padding: 20px;
+  text-align: center;
+  color: #64748b; /* Subtle slate color */
+  font-size: 0.85rem;
+  border-top: 1px solid #e2e8f0;
+}
+
 /* ---------- 6a. STABLE EDITOR LAYOUT ---------- */
 
 .editor-overlay {
