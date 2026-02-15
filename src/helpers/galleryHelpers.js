@@ -170,14 +170,18 @@ export async function importGalleryZip(file, onProgress) {
     if (!user) throw new Error("User must be logged in to import");
 
     const zip = await JSZip.loadAsync(file);
-    const metaFile = zip.file("gallery.json");
-    if (!metaFile) return [];
+
+    // 1. Find the metadata file anywhere in the zip
+    const metaFile = zip.file(/gallery\.json$/i)[0];
+    if (!metaFile) {
+      alert("Invalid ZIP: gallery.json not found.");
+      return [];
+    }
 
     const meta = JSON.parse(await metaFile.async("string"));
     const total = meta.length;
     const importedItems = [];
 
-    // Fetch existing items for the merge/duplicate check
     const { data: existingItems } = await supabase
       .from("items")
       .select("image_path, notes")
@@ -185,12 +189,10 @@ export async function importGalleryZip(file, onProgress) {
 
     for (let i = 0; i < total; i++) {
       const m = meta[i];
-
-      // Update the UI: Send current count and total back to App.jsx
       if (onProgress) onProgress(i + 1, total);
 
-      const zipPath = `images/${m.filename}`;
-      const imgFile = zip.file(zipPath);
+      // 2. FORGIVING SEARCH: Look for the image file by name, ignoring folders
+      const imgFile = zip.file(new RegExp(`${m.filename}$`, "i"))[0];
       if (!imgFile) continue;
 
       const blob = await imgFile.async("blob");
@@ -200,10 +202,8 @@ export async function importGalleryZip(file, onProgress) {
         (item) =>
           item.image_path.includes(m.filename) && item.notes === m.notes,
       );
-
       if (isDuplicate) continue;
 
-      // Standard Supabase Upload Logic
       const fileExt = m.filename.split(".").pop();
       const storagePath = `${user.id}/${crypto.randomUUID()}.${fileExt}`;
 
@@ -233,7 +233,6 @@ export async function importGalleryZip(file, onProgress) {
         importedItems.push({ ...dbData[0], imageURL: urlData.publicUrl });
       }
     }
-
     return importedItems;
   } catch (e) {
     console.error("Zip import failed:", e);

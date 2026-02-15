@@ -425,35 +425,26 @@ export default function App() {
   useEffect(() => {
     let isMounted = true;
 
-    const initializeAuth = async () => {
-      // 1. Check for session immediately
-      const {
-        data: { session: initialSession },
-      } = await supabase.auth.getSession();
-
-      if (isMounted) {
-        if (initialSession) {
-          setSession(initialSession);
-          setView("gallery");
-          fetchItems(initialSession.user.id);
-        }
-        // 2. If no session yet, but we see the auth tokens in the URL,
-        // stay in a loading state and let onAuthStateChange handle it.
-        else if (
-          window.location.hash.includes("access_token") ||
-          window.location.href.includes("code=")
+    // 1. Get initial session
+    supabase.auth.getSession().then(({ data: { session: initialSession } }) => {
+      if (isMounted && initialSession) {
+        setSession(initialSession);
+        setView("gallery");
+        fetchItems(initialSession.user.id);
+      } else if (isMounted && !initialSession) {
+        // If no session and no tokens in URL, show landing
+        if (
+          !window.location.hash &&
+          !window.location.search.includes("code=")
         ) {
-          setIsLoading(true);
-        }
-        // 3. Otherwise, we are truly signed out
-        else {
           setView("landing");
+        } else {
+          setIsLoading(true); // Stay loading while Apple processes the link
         }
       }
-    };
+    });
 
-    initializeAuth();
-
+    // 2. Listen for Auth Changes
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange(async (event, currentSession) => {
@@ -461,30 +452,24 @@ export default function App() {
 
       console.log("Auth Event:", event);
 
-      if (currentSession) {
+      if (
+        currentSession &&
+        (event === "SIGNED_IN" || event === "INITIAL_SESSION")
+      ) {
         setSession(currentSession);
         setView("gallery");
         fetchItems(currentSession.user.id);
-        setIsLoading(false); // Ensure loading turns off once session is caught
+        setIsLoading(false);
 
-        if (window.location.hash || window.location.search.includes("code=")) {
-          window.history.replaceState(null, null, window.location.pathname);
-        }
-      } else if (event === "SIGNED_OUT" || event === "INITIAL_SESSION") {
-        // INITIAL_SESSION with no currentSession means we are definitely logged out
-        const hasCode =
-          window.location.search.includes("code=") ||
-          window.location.hash.includes("access_token");
-        if (!currentSession) {
-          setSession(null);
-          setItems([]);
-          setView("landing");
-          setIsLoading(false);
-        } else if (hasCode) {
-          // Keep the loading spinner on while Safari finishes the handshake
-          setIsLoading(true);
-          console.log("Safari is exchanging code for session...");
-        }
+        // Clean URL of tokens
+        window.history.replaceState(null, null, window.location.pathname);
+      }
+
+      if (event === "SIGNED_OUT") {
+        setSession(null);
+        setItems([]);
+        setView("landing");
+        setIsLoading(false);
       }
     });
 
