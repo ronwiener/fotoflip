@@ -1114,6 +1114,26 @@ button[class*="close-button"] {
     padding-bottom: 180px;
     gap: 12px;
   }
+  .folders-list {
+    display: flex !important;
+    flex-direction: row !important;
+    gap: 8px;
+    align-items: center;
+  }
+  .folder-item {
+    flex-shrink: 0 !important;
+    width: auto !important;
+    min-width: 120px;
+  }
+
+  .delete-folder-btn {
+    display: none; /* Hides the small 'x' on mobile to keep the UI clean */
+  }
+
+  .folder-name-btn {
+    width: 100%;
+    text-align: center;
+  }
 
   /* Optimization: Increase hit area for mobile fingers */
   .nav-btn,
