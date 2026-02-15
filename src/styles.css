@@ -1061,94 +1061,85 @@ button[class*="close-button"] {
 
 /* ---------- 9. MOBILE RESPONSIVE ---------- */
 @media (max-width: 768px) {
+  /* 1. THE DOCK: Keep fixed/bottom, discard fixed height */
   .sidebar {
     position: fixed;
     bottom: 0;
     left: 0;
     width: 100%;
-    height: auto; /* Let content define height */
-    max-height: 160px;
+    height: auto;
     z-index: 1000;
-    background: #fff; /* Ensure it has a solid background */
-    box-shadow: 0 -4px 15px rgba(0, 0, 0, 0.15);
-    padding-bottom: env(safe-area-inset-bottom); /* Fix for iPhone "Home Bar" */
+    background: #fff;
+    box-shadow: 0 -8px 20px rgba(0, 0, 0, 0.1);
+    padding-bottom: env(safe-area-inset-bottom);
     display: flex;
     flex-direction: column;
   }
 
+  /* 2. FOLDERS: Keep flex-row, but force overflow behavior */
   .sidebar-top {
-    flex-direction: row !important; /* Force horizontal */
-    overflow-x: auto;
+    flex-direction: row !important;
+    overflow-x: auto !important;
     overflow-y: hidden;
-    display: flex;
-    padding: 10px 5px;
+    display: flex !important;
+    padding: 10px;
     gap: 8px;
-    /* This makes scrolling feel like a "tray" */
+    border-bottom: 1px solid #f0f0f0;
     -webkit-overflow-scrolling: touch;
-    scrollbar-width: none; /* Hide scrollbar for clean look */
   }
 
-  .sidebar-top::-webkit-scrollbar {
-    display: none; /* Hide scrollbar on Safari/Chrome */
-  }
-
-  /* Force folder buttons to stay in one line and not shrink */
-  .nav-btn,
-  .folder-item {
-    flex: 0 0 auto;
-    min-width: 100px;
-    margin: 0;
-  }
-
-  .sidebar-bottom {
-    flex-direction: row;
-    justify-content: space-around;
-    align-items: center;
-    padding: 8px 10px;
-    border-top: 1px solid #f0f0f0;
-  }
-
-  .gallery {
-    grid-template-columns: repeat(2, 1fr);
-    /* Make sure the bottom card isn't hidden by the 160px dock */
-    padding-bottom: 180px;
-    gap: 12px;
-  }
+  /* CRITICAL: Keep this to fix the "Invisible Folders" */
   .folders-list {
     display: flex !important;
     flex-direction: row !important;
     gap: 8px;
-    align-items: center;
-  }
-  .folder-item {
-    flex-shrink: 0 !important;
-    width: auto !important;
-    min-width: 120px;
   }
 
-  .delete-folder-btn {
-    display: none; /* Hides the small 'x' on mobile to keep the UI clean */
-  }
-
-  .folder-name-btn {
-    width: 100%;
-    text-align: center;
-  }
-
-  /* Optimization: Increase hit area for mobile fingers */
   .nav-btn,
-  .folder-name-btn {
-    padding: 10px 15px;
-    font-size: 0.85rem;
+  .folder-item {
+    flex: 0 0 auto !important; /* Keep: prevents shrinking to 0px */
+    min-width: 110px;
+    height: 40px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
   }
 
-  /* Buttons stay side-by-side on mobile for better centering */
-  .notes-actions {
+  /* 3. BOTTOM BAR: Discard space, Keep layout */
+  .sidebar-bottom {
     flex-direction: row;
+    justify-content: space-between; /* Keeps buttons apart */
+    align-items: center;
+    padding: 6px 15px; /* Tighter padding to reduce open space */
+    gap: 10px;
   }
-  .notes-actions button {
-    min-height: 44px;
-    font-size: 0.9rem;
+
+  /* Make Trash smaller to save space */
+  .trash-zone {
+    flex: 1;
+    padding: 8px;
+    font-size: 0.8rem;
+    max-width: 120px;
+  }
+
+  /* 4. GALLERY: Keep 2-column, Discard wide images */
+  .gallery {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 25px; /* Discard 12px: Use 25px for "scroll gutter" thumb space */
+    padding: 15px 30px 180px 30px; /* Added side padding for better scrolling */
+  }
+
+  .card-wrapper {
+    width: 90%; /* Discard full width: This creates the gap you need */
+    justify-self: center;
+  }
+
+  /* Keep for mobile accessibility */
+  .delete-folder-btn {
+    display: none;
+  }
+  .sidebar-top::-webkit-scrollbar {
+    display: none;
   }
 }
 

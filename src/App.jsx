@@ -393,9 +393,17 @@ export default function App() {
   const isClosingZoomRef = useRef(false);
 
   const sensors = useSensors(
-    useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
+    useSensor(PointerSensor, {
+      activationConstraint: { distance: 10 },
+    }),
     useSensor(TouchSensor, {
-      activationConstraint: { delay: 250, tolerance: 5 },
+      // 250ms is too fast; let's increase it.
+      // Also adding 'tolerance', so if the finger wobbles
+      // while holding, it doesn't cancel the drag.
+      activationConstraint: {
+        delay: 500, // User must hold for half a second to drag
+        tolerance: 15,
+      },
     }),
   );
 
