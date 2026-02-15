@@ -1080,7 +1080,6 @@ button[class*="close-button"] {
   .sidebar-top {
     flex-direction: row !important;
     overflow-x: auto !important;
-    overflow-y: hidden;
     display: flex !important;
     padding: 10px;
     gap: 8px;
@@ -1132,6 +1131,10 @@ button[class*="close-button"] {
   .card-wrapper {
     width: 90%; /* Discard full width: This creates the gap you need */
     justify-self: center;
+  }
+  .card-drag-preview {
+    z-index: 99999 !important; /* Must be higher than 1000 */
+    position: relative;
   }
 
   /* Keep for mobile accessibility */

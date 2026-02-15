@@ -847,7 +847,15 @@ export default function App() {
           <DragOverlay modifiers={[snapCenterToCursor]}>
             {activeDragItem && (
               <div className="card-drag-preview">
-                <img src={activeDragItem.imageURL} alt="" />
+                <img
+                  src={activeDragItem.imageURL}
+                  alt=""
+                  style={{
+                    width: "100px",
+                    borderRadius: "8px",
+                    boxShadow: "0 10px 20px rgba(0,0,0,0.3)",
+                  }}
+                />
               </div>
             )}
           </DragOverlay>
