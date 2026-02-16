@@ -89,8 +89,6 @@ export function filterItems(items, activeFolder, search) {
 }
 
 /* ---------- ZIP EXPORT (Supabase Version) ---------- */
-
-/* ---------- ZIP EXPORT (Selected Items Version) ---------- */
 export async function exportGalleryZip(items, selectedIds) {
   const zip = new JSZip();
   const meta = [];
@@ -113,7 +111,6 @@ export async function exportGalleryZip(items, selectedIds) {
       const blob = await response.blob();
 
       const cleanFilename = item.image_path.split("/").pop();
-      // We put images in a subfolder for the HTML viewer
       const zipPath = `images/${cleanFilename}`;
 
       zip.file(zipPath, blob);
@@ -128,35 +125,45 @@ export async function exportGalleryZip(items, selectedIds) {
     }
   }
 
-  // 2. Generate a "Non-User" HTML Viewer
+  // 2. Generate the HTML Viewer Template
   const htmlContent = `
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-    <title>Photo Flip Gallery</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Photo Flip Export</title>
     <style>
-        body { font-family: sans-serif; background: #f4f7f6; padding: 20px; color: #333; }
-        .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); max-width: 1000px; margin: 0 auto; gap: 30px; }
-        .card { background: white; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 10px rgba(0,0,0,0.1); }
-        img { width: 100%; height: auto;  object-fit: contain; display: block;  background: #000: border-bottom: 1px solid #eee; }
-        .content { padding: 15px; background: white;}
-        .folder { font-size: 0.7rem; text-transform: uppercase; color: #0077ff; font-weight: bold; margin-bottom: 5px; }
-        .notes { font-size: 0.95rem; line-height: 1.5; white-space: pre-wrap; }
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background: #f8fafc; color: #1e293b; padding: 40px 20px; line-height: 1.5; }
+        .header { max-width: 1000px; margin: 0 auto 30px; display: flex; justify-content: space-between; align-items: center; }
+        h1 { margin: 0; color: #0f172a; font-size: 24px; }
+        .print-btn { padding: 8px 16px; background: #4f46e5; color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: 500; }
+        .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); max-width: 1000px; margin: 0 auto; gap: 24px; }
+        .card { background: white; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1); border: 1px solid #e2e8f0; display: flex; flex-direction: column; }
+        .img-container { width: 100%; aspect-ratio: 4/3; background: #f1f5f9; display: flex; align-items: center; justify-content: center; overflow: hidden; }
+        img { width: 100%; height: 100%; object-fit: contain; }
+        .content { padding: 16px; flex-grow: 1; display: flex; flex-direction: column; }
+        .folder-badge { display: inline-block; font-size: 11px; font-weight: 700; text-transform: uppercase; color: #6366f1; background: #eef2ff; padding: 2px 8px; border-radius: 4px; margin-bottom: 8px; align-self: flex-start; }
+        .notes { font-size: 14px; color: #475569; white-space: pre-wrap; word-break: break-word; }
+        @media print { .print-btn { display: none; } body { background: white; padding: 0; } .card { box-shadow: none; border: 1px solid #eee; page-break-inside: avoid; } }
     </style>
 </head>
 <body>
-    <h1>Photo Flip Export</h1>
+    <div class="header">
+        <h1>Photo Flip Gallery</h1>
+        <button class="print-btn" onclick="window.print()">Print / Save PDF</button>
+    </div>
     <div class="grid">
         ${meta
           .map(
             (m) => `
             <div class="card">
-                <img src="images/${m.filename}" />
+                <div class="img-container">
+                    <img src="images/${m.filename}" alt="Gallery Image">
+                </div>
                 <div class="content">
-                    <div class="folder">${m.folder || "Main Gallery"}</div>
-                    <div class="notes">${
-                      m.notes || "<i>No notes added.</i>"
-                    }</div>
+                    <div class="folder-badge">${m.folder || "Main Gallery"}</div>
+                    <div class="notes">${m.notes || "<i>No notes added.</i>"}</div>
                 </div>
             </div>
         `,
@@ -166,20 +173,39 @@ export async function exportGalleryZip(items, selectedIds) {
 </body>
 </html>`;
 
-  // 3. Add both the App-specific JSON and the Human-readable HTML
+  // 3. Finalize the ZIP
   zip.file("gallery.json", JSON.stringify(meta, null, 2));
   zip.file("index.html", htmlContent);
 
   const blob = await zip.generateAsync({ type: "blob" });
+  const fileName = `PhotoFlip_Export_${new Date().toISOString().split("T")[0]}.zip`;
+  const zipFile = new File([blob], fileName, { type: "application/zip" });
+
+  // 4. SMART SHARE LOGIC
+  if (navigator.canShare && navigator.canShare({ files: [zipFile] })) {
+    try {
+      await navigator.share({
+        files: [zipFile],
+        title: "Photo Flip Export",
+        text: "Attached is an organized gallery with notes.",
+      });
+      return;
+    } catch (error) {
+      if (error.name === "AbortError") return;
+      console.error("Share failed:", error);
+    }
+  }
+
+  // 5. FALLBACK: Standard Download
   const link = document.createElement("a");
   link.href = URL.createObjectURL(blob);
-  link.download = `gallery_export_${
-    new Date().toISOString().split("T")[0]
-  }.zip`;
+  link.download = fileName;
+  document.body.appendChild(link);
   link.click();
+  document.body.removeChild(link);
+  setTimeout(() => URL.revokeObjectURL(link.href), 100);
 }
 
-/* ---------- ZIP IMPORT (With Merge/Duplicate Check) ---------- */
 /* ---------- ZIP IMPORT (With Progress Reporting) ---------- */
 export async function importGalleryZip(file, onProgress) {
   try {
