@@ -248,8 +248,8 @@ function DraggableCard({
     transition,
     isDragging,
   } = useSortable({
-    id: item.id || "temp",
-    disabled: !item || item.flipped,
+    id: item.id,
+    disabled: false,
   });
 
   if (!item) return null;
