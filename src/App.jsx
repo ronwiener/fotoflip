@@ -443,6 +443,16 @@ export default function App() {
       setIsLoggingIn(true);
     }
 
+    // FAIL-SAFE: If we are still "logging in" after 10 seconds,
+    // something went wrong. Send them back to landing.
+    setTimeout(() => {
+      if (isMounted && isLoggingIn) {
+        setIsLoggingIn(false);
+        setView("landing");
+        console.log("Login timed out - likely a browser mismatch.");
+      }
+    }, 10000);
+
     // 2. Define an async function to handle the initial session check
     const initializeAuth = async () => {
       // Await the session - this gives the iPhone time to read from local storage

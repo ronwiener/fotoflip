@@ -10,6 +10,6 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
     storage: window.localStorage,
     autoRefreshToken: true,
     detectSessionInUrl: true,
-    flowType: "pkce", // PKCE is much more reliable for mobile Safari
+    flowType: "implicit",
   },
 });
