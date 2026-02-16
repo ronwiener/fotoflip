@@ -371,7 +371,7 @@ export default function App() {
   const [session, setSession] = useState(null);
   const [view, setView] = useState("landing"); // New View State
   const [items, setItems] = useState([]);
-  const [folders, setFolders] = useState(() => loadFolders() || []);
+  const [folders, setFolders] = useState([]);
   const [activeFolder, setActiveFolder] = useState("Select Folder");
   const [search, setSearch] = useState("");
   const [selectedIds, setSelectedIds] = useState(new Set());
@@ -439,6 +439,7 @@ export default function App() {
         setSession(initialSession);
         setView("gallery");
         fetchItems(initialSession.user.id);
+        loadFolders(initialSession.user.id).then((data) => setFolders(data));
       } else if (isMounted && !initialSession) {
         // If no session and no tokens in URL, show landing
         if (
@@ -684,10 +685,10 @@ export default function App() {
                     f={f}
                     activeFolder={activeFolder}
                     setActiveFolder={setActiveFolder}
-                    onDelete={(fol) => {
-                      const next = folders.filter((r) => r !== fol);
-                      setFolders(next);
-                      saveFolders(next);
+                    onDelete={async (fol) => {
+                      // <--- Added async here
+                      await saveFolders(session.user.id, fol, true);
+                      setFolders(folders.filter((r) => r !== fol));
                     }}
                   />
                 ))}
@@ -696,11 +697,16 @@ export default function App() {
             <div className="sidebar-bottom">
               <button
                 className="nav-btn"
-                onClick={() => {
+                onClick={async () => {
+                  // <--- Added async here
                   const n = prompt("New Folder:");
-                  if (n) {
+                  if (n && folders.includes(n)) {
+                    alert("This folder already exists!");
+                    return;
+                  }
+                  if (n && session?.user) {
+                    await saveFolders(session.user.id, n);
                     setFolders([...folders, n]);
-                    saveFolders([...folders, n]);
                   }
                 }}
               >
@@ -784,6 +790,8 @@ export default function App() {
                       );
                       // Ensure this uses the correct session ID
                       await fetchItems(session.user.id);
+                      const updatedFolders = await loadFolders(session.user.id);
+                      setFolders(updatedFolders);
                     } catch (err) {
                       alert("Import failed: " + err.message);
                     } finally {

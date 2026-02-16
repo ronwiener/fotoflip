@@ -25,8 +25,6 @@ export const convertPdfToImage = async (file) => {
 };
 
 /* ---------- FOLDER MANAGEMENT ---------- */
-// These stay in LocalStorage because they are UI preferences
-// (unless you want to create a 'folders' table in Supabase later)
 
 const FOLDER_ALIASES = {
   All: "Folder Groups",
@@ -34,19 +32,40 @@ const FOLDER_ALIASES = {
   Default: "Folder Groups",
 };
 
-export function loadFolders() {
-  const saved = localStorage.getItem("gallery-folders");
-  if (!saved) return ["Folder Groups"];
-  try {
-    const folders = JSON.parse(saved);
-    return folders.map((f) => FOLDER_ALIASES[f] ?? f);
-  } catch (e) {
-    return ["Folder Groups"];
+/* ---------- FOLDER MANAGEMENT (Supabase Sync) ---------- */
+
+export async function loadFolders(userId) {
+  if (!userId) return [];
+  const { data, error } = await supabase
+    .from("folders")
+    .select("name")
+    .eq("user_id", userId)
+    .order("name", { ascending: true });
+
+  if (error) {
+    console.error("Error loading folders:", error);
+    return [];
   }
+  // This extracts just the names into an array: ["Folder 1", "Folder 2"]
+  return data.map((f) => f.name);
 }
 
-export function saveFolders(folders) {
-  localStorage.setItem("gallery-folders", JSON.stringify(folders));
+export async function saveFolders(userId, folderName, isDelete = false) {
+  if (!userId) return;
+
+  if (isDelete) {
+    const { error } = await supabase
+      .from("folders")
+      .delete()
+      .eq("user_id", userId)
+      .eq("name", folderName);
+    if (error) console.error("Delete folder error:", error);
+  } else {
+    const { error } = await supabase
+      .from("folders")
+      .insert([{ user_id: userId, name: folderName }]);
+    if (error) console.error("Save folder error:", error);
+  }
 }
 
 /* ---------- FILTERING ---------- */

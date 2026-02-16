@@ -1078,19 +1078,27 @@ button[class*="close-button"] {
 
   /* 2. FOLDERS: Keep flex-row, but force overflow behavior */
   .sidebar-top {
-    flex-direction: row !important;
-    overflow-x: auto !important;
     display: flex !important;
+    flex-direction: row !important;
+    align-items: center;
+    overflow-x: auto !important; /* This is the "scroll window" */
+    overflow-y: hidden;
+    -webkit-overflow-scrolling: touch; /* Makes scroll feel "rubbery" on iPhone */
+    width: 100%;
     padding: 10px;
-    gap: 8px;
+    gap: 10px;
     border-bottom: 1px solid #f0f0f0;
-    -webkit-overflow-scrolling: touch;
+  }
+  .sidebar-top::-webkit-scrollbar {
+    display: none;
   }
 
   /* CRITICAL: Keep this to fix the "Invisible Folders" */
   .folders-list {
     display: flex !important;
     flex-direction: row !important;
+    overflow-x: auto;
+    padding-bottom: 5px;
     gap: 8px;
   }
 
@@ -1098,6 +1106,8 @@ button[class*="close-button"] {
   .folder-item {
     flex: 0 0 auto !important; /* Keep: prevents shrinking to 0px */
     min-width: 110px;
+    flex-shrink: 0 !important;
+    white-space: nowrap;
     height: 40px;
     display: flex;
     align-items: center;
