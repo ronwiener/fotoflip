@@ -106,14 +106,16 @@ export async function exportGalleryZip(items, selectedIds) {
   // 1. Build the ZIP and Meta Data
   for (const item of itemsToExport) {
     try {
-      const response = await fetch(item.imageURL);
+      // Use cache: 'no-cache' to ensure we get fresh data on mobile
+      const response = await fetch(item.imageURL, { cache: "no-cache" });
       if (!response.ok) throw new Error("Image download failed");
       const blob = await response.blob();
 
       const cleanFilename = item.image_path.split("/").pop();
-      const zipPath = `images/${cleanFilename}`;
 
-      zip.file(zipPath, blob);
+      // FIX: Place images in root or a simple folder.
+      // Mobile Safari handles root files better.
+      zip.file(cleanFilename, blob);
 
       meta.push({
         notes: item.notes,
@@ -125,7 +127,7 @@ export async function exportGalleryZip(items, selectedIds) {
     }
   }
 
-  // 2. Generate the HTML Viewer Template
+  // 2. Generate the HTML Viewer Template (Updated paths for flat ZIP)
   const htmlContent = `
 <!DOCTYPE html>
 <html lang="en">
@@ -134,76 +136,69 @@ export async function exportGalleryZip(items, selectedIds) {
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Photo Flip Export</title>
     <style>
-        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background: #f8fafc; color: #1e293b; padding: 40px 20px; line-height: 1.5; }
-        .header { max-width: 1000px; margin: 0 auto 30px; display: flex; justify-content: space-between; align-items: center; }
-        h1 { margin: 0; color: #0f172a; font-size: 24px; }
-        .print-btn { padding: 8px 16px; background: #4f46e5; color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: 500; }
-        .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); max-width: 1000px; margin: 0 auto; gap: 24px; }
-        .card { background: white; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1); border: 1px solid #e2e8f0; display: flex; flex-direction: column; }
-        .img-container { width: 100%; aspect-ratio: 4/3; background: #f1f5f9; display: flex; align-items: center; justify-content: center; overflow: hidden; }
-        img { width: 100%; height: 100%; object-fit: contain; }
-        .content { padding: 16px; flex-grow: 1; display: flex; flex-direction: column; }
-        .folder-badge { display: inline-block; font-size: 11px; font-weight: 700; text-transform: uppercase; color: #6366f1; background: #eef2ff; padding: 2px 8px; border-radius: 4px; margin-bottom: 8px; align-self: flex-start; }
-        .notes { font-size: 14px; color: #475569; white-space: pre-wrap; word-break: break-word; }
-        @media print { .print-btn { display: none; } body { background: white; padding: 0; } .card { box-shadow: none; border: 1px solid #eee; page-break-inside: avoid; } }
+        body { font-family: -apple-system, sans-serif; background: #f8fafc; padding: 20px; }
+        .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 20px; }
+        .card { background: white; border-radius: 12px; border: 1px solid #e2e8f0; overflow: hidden; }
+        img { width: 100%; aspect-ratio: 4/3; object-fit: contain; background: #000; }
+        .content { padding: 15px; }
+        .notes { font-size: 14px; white-space: pre-wrap; }
     </style>
 </head>
 <body>
-    <div class="header">
-        <h1>Photo Flip Gallery</h1>
-        <button class="print-btn" onclick="window.print()">Print / Save PDF</button>
-    </div>
+    <h1>Photo Flip Gallery</h1>
     <div class="grid">
         ${meta
           .map(
             (m) => `
             <div class="card">
-                <div class="img-container">
-                    <img src="images/${m.filename}" alt="Gallery Image">
-                </div>
+                <img src="${m.filename}">
                 <div class="content">
-                    <div class="folder-badge">${m.folder || "Main Gallery"}</div>
-                    <div class="notes">${m.notes || "<i>No notes added.</i>"}</div>
+                    <strong>${m.folder || "Main Gallery"}</strong>
+                    <div class="notes">${m.notes || ""}</div>
                 </div>
-            </div>
-        `,
+            </div>`,
           )
           .join("")}
     </div>
 </body>
 </html>`;
 
-  // 3. Finalize the ZIP
   zip.file("gallery.json", JSON.stringify(meta, null, 2));
   zip.file("index.html", htmlContent);
 
-  const blob = await zip.generateAsync({ type: "blob" });
-  const fileName = `PhotoFlip_Export_${new Date().toISOString().split("T")[0]}.zip`;
-  const zipFile = new File([blob], fileName, { type: "application/zip" });
+  // 3. Generate ZIP as Blob
+  const blob = await zip.generateAsync({
+    type: "blob",
+    compression: "STORE", // No compression makes it faster and more stable for mobile CPUs
+  });
 
-  // 4. SMART SHARE LOGIC
-  if (navigator.canShare && navigator.canShare({ files: [zipFile] })) {
-    try {
-      await navigator.share({
-        files: [zipFile],
-        title: "Photo Flip Export",
-        text: "Attached is an organized gallery with notes.",
-      });
-      return;
-    } catch (error) {
-      if (error.name === "AbortError") return;
-      console.error("Share failed:", error);
+  const fileName = `PhotoFlip_Export.zip`;
+
+  // 4. SMART SHARE LOGIC (Optimized for iOS)
+  if (navigator.share) {
+    const zipFile = new File([blob], fileName, { type: "application/zip" });
+    if (navigator.canShare && navigator.canShare({ files: [zipFile] })) {
+      try {
+        await navigator.share({
+          files: [zipFile],
+          title: "Photo Flip Export",
+        });
+        return; // Success
+      } catch (error) {
+        if (error.name !== "AbortError") console.error("Share failed", error);
+      }
     }
   }
 
-  // 5. FALLBACK: Standard Download
-  const link = document.createElement("a");
-  link.href = URL.createObjectURL(blob);
-  link.download = fileName;
-  document.body.appendChild(link);
-  link.click();
-  document.body.removeChild(link);
-  setTimeout(() => URL.revokeObjectURL(link.href), 100);
+  // 5. FALLBACK: Direct Download
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = fileName;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
 }
 
 /* ---------- ZIP IMPORT (With Progress Reporting) ---------- */
