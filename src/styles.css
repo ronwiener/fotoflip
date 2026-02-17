@@ -510,18 +510,45 @@ html {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 0 10px;
-  min-height: 44px;
-  border: 2px solid transparent;
+  position: relative; /* Allows absolute positioning for the X if needed */
+  background: #f1f5f9;
+  border-radius: 8px;
+  margin-bottom: 4px;
+  padding-right: 8px; /* Room for the X */
+  min-height: 44px; /* Apple's recommended minimum tap size */
+}
+
+.folder-name-btn {
+  flex: 1;
+  text-align: left;
+  padding: 10px;
+  border: none;
+  background: transparent;
+  font-size: 14px;
+  overflow: hidden;
+  text-overflow: ellipsis; /* Adds ... if the name is too long */
+  white-space: nowrap;
 }
 
 .delete-folder-btn {
   width: 28px;
   height: 28px;
-  background: var(--danger-bg);
-  color: var(--danger);
-  border: 1px solid #ffcccc;
-  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #fee2e2; /* Light red background */
+  color: #ef4444; /* Bright red X */
+  border: none;
+  border-radius: 50%;
+  font-size: 16px;
+  font-weight: bold;
+  cursor: pointer;
+  z-index: 10; /* Ensure it's on top */
+  flex-shrink: 0; /* Don't let it get squashed */
+}
+
+.delete-folder-btn:active {
+  background: #fca5a5; /* Darker red when tapped */
 }
 
 /* Better Folder Hover Highlights */

@@ -130,6 +130,7 @@ function MainGalleryDropZone({ activeFolder, setActiveFolder }) {
 
 function FolderButton({ f, activeFolder, setActiveFolder, onDelete }) {
   const { isOver, setNodeRef } = useDroppable({ id: f });
+
   const className = [
     "folder-item",
     f === activeFolder ? "active" : "",
@@ -145,12 +146,15 @@ function FolderButton({ f, activeFolder, setActiveFolder, onDelete }) {
       </button>
       <button
         className="delete-folder-btn"
+        onPointerDown={(e) => e.stopPropagation()} // Crucial for mobile touch
         onClick={(e) => {
           e.stopPropagation();
-          onDelete(f);
+          if (window.confirm(`Delete folder "${f}"?`)) {
+            onDelete(f);
+          }
         }}
       >
-        &times;
+        ✕
       </button>
     </div>
   );
