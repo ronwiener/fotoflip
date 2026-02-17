@@ -509,12 +509,14 @@ html {
 .folder-item {
   display: flex;
   align-items: center;
+  width: 100%;
   justify-content: space-between;
   position: relative; /* Allows absolute positioning for the X if needed */
   background: #f1f5f9;
   border-radius: 8px;
   margin-bottom: 4px;
-  padding-right: 8px; /* Room for the X */
+  padding: 5px 10px;
+  box-sizing: border-box;
   min-height: 44px; /* Apple's recommended minimum tap size */
 }
 
@@ -531,19 +533,25 @@ html {
 }
 
 .delete-folder-btn {
+  -webkit-appearance: none;
+  appearance: none;
   width: 28px;
   height: 28px;
   display: flex;
   align-items: center;
   justify-content: center;
-  background: #fee2e2; /* Light red background */
-  color: #ef4444; /* Bright red X */
+  background-color: #ff4d4d !important;
+  color: white !important;
+  width: 30px;
+  height: 30px;
   border: none;
   border-radius: 50%;
-  font-size: 16px;
+  font-size: 18px;
+  line-height: 1;
   font-weight: bold;
   cursor: pointer;
-  z-index: 10; /* Ensure it's on top */
+  position: relative;
+  z-index: 999; /* Ensure it's on top */
   flex-shrink: 0; /* Don't let it get squashed */
 }
 
