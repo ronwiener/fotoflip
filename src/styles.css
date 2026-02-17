@@ -1178,14 +1178,39 @@ button[class*="close-button"] {
 
   .nav-btn,
   .folder-item {
-    flex: 0 0 auto !important; /* Keep: prevents shrinking to 0px */
-    min-width: 110px;
+    flex: 0 0 auto !important;
+    min-width: 130px; /* Slightly wider to accommodate the X */
+    max-width: 180px; /* Prevent folders from becoming massive */
     flex-shrink: 0 !important;
     white-space: nowrap;
-    height: 40px;
+    height: 44px; /* Standard Apple tap target */
     display: flex;
     align-items: center;
+    justify-content: space-between; /* This pushes the X to the right */
+    padding: 0 8px;
+    background: #f1f5f9;
+    border-radius: var(--radius-md);
+  }
+
+  .folder-item .delete-folder-btn {
+    display: flex !important; /* Overrides the 'display: none' you had at the bottom */
+    width: 24px;
+    height: 24px;
+    font-size: 14px;
+    margin-left: 8px;
+    background-color: #ff4d4d !important;
+    color: white !important;
+    border-radius: 50%;
+    align-items: center;
     justify-content: center;
+    flex-shrink: 0;
+  }
+  .folder-name-btn {
+    padding: 0;
+    font-size: 13px;
+    flex: 1;
+    overflow: hidden;
+    text-overflow: ellipsis;
   }
 
   /* 3. BOTTOM BAR: Discard space, Keep layout */
@@ -1221,10 +1246,6 @@ button[class*="close-button"] {
     position: relative;
   }
 
-  /* Keep for mobile accessibility */
-  .delete-folder-btn {
-    display: none;
-  }
   .sidebar-top::-webkit-scrollbar {
     display: none;
   }
