@@ -542,12 +542,13 @@ html {
   justify-content: center;
   background-color: #ff4d4d !important;
   color: white !important;
-  width: 30px;
-  height: 30px;
+  width: 22px;
+  height: 22px;
   border: none;
   border-radius: 50%;
-  font-size: 18px;
+  font-size: 12px;
   line-height: 1;
+  padding: 0,
   font-weight: bold;
   cursor: pointer;
   position: relative;
