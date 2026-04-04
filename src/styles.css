@@ -27,7 +27,8 @@
 body,
 html {
   margin: 0;
-  padding: 0;
+  padding: env(safe-area-inset-top) env(safe-area-inset-right)
+    env(safe-area-inset-bottom) env(safe-area-inset-left);
   min-height: 100%; /* Changed from height to min-height */
   width: 100%;
   background: var(--bg-app);
@@ -78,19 +79,49 @@ html {
   text-align: center;
 }
 
+/* Base styles for both social buttons */
+.apple-btn,
 .google-btn {
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 10px;
+  gap: 12px; /* Space between logo and text */
   width: 100%;
-  padding: 12px;
-  border: 1px solid #ddd;
-  border-radius: var(--radius-md);
-  background: white;
-  font-weight: 600;
+  height: 44px; /* Standard Apple/Google height */
+  border-radius: 6px;
+  font-size: 16px;
+  font-weight: 500;
   cursor: pointer;
-  transition: var(--transition);
+  transition: background-color 0.2s;
+  margin-bottom: 12px;
+}
+
+/* Specifics for Apple */
+.apple-btn {
+  background-color: #000000;
+  color: #ffffff;
+  border: none;
+}
+
+.apple-btn:hover {
+  background-color: #333333;
+}
+
+/* Specifics for Google */
+.google-btn {
+  background-color: #ffffff;
+  color: #3c4043;
+  border: 1px solid #dadce0;
+}
+
+.google-btn:hover {
+  background-color: #f8f9fa;
+}
+
+/* Ensure logos stay consistent sizes */
+.apple-btn img,
+.google-btn img {
+  flex-shrink: 0;
 }
 
 .auth-box input {
@@ -165,7 +196,7 @@ html {
   display: flex;
   flex-direction: column;
   align-items: center;
-  overflow-y: auto;
+  overflow: visible;
   color: #1a202c;
   padding-bottom: 50px;
 }
@@ -415,7 +446,7 @@ html {
   transform: rotateY(180deg);
 }
 
-.relative {
+.auth-relative-wrapper {
   transition: transform 0.6s;
   transform-style: preserve-3d;
 }
@@ -548,7 +579,7 @@ html {
   border-radius: 50%;
   font-size: 12px;
   line-height: 1;
-  padding: 0,
+  padding: 0;
   font-weight: bold;
   cursor: pointer;
   position: relative;
@@ -595,12 +626,14 @@ html {
 
 /* ---------- 6. CONTROLS & GALLERY ---------- */
 .controls {
+  padding-top: env(safe-area-inset-top);
+  padding-top: calc(env(safe-area-inset-top) + 10px);
   padding: 15px 20px;
   background: white;
   border-bottom: 1px solid #ddd;
   display: flex;
   align-items: center;
-  gap: 15px;
+  gap: 10px;
   flex-wrap: wrap;
   position: sticky;
   top: 0;
@@ -1136,19 +1169,56 @@ button[class*="close-button"] {
 
 /* ---------- 9. MOBILE RESPONSIVE ---------- */
 @media (max-width: 768px) {
-  /* 1. THE DOCK: Keep fixed/bottom, discard fixed height */
-  .sidebar {
-    position: fixed;
-    bottom: 0;
-    left: 0;
-    width: 100%;
-    height: auto;
-    z-index: 1000;
-    background: #fff;
-    box-shadow: 0 -8px 20px rgba(0, 0, 0, 0.1);
-    padding-bottom: env(safe-area-inset-bottom);
+  * {
+    -webkit-tap-highlight-color: transparent;
+    user-select: none; /* Stops text highlighting during drag */
+  }
+
+  textarea,
+  input {
+    user-select: text;
+  }
+  /* 1. Fix the main container so it doesn't bounce/scroll the whole page */
+  .app {
     display: flex;
     flex-direction: column;
+    height: 100vh;
+    /* This prevents the "bounce" and keeps the sandwich together */
+    overflow: hidden;
+    position: fixed;
+    width: 100%;
+  }
+  /* 1. THE DOCK: Keep fixed/bottom, discard fixed height */
+  .main {
+    /* The Scrollable Gallery Area */
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+    padding: 10px;
+  }
+
+  /* 2. The Header (Top Bar) stays at the top */
+  .controls {
+    /* Top Bar */
+    flex-shrink: 0;
+    z-index: 100;
+    background: white;
+    padding-top: env(safe-area-inset-top); /* Notch protection */
+    border-bottom: 1px solid #e2e8f0;
+  }
+
+  .sidebar {
+    /* Bottom Nav Bar */
+    flex-shrink: 0;
+    width: 100%;
+    display: flex;
+    flex-direction: column; /* Stack Top (folders) and Bottom (buttons) */
+    background: white;
+    border-top: 1px solid #e2e8f0;
+    padding-bottom: env(safe-area-inset-bottom); /* Home bar protection */
+    z-index: 100;
   }
 
   /* 2. FOLDERS: Keep flex-row, but force overflow behavior */
@@ -1168,6 +1238,16 @@ button[class*="close-button"] {
     display: none;
   }
 
+  .sidebar-top,
+  .sidebar-bottom {
+    position: relative;
+    width: 100%;
+    display: flex;
+    flex-direction: row;
+    width: 100%;
+    justify-content: space-around;
+  }
+
   /* CRITICAL: Keep this to fix the "Invisible Folders" */
   .folders-list {
     display: flex !important;
@@ -1179,10 +1259,10 @@ button[class*="close-button"] {
 
   .nav-btn,
   .folder-item {
-    flex: 0 0 auto !important;
+    flex: 0 0 auto;
     min-width: 130px; /* Slightly wider to accommodate the X */
     max-width: 180px; /* Prevent folders from becoming massive */
-    flex-shrink: 0 !important;
+    flex-shrink: 0;
     white-space: nowrap;
     height: 44px; /* Standard Apple tap target */
     display: flex;
@@ -1241,10 +1321,17 @@ button[class*="close-button"] {
   .card-wrapper {
     width: 90%; /* Discard full width: This creates the gap you need */
     justify-self: center;
+    touch-action: none;
+    -webkit-touch-callout: none; /* Prevents system 'Copy/Share' menu */
+    -webkit-user-select: none; /* Prevents accidental text highlighting */
+    user-select: none;
   }
   .card-drag-preview {
-    z-index: 99999 !important; /* Must be higher than 1000 */
-    position: relative;
+    transform: scale(1.1) !important; /* <--- Lift it up */
+    box-shadow: 0 20px 40px rgba(0, 0, 0, 0.4) !important; /* <--- Deep shadow */
+    transition: transform 0.1s ease;
+    z-index: 99999 !important;
+    opacity: 1 !important; /* Make it solid so it's easier to see where you're dropping */
   }
 
   .sidebar-top::-webkit-scrollbar {
@@ -1265,4 +1352,146 @@ button[class*="close-button"] {
   height: 100%;
   background: var(--primary);
   transition: width 0.4s ease;
+}
+
+/* ==========================================
+   LANDING PAGE UPDATES & GESTURE ANIMATIONS
+   ========================================== */
+
+/* 1. Header & Hero Adjustments */
+.landing-page-container {
+  background: white;
+  color: #1e293b;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica,
+    Arial, sans-serif;
+}
+
+.landing-nav {
+  display: flex;
+  align-items: center;
+  justify-content: space-between; /* This pushes the logo left and button right */
+  padding: 15px 5%;
+  background: rgba(255, 255, 255, 0.9);
+  backdrop-filter: blur(10px);
+  position: fixed;
+  top: 0;
+  width: 100%;
+  z-index: 1000;
+  box-sizing: border-box; /* Crucial so padding doesn't push the bar off-screen */
+  border-bottom: 1px solid #e2e8f0;
+}
+
+.badge {
+  display: inline-block;
+  padding: 6px 16px;
+  background: #007aff; /* iOS Blue */
+  color: white;
+  border-radius: 99px;
+  font-size: 0.75rem;
+  font-weight: 700;
+  margin-bottom: 20px;
+  letter-spacing: 0.05em;
+}
+
+.touch-hint {
+  position: absolute;
+  bottom: 20px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(0, 0, 0, 0.6);
+  color: white;
+  padding: 8px 16px;
+  border-radius: 20px;
+  font-size: 0.85rem;
+  backdrop-filter: blur(4px);
+  pointer-events: none;
+}
+
+/* 2. How-To Gesture Section */
+.how-to-section {
+  padding: 80px 20px;
+  background: #f8fafc;
+  text-align: center;
+  overflow: hidden;
+}
+
+.how-to-section h2 {
+  font-size: 2rem;
+  font-weight: 800;
+  margin-bottom: 50px;
+  color: #0f172a;
+}
+
+.how-to-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 30px;
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+/* --- THE ANIMATION LOGIC --- */
+.how-to-card {
+  background: white;
+  padding: 40px 30px;
+  border-radius: 24px;
+  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.05);
+
+  /* Initial State: Hidden and shifted down */
+  opacity: 0 !important;
+  transform: translateY(40px) !important;
+
+  /* Smooth transition */
+  transition: opacity 0.8s ease-out,
+    transform 0.8s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+/* Triggered State: Visible and at base position */
+.how-to-card.run-reveal {
+  opacity: 1 !important;
+  transform: translateY(0) !important;
+}
+
+/* Staggered entry */
+.how-to-card:nth-child(1) {
+  transition-delay: 100ms;
+}
+.how-to-card:nth-child(2) {
+  transition-delay: 300ms;
+}
+.how-to-card:nth-child(3) {
+  transition-delay: 500ms;
+}
+
+.gesture-icon {
+  font-size: 3.5rem;
+  margin-bottom: 20px;
+  display: block;
+}
+
+.how-to-card h3 {
+  font-size: 1.4rem;
+  margin-bottom: 12px;
+  color: #1e293b;
+}
+
+.how-to-card p {
+  color: #64748b;
+  line-height: 1.6;
+}
+
+/* Footer & Mobile Tweaks */
+.footer-links {
+  margin-top: 15px;
+  font-size: 0.9rem;
+  color: #94a3b8;
+}
+
+@media (max-width: 600px) {
+  .how-to-section {
+    padding: 50px 15px;
+  }
+  .how-to-card {
+    padding: 30px 20px;
+  }
 }

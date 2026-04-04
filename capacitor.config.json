@@ -1,0 +1,9 @@
+{
+  "appId": "com.ronwiener.fotoflip",
+  "appName": "Photo Flip",
+  "webDir": "dist",
+
+  "server": {
+    "androidScheme": "https"
+  }
+}

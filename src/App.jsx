@@ -29,6 +29,8 @@ import { CSS } from "@dnd-kit/utilities";
 import { snapCenterToCursor } from "@dnd-kit/modifiers";
 import { supabase } from "./supabaseClient";
 import "./styles.css";
+import { Capacitor } from "@capacitor/core";
+//import { SignInWithApple } from "@capacitor-community/apple-sign-in";
 
 import {
   loadFolders,
@@ -41,7 +43,7 @@ import {
 import LandingPage from "./LandingPage";
 
 /* ---------- AUTH COMPONENT ---------- */
-function Auth() {
+function Auth({ setSession }) {
   const [email, setEmail] = useState("");
   const [loading, setLoading] = useState(false);
 
@@ -57,6 +59,59 @@ function Auth() {
     setLoading(false);
   };
 
+  const handleAppleLogin = () => {
+    console.log("Fake Apple Login Clicked - Bypassing...");
+    // Set your authenticated state to true here.
+    // For example, if you use a 'setIsLoggedIn' state:
+    setSession({
+      user: {
+        id: "00000000-0000-0000-0000-000000000000",
+        email: "test-apple-user@example.com",
+      },
+    });
+  };
+  /*
+  const handleAppleLogin = async () => {
+    if (!Capacitor.isNativePlatform()) {
+      alert(
+        "Apple Sign-In only works on the iOS Simulator or a physical iPhone.",
+      );
+      return;
+    }
+
+    try {
+      // 1. Authorize with Apple Native
+      // (Note: We use SignInWithApple directly now)
+      const result = await SignInWithApple.authorize({
+        clientId: "com.ronwiener.fotoflip",
+        redirectURI:
+          "https://cdmlagrsfgevfliyqkrf.supabase.co/auth/v1/callback",
+        scopes: "email name",
+      });
+
+      // 2. Pass the token to Supabase
+      const { data, error } = await supabase.auth.signInWithIdToken({
+        provider: "apple",
+        token: result.response.identityToken,
+      });
+
+      if (error) throw error;
+
+      // Success! Your onAuthStateChange listener will take it from here.
+    } catch (err) {
+      // 3. Handle User Cancellation
+      // The plugin message can vary slightly, so we check for "cancel" or "canceled"
+      const isCancelled = err.message?.toLowerCase().includes("cancel");
+
+      if (!isCancelled) {
+        console.error("Apple Sign-In failed:", err);
+        alert("Apple Sign-In failed: " + err.message);
+      } else {
+        console.log("User cancelled the Apple Sign-in flow.");
+      }
+    }
+  };
+*/
   const handleGoogleLogin = async () => {
     const { error } = await supabase.auth.signInWithOAuth({
       provider: "google",
@@ -70,6 +125,16 @@ function Auth() {
       <div className="auth-box">
         <h1>Photo Flip</h1>
         <p>Sign in to manage your gallery</p>
+
+        <button onClick={handleAppleLogin} className="apple-btn">
+          <img
+            src="https://upload.wikimedia.org/wikipedia/commons/f/fa/Apple_logo_black.svg"
+            alt="Apple"
+            style={{ width: "18px", filter: "brightness(0) invert(1)" }}
+          />
+          Continue with Apple
+        </button>
+
         <button onClick={handleGoogleLogin} className="google-btn">
           <img
             src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg"
@@ -399,15 +464,15 @@ export default function App() {
 
   const sensors = useSensors(
     useSensor(PointerSensor, {
-      activationConstraint: { distance: 10 },
+      activationConstraint: { distance: 5 },
     }),
     useSensor(TouchSensor, {
       // 250ms is too fast; let's increase it.
       // Also adding 'tolerance', so if the finger wobbles
       // while holding, it doesn't cancel the drag.
       activationConstraint: {
-        delay: 500, // User must hold for half a second to drag
-        tolerance: 15,
+        delay: 250, // User must hold for half a second to drag
+        tolerance: 5,
       },
     }),
   );
@@ -541,24 +606,26 @@ export default function App() {
 
   const handleUpload = async (event) => {
     const files = event.target.files;
-    if (!files || !session?.user) return;
+    if (!files || !session?.user) {
+      console.log("Upload blocked: No files or no session", {
+        files: !!files,
+        user: session?.user?.id,
+      }); // NEW
+      return;
+    }
     setIsLoading(true);
     setUploadProgress({ current: 0, total: files.length });
     let completedCount = 0;
 
     for (const file of files) {
-      // 1. Initialize variables with default (original) values
       let fileToUpload = file;
       let fileName = file.name;
       let initialNotes = "";
 
-      // 2. If it's a PDF, we update those variables
       if (file.type === "application/pdf") {
         try {
           setImportProgress(`Converting ${file.name}...`);
           const pdfBlob = await convertPdfToImage(file);
-
-          // Update the variables with the new data
           fileToUpload = pdfBlob;
           fileName = file.name.replace(/\.[^/.]+$/, "") + ".jpg";
           initialNotes = "";
@@ -567,17 +634,20 @@ export default function App() {
         }
       }
 
-      // 3. USE the variables (fileName) for the path
       const filePath = `${session.user.id}/${Date.now()}-${fileName}`;
 
-      // 4. USE the variables (fileToUpload) for the storage upload
       const { error: uploadError } = await supabase.storage
         .from("gallery")
         .upload(filePath, fileToUpload);
 
+      if (uploadError) {
+        alert("Upload Error: " + uploadError.message); // NEW
+      }
+
       if (!uploadError) {
-        // 5. USE the variables (initialNotes) for the database record
-        await supabase.from("items").insert([
+        // We capture the result in a variable called 'dbResult' to check for errors
+        const dbResult = await supabase.from("items").insert([
+          // NEW
           {
             image_path: filePath,
             user_id: session.user.id,
@@ -586,11 +656,19 @@ export default function App() {
             folder: activeFolder === "Select Folder" ? "" : activeFolder,
           },
         ]);
-        completedCount++;
-        setUploadProgress({ current: completedCount, total: files.length });
+
+        if (dbResult.error) {
+          // NEW
+          alert("Database Error: " + dbResult.error.message); // NEW
+        } else {
+          // NEW
+          completedCount++;
+          setUploadProgress({ current: completedCount, total: files.length });
+        } // NEW
       }
     }
 
+    console.log("Refreshing gallery for user:", session.user.id); // NEW
     await fetchItems(session.user.id);
     setIsLoading(false);
     setImportProgress("");
@@ -652,8 +730,8 @@ export default function App() {
     const targetFolder = isTrash
       ? "DELETE"
       : over.id === "Select Folder"
-        ? ""
-        : over.id;
+      ? ""
+      : over.id;
 
     setItems((prev) =>
       isTrash
@@ -708,9 +786,6 @@ export default function App() {
       return (
         <div className="landing-wrapper">
           <LandingPage onEnter={() => setView("auth")} />
-          <footer className="landing-footer">
-            <p>© {new Date().getFullYear()} Photo Flip. Patent Pending.</p>
-          </footer>
         </div>
       );
     }
@@ -723,7 +798,7 @@ export default function App() {
         >
           ← Back to Info
         </button>
-        <Auth />
+        <Auth setSession={setSession} />
       </div>
     );
   }
@@ -749,6 +824,128 @@ export default function App() {
             <p className="pulse-text">{importProgress}</p>
           </div>
         )}
+
+        <div className="controls">
+          <label className="upload-label">
+            ☁️ Upload{" "}
+            <input type="file" multiple onChange={handleUpload} hidden />
+          </label>
+
+          {selectedIds.size > 0 && (
+            <div className="selection-status-inline">
+              <span className="count-badge">{selectedIds.size}</span>
+              <span className="status-text">
+                Selected — Drag to folder or Trash
+              </span>
+              <button
+                className="clear-selection-btn"
+                onClick={() => setSelectedIds(new Set())}
+              >
+                ✕
+              </button>
+            </div>
+          )}
+          <button
+            className="util-btn"
+            onClick={() => exportGalleryZip(items, selectedIds)}
+          >
+            📤 Export {selectedIds.size > 0 ? `(${selectedIds.size})` : ""}
+          </button>
+
+          <label className="util-btn">
+            📥 Import{" "}
+            <input
+              type="file"
+              accept=".zip"
+              onChange={async (e) => {
+                const file = e.target.files[0];
+                if (!file) return;
+                setIsLoading(true);
+                try {
+                  await importGalleryZip(file, (c, t) =>
+                    setImportProgress(`Importing ${c} of ${t}...`),
+                  );
+                  await fetchItems(session.user.id);
+                  const updatedFolders = await loadFolders(session.user.id);
+                  setFolders(updatedFolders);
+                } catch (err) {
+                  alert("Import failed: " + err.message);
+                } finally {
+                  setIsLoading(false);
+                  setImportProgress("");
+                  e.target.value = "";
+                }
+              }}
+              hidden
+            />
+          </label>
+          <input
+            type="text"
+            className="search-input"
+            placeholder="Search..."
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+          />
+        </div>
+
+        <main className="main">
+          {isLoading && uploadProgress.total > 0 && !importProgress && (
+            <div className="gallery-upload-status">
+              <p className="pulse-text">
+                Uploading {uploadProgress.current} / {uploadProgress.total}
+              </p>
+              <div className="progress-bar-container">
+                <div
+                  className="progress-bar-fill"
+                  style={{
+                    width: `${
+                      (uploadProgress.current / uploadProgress.total) * 100
+                    }%`,
+                  }}
+                ></div>
+              </div>
+            </div>
+          )}
+
+          <SortableContext
+            items={visibleItems.map((i) => i.id)}
+            strategy={rectSortingStrategy}
+          >
+            <div
+              className="gallery"
+              ref={galleryRef}
+              onPointerUp={(e) =>
+                e.target === galleryRef.current && setSelectedIds(new Set())
+              }
+            >
+              {visibleItems.map((item) => (
+                <DraggableCard
+                  key={item.id}
+                  item={item}
+                  isClosingZoomRef={isClosingZoomRef}
+                  selectedIds={selectedIds}
+                  isSelected={selectedIds.has(item.id)}
+                  onToggleSelect={handleToggleSelect}
+                  onFlip={handleFlip}
+                  onZoom={setZoomData}
+                  onEdit={setEditingItem}
+                  updateNotes={updateNotes}
+                  isSaved={isSavedItemId === item.id}
+                />
+              ))}
+            </div>
+          </SortableContext>
+          {showScrollTop && (
+            <button
+              className="scroll-to-top visible"
+              onClick={() =>
+                galleryRef.current.scrollTo({ top: 0, behavior: "smooth" })
+              }
+            >
+              ↑
+            </button>
+          )}
+        </main>
 
         <aside className="sidebar">
           <div className="sidebar-top">
@@ -805,127 +1002,6 @@ export default function App() {
             />
           </div>
         </aside>
-
-        <main className="main">
-          {isLoading && uploadProgress.total > 0 && !importProgress && (
-            <div className="gallery-upload-status">
-              <p className="pulse-text">
-                Uploading {uploadProgress.current} / {uploadProgress.total}
-              </p>
-              <div className="progress-bar-container">
-                <div
-                  className="progress-bar-fill"
-                  style={{
-                    width: `${
-                      (uploadProgress.current / uploadProgress.total) * 100
-                    }%`,
-                  }}
-                ></div>
-              </div>
-            </div>
-          )}
-          <div className="controls">
-            <label className="upload-label">
-              ☁️ Upload{" "}
-              <input type="file" multiple onChange={handleUpload} hidden />
-            </label>
-
-            {selectedIds.size > 0 && (
-              <div className="selection-status-inline">
-                <span className="count-badge">{selectedIds.size}</span>
-                <span className="status-text">
-                  Selected — Drag to folder or Trash
-                </span>
-                <button
-                  className="clear-selection-btn"
-                  onClick={() => setSelectedIds(new Set())}
-                >
-                  ✕
-                </button>
-              </div>
-            )}
-            <button
-              className="util-btn"
-              onClick={() => exportGalleryZip(items, selectedIds)}
-            >
-              📤 Export {selectedIds.size > 0 ? `(${selectedIds.size})` : ""}
-            </button>
-
-            <label className="util-btn">
-              📥 Import{" "}
-              <input
-                type="file"
-                accept=".zip"
-                onChange={async (e) => {
-                  const file = e.target.files[0];
-                  if (!file) return;
-                  setIsLoading(true);
-                  try {
-                    await importGalleryZip(file, (c, t) =>
-                      setImportProgress(`Importing ${c} of ${t}...`),
-                    );
-                    await fetchItems(session.user.id);
-                    const updatedFolders = await loadFolders(session.user.id);
-                    setFolders(updatedFolders);
-                  } catch (err) {
-                    alert("Import failed: " + err.message);
-                  } finally {
-                    setIsLoading(false);
-                    setImportProgress("");
-                    e.target.value = "";
-                  }
-                }}
-                hidden
-              />
-            </label>
-            <input
-              type="text"
-              className="search-input"
-              placeholder="Search..."
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-            />
-          </div>
-
-          <SortableContext
-            items={visibleItems.map((i) => i.id)}
-            strategy={rectSortingStrategy}
-          >
-            <div
-              className="gallery"
-              ref={galleryRef}
-              onPointerUp={(e) =>
-                e.target === galleryRef.current && setSelectedIds(new Set())
-              }
-            >
-              {visibleItems.map((item) => (
-                <DraggableCard
-                  key={item.id}
-                  item={item}
-                  isClosingZoomRef={isClosingZoomRef}
-                  selectedIds={selectedIds}
-                  isSelected={selectedIds.has(item.id)}
-                  onToggleSelect={handleToggleSelect}
-                  onFlip={handleFlip}
-                  onZoom={setZoomData}
-                  onEdit={setEditingItem}
-                  updateNotes={updateNotes}
-                  isSaved={isSavedItemId === item.id}
-                />
-              ))}
-            </div>
-          </SortableContext>
-          {showScrollTop && (
-            <button
-              className="scroll-to-top visible"
-              onClick={() =>
-                galleryRef.current.scrollTo({ top: 0, behavior: "smooth" })
-              }
-            >
-              ↑
-            </button>
-          )}
-        </main>
 
         <DragOverlay modifiers={[snapCenterToCursor]}>
           {activeDragItem && (
