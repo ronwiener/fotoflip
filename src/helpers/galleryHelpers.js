@@ -39,12 +39,12 @@ export const filterItems = (items, activeFolder, search) => {
   const query = search.trim().toLowerCase();
 
   return items.filter((item) => {
-    // 1. Check Folder Match ("Select Folder" or empty string = main root gallery)
+    // 1. Folder Check ("Select Folder" or empty string = show ALL items)
     const isRootFolder = !activeFolder || activeFolder === "Select Folder";
     const itemFolder = item.folder || "";
 
     const matchesFolder = isRootFolder
-      ? itemFolder === ""
+      ? true // Show all items when no specific folder filter is chosen
       : itemFolder.toLowerCase() === activeFolder.toLowerCase();
 
     // 2. Search Override: If user typed in search bar, search globally across notes & locations

@@ -771,43 +771,71 @@ export default function App() {
   }, []);
 
   const fetchItems = useCallback(async (userId) => {
-    console.log("🔍 [DEBUG] fetchItems called with userId:", userId);
-    // Only proceed if we have a real user ID
-    if (!userId || userId === "00000000-0000-0000-0000-000000000000") {
-      console.log(
-        "⚠️ [DEBUG] fetchItems exited early: Invalid or guest userId",
-      );
-      setItems([]); // Clear items for the "test" user or guest
+    if (!userId) {
+      console.warn("⚠️ [fetchItems] No userId provided. Aborting fetch.");
       return;
     }
 
+    console.log(
+      "🔍 [DEBUG] fetchItems called via direct fetch for userId:",
+      userId,
+    );
+
     try {
-      const { data, error } = await supabase
-        .from("items")
-        .select("*")
-        .eq("user_id", userId)
-        .order("created_at", { ascending: false });
+      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+      const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
 
-      if (error) throw error;
-      console.log("📦 [DEBUG] Raw DB rows returned from Supabase:", data);
+      if (!supabaseUrl || !supabaseAnonKey) {
+        throw new Error(
+          "Missing VITE_SUPABASE_URL or VITE_SUPABASE_ANON_KEY environment variables.",
+        );
+      }
 
-      const formatted = (data || []).map((item) => {
-        const { data: urlData } = supabase.storage
-          .from("gallery")
-          .getPublicUrl(item.image_path);
+      // Safely check session token if supabase client is available
+      let token = supabaseAnonKey;
+      if (typeof supabase !== "undefined" && supabase?.auth) {
+        const { data: sessionData } = await supabase.auth.getSession();
+        if (sessionData?.session?.access_token) {
+          token = sessionData.session.access_token;
+        }
+      }
 
-        return {
-          ...item,
-          imageURL: urlData?.publicUrl || "",
-        };
+      // Query REST endpoint directly
+      const url = `${supabaseUrl}/rest/v1/items?user_id=eq.${userId}&order=id.desc`;
+
+      const response = await fetch(url, {
+        method: "GET",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          apikey: supabaseAnonKey,
+          "Content-Type": "application/json",
+        },
       });
-      console.log("🚀 [DEBUG] Formatted items set to state:", formatted);
-      // Single state update with complete data
-      setItems(formatted);
+
+      if (!response.ok) {
+        const errText = await response.text();
+        throw new Error(`Fetch items HTTP ${response.status}: ${errText}`);
+      }
+
+      const data = await response.json();
+      console.log("📦 [DEBUG] Raw DB rows returned via direct fetch:", data);
+
+      // Map rows to application state format
+      const formattedItems = data.map((item) => ({
+        id: item.id,
+        image_path: item.image_path,
+        notes: item.notes || "",
+        folder: item.folder || "",
+        flipped: item.flipped || false,
+        location_description: item.location_description || "",
+      }));
+
+      console.log("🚀 [DEBUG] Formatted items set to state:", formattedItems);
+      setItems(formattedItems);
     } catch (err) {
-      console.error("❌ [DEBUG] Fetch error in fetchItems:", err.message);
+      console.error("❌ Error fetching items:", err.message || err);
     }
-  }, []);
+  }, []); // Empty dependency array stabilizes the function reference across renders
 
   const loadFolders = useCallback(async (userId) => {
     if (!userId) return [];
