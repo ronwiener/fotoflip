@@ -785,42 +785,39 @@ export default function App() {
       const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
       const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
 
-      if (!supabaseUrl || !supabaseAnonKey) {
-        throw new Error(
-          "Missing VITE_SUPABASE_URL or VITE_SUPABASE_ANON_KEY environment variables.",
-        );
-      }
+      // Safely get user access token
+      const { data: sessionData } = await supabase.auth.getSession();
+      const accessToken = sessionData?.session?.access_token || supabaseAnonKey;
 
-      // Safely check session token if supabase client is available
-      let token = supabaseAnonKey;
-      if (typeof supabase !== "undefined" && supabase?.auth) {
-        const { data: sessionData } = await supabase.auth.getSession();
-        if (sessionData?.session?.access_token) {
-          token = sessionData.session.access_token;
-        }
-      }
+      // REST Query Endpoint
+      const url = `${supabaseUrl}/rest/v1/items?user_id=eq.${userId}&select=*&order=id.desc`;
 
-      // Query REST endpoint directly
-      const url = `${supabaseUrl}/rest/v1/items?user_id=eq.${userId}&order=id.desc`;
+      console.log("📡 [fetchItems] Requesting URL:", url);
 
       const response = await fetch(url, {
         method: "GET",
         headers: {
-          Authorization: `Bearer ${token}`,
+          Authorization: `Bearer ${accessToken}`,
           apikey: supabaseAnonKey,
           "Content-Type": "application/json",
         },
       });
 
+      console.log("📡 [fetchItems] HTTP Status Code:", response.status);
+
       if (!response.ok) {
         const errText = await response.text();
-        throw new Error(`Fetch items HTTP ${response.status}: ${errText}`);
+        console.error("❌ [fetchItems FAILED]:", response.status, errText);
+        return;
       }
 
       const data = await response.json();
-      console.log("📦 [DEBUG] Raw DB rows returned via direct fetch:", data);
+      console.log(
+        "📦 [fetchItems SUCCESS] Raw DB items count:",
+        data.length,
+        data,
+      );
 
-      // Map rows to application state format
       const formattedItems = data.map((item) => ({
         id: item.id,
         image_path: item.image_path,
@@ -830,12 +827,15 @@ export default function App() {
         location_description: item.location_description || "",
       }));
 
-      console.log("🚀 [DEBUG] Formatted items set to state:", formattedItems);
+      console.log(
+        "🚀 [fetchItems] Setting state with items:",
+        formattedItems.length,
+      );
       setItems(formattedItems);
     } catch (err) {
-      console.error("❌ Error fetching items:", err.message || err);
+      console.error("❌ [fetchItems CRASHED]:", err.message || err);
     }
-  }, []); // Empty dependency array stabilizes the function reference across renders
+  }, []);
 
   const loadFolders = useCallback(async (userId) => {
     if (!userId) return [];
