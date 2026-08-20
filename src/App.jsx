@@ -792,7 +792,7 @@ export default function App() {
       const url = `${supabaseUrl}/rest/v1/items?user_id=eq.${userId}&select=*&order=id.desc`;
 
       console.log(
-        "📡 [fetchItems] Fetching from endpoint with auth token:",
+        "📡 [fetchItems] Fetching from endpoint with auth token: ",
         url,
       );
 
