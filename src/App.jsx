@@ -801,6 +801,31 @@ export default function App() {
     initApp();
   }, []);
 
+  const fetchItems = useCallback(async (userId, sessionToken) => {
+    if (!userId) return;
+    try {
+      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+      const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+      const token = sessionToken || supabaseAnonKey;
+      const url = `${supabaseUrl}/rest/v1/items?user_id=eq.${userId}&select=*&order=id.desc`;
+
+      const response = await fetch(url, {
+        method: "GET",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          apikey: supabaseAnonKey,
+          "Content-Type": "application/json",
+        },
+      });
+
+      if (!response.ok) return;
+      const data = await response.json();
+      setItems(data);
+    } catch (err) {
+      console.error("fetchItems error:", err);
+    }
+  }, []);
+
   useEffect(() => {
     let isMounted = true;
 
@@ -933,66 +958,6 @@ export default function App() {
       setIsLoading(false);
     }
   };
-
-  // --- Single fetchItems Definition ---
-  const fetchItems = useCallback(async (userId, sessionToken) => {
-    if (!userId) {
-      console.warn("⚠️ [fetchItems] No userId provided. Aborting fetch.");
-      return;
-    }
-
-    console.log("🔍 [DEBUG] fetchItems called for userId:", userId);
-
-    try {
-      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-      const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
-
-      const token = sessionToken || supabaseAnonKey;
-      const url = `${supabaseUrl}/rest/v1/items?user_id=eq.${userId}&select=*&order=id.desc`;
-
-      console.log(
-        "📡 [fetchItems] Fetching from endpoint with auth token:",
-        url,
-      );
-
-      const response = await fetch(url, {
-        method: "GET",
-        headers: {
-          Authorization: `Bearer ${token}`,
-          apikey: supabaseAnonKey,
-          "Content-Type": "application/json",
-        },
-      });
-
-      console.log("📡 [fetchItems] Response HTTP status:", response.status);
-
-      if (!response.ok) {
-        const errText = await response.text();
-        console.error("❌ [fetchItems HTTP ERROR]:", response.status, errText);
-        return;
-      }
-
-      const data = await response.json();
-      console.log("📦 [fetchItems SUCCESS] Rows fetched:", data.length, data);
-
-      const formattedItems = data.map((item) => ({
-        id: item.id,
-        image_path: item.image_path,
-        notes: item.notes || "",
-        folder: item.folder || "",
-        flipped: item.flipped || false,
-        location_description: item.location_description || "",
-      }));
-
-      console.log(
-        "🚀 [fetchItems] Updating state with items:",
-        formattedItems.length,
-      );
-      setItems(formattedItems);
-    } catch (err) {
-      console.error("❌ [fetchItems CRASHED]:", err.message || err);
-    }
-  }, []);
 
   // --- Complete uploadToGallery ---
   const uploadToGallery = async (file) => {
