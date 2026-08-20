@@ -2,8 +2,35 @@
   "appId": "com.ronwiener.fotoflip",
   "appName": "Photo Flip",
   "webDir": "dist",
-
   "server": {
+    "iosScheme": "https",
     "androidScheme": "https"
+  },
+  "ios": {
+    "contentInset": "always",
+    "preferredContentMode": "mobile",
+    "initializeOnLaunch": true
+  },
+  "plugins": {
+    "SplashScreen": {
+      "launchShowDuration": 3000,
+      "launchAutoHide": false,
+      "backgroundColor": "#4f46e5",
+      "iosSplashImageName": "Splash",
+      "androidScaleType": "CENTER_CROP",
+      "showSpinner": false
+    },
+    "GoogleAuth": {
+      "scopes": ["profile", "email"],
+      "serverClientId": "222744775554-38i6jkb58hvbh3359uvolg6frbull375.apps.googleusercontent.com",
+      "forceCodeForRefreshToken": true
+    },
+    "Haptics": {
+      "enabled": true
+    },
+    "Keyboard": {
+      "resize": "body",
+      "style": "dark"
+    }
   }
 }

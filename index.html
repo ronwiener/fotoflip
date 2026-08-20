@@ -1,23 +1,36 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
     <link rel="icon" type="image/png" href="/favicon.png" />
     <link rel="apple-touch-icon" href="favicon.png" />
-
     <link rel="manifest" href="/manifest.json" />
 
-    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="mobile-web-app-capable" content="yes" />
     <meta
       name="apple-mobile-web-app-status-bar-style"
       content="black-translucent"
     />
     <meta name="apple-mobile-web-app-title" content="Photo Flip" />
+
     <meta
       name="viewport"
-      content="width=device-width, initial-scale=1.0, viewport-fit=cover"
+      content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover"
     />
+
+    <link rel="preconnect" href="https://cdmlagrsfgevfliyqkrf.supabase.co" />
+
     <title>PhotoFlip</title>
+
+    <style>
+      /* Splash-to-App Bridge: Ensures the background matches your splash color 
+         instantly so there is no white 'flash' or laggy transition */
+      body {
+        margin: 0;
+        background-color: #4f46e5; /* Replace with your actual splash/brand color */
+        overflow: hidden; /* Prevents bounce-scrolling during initial load */
+      }
+    </style>
   </head>
   <body>
     <div id="root"></div>

@@ -1,128 +1,267 @@
 import React, { useEffect, useState } from "react";
+import heroImage from "../assets/hero-lake.jpg";
 
-export default function LandingPage({ onEnter }) {
-  // This state will trigger the animation 100ms after the page loads
-  const [isAnimated, setIsAnimated] = useState(false);
+const LandingPage = ({ onEnter }) => {
+  const [isFlipped, setIsFlipped] = useState(false);
+  const [isPrivacyOpen, setPrivacyOpen] = useState(false);
 
   useEffect(() => {
     const timer = setTimeout(() => {
-      setIsAnimated(true);
-    }, 500);
+      const cards = document.querySelectorAll(".how-to-card");
+      cards.forEach((card) => card.classList.add("run-reveal"));
+    }, 200);
+
     return () => clearTimeout(timer);
   }, []);
 
+  const togglePrivacy = () => {
+    setPrivacyOpen(!isPrivacyOpen);
+  };
+
   return (
     <div className="landing-page-container">
-      {/* 1. STICKY NAV */}
       <nav className="landing-nav">
-        <div className="landing-logo">📸 PhotoFlip</div>
-        <button onClick={onEnter} className="landing-login-btn">
-          Sign In
+        <div className="landing-logo">PhotoFlip</div>
+        <button className="landing-login-btn" onClick={onEnter}>
+          Get Started
         </button>
       </nav>
 
-      <div className="landing-content">
-        {/* 2. HERO SECTION */}
-        <header className="landing-hero">
-          <div className="hero-text">
-            <span className="badge">Patent Pending Gesture UI</span>
-            <h1>
-              Photos with a <br />
-              <span className="accent-text">Digital Backside.</span>
-            </h1>
-            <p>
-              Stop losing the "Who, What, and Where." Flip your photos to write
-              permanent memories, then drag them into custom folders.
-            </p>
-            <button onClick={onEnter} className="cta-button">
-              Open My Gallery →
-            </button>
-          </div>
+      <div className="landing-scroll-area">
+        <div className="landing-content">
+          <section className="landing-hero">
+            <div className="hero-text">
+              <h1>
+                Your photos have a story. <br />
+                <span className="accent-text">Give them a flip side.</span>
+              </h1>
+              <p>
+                Flip any photo to write names, dates, and notes that stay with
+                the image forever.
+              </p>
+            </div>
 
-          <div className="demo-container">
-            <div className="flip-card-group">
-              <div className="flip-card-inner">
-                <div className="flip-card-front">
-                  <img
-                    src="https://images.unsplash.com/photo-1501785888041-af3ef285b470?auto=format&fit=crop&w=500&q=80"
-                    alt="Front"
-                  />
-                  <div className="touch-hint">Tap to Flip 🔄</div>
+            <div className="demo-container">
+              <div
+                className="flip-card-group"
+                role="button"
+                tabIndex="0"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setIsFlipped(!isFlipped);
+                }}
+              >
+                <div
+                  className={`flip-card-inner ${isFlipped ? "is-flipped" : ""}`}
+                >
+                  <div className="flip-card-front">
+                    <img
+                      src={heroImage}
+                      alt="Demo Front"
+                      style={{
+                        width: "100%",
+                        height: "100%",
+                        objectFit: "cover",
+                      }}
+                    />
+                  </div>
+
+                  <div className="flip-card-back">
+                    <p className="back-quote">
+                      Sam and Michael boating in the Canadian Rockies. June 2025
+                    </p>
+                    <div className="touch-hint">Tap to Flip Back</div>
+                  </div>
                 </div>
-                <div className="flip-card-back">
-                  <div className="back-card-header">Memory Notes</div>
-                  <p className="back-quote">
-                    "Summer Lake Trip. The water was freezing but the sunset
-                    made it worth it. Remember the extra blankets next time!"
-                  </p>
-                  <div className="back-card-footer">📍 Lake Tahoe, CA</div>
-                </div>
+                {!isFlipped && (
+                  <div className="touch-hint-external">
+                    Tap on Image to Flip
+                  </div>
+                )}
+                {isFlipped && (
+                  <div className="touch-hint-external">
+                    Everything you write here is instantly searchable.
+                  </div>
+                )}
               </div>
             </div>
-          </div>
-        </header>
+          </section>
 
-        {/* 3. THE "HOW TO" SECTION (With Trigger Logic) */}
-        <section className="how-to-section">
-          <h2>Master the Gestures</h2>
-          <div className="how-to-grid">
-            {/* The cards check the 'isAnimated' state to add the reveal class */}
-            <div className={`how-to-card ${isAnimated ? "run-reveal" : ""}`}>
-              <div className="gesture-icon">👆</div>
-              <h3>Tap Front</h3>
-              <p>Flip the photo to access your private notes and data.</p>
+          <section className="how-to-section">
+            <h2>Your photos organized and searchable</h2>
+            <div className="how-to-grid">
+              <div className="how-to-card">
+                <div className="gesture-icon">🔍</div>
+                <h3>Power Search</h3>
+                <p>
+                  No more scrolling through thousands of photos. You can now
+                  search for names, dates, places or other details written on
+                  the backside of your photos to find them quickly.
+                </p>
+              </div>
+              <div className={"how-to-card"}>
+                <span className="gesture-icon">📁</span>
+                <h3>Smart Folders</h3>
+                <p>
+                  Create custom folders for vacations, events, or family
+                  history. Just drag and drop to clear the clutter from your
+                  main gallery.
+                </p>
+              </div>
+
+              <div className={"how-to-card"}>
+                <div className="gesture-icon">🪄</div>
+                <h3>Editing Feature</h3>
+                <p>
+                  Forgot to edit a photo? Crop, filter, and fine-tune your
+                  photos here before you archive them.
+                </p>
+              </div>
             </div>
-            <div className={`how-to-card ${isAnimated ? "run-reveal" : ""}`}>
-              <div className="gesture-icon">🤏</div>
-              <h3>Long Press</h3>
-              <p>Hold any photo for a split second to "lift" it for moving.</p>
+          </section>
+
+          <footer className="landing-footer">
+            <p>&copy; 2026 PhotoFlip App. All rights reserved.</p>
+
+            <div className="footer-links">
+              <span>PATENT PENDING</span>
+              <span className="footer-divider"> | </span>
+              {/* This is the missing button to trigger the modal */}
+              <button className="footer-link-btn" onClick={togglePrivacy}>
+                Privacy Policy
+              </button>
             </div>
-            <div className={`how-to-card ${isAnimated ? "run-reveal" : ""}`}>
-              <div className="gesture-icon">📂</div>
-              <h3>Drag & Drop</h3>
-              <p>Move photos into folders or to the Trash with one motion.</p>
+
+            <div className="footer-contact">
+              <a href="mailto:photoflipsupport@gmail.com?subject=Photo%20Flip%20Support">
+                Contact Support
+              </a>
             </div>
-          </div>
-        </section>
+            <p className="version-text">v1.0.0</p>
 
-        {/* 4. FEATURES SECTION */}
-        <section className="features-grid">
-          <div className="feature-item">
-            <div className="feature-icon">🎨</div>
-            <h3>Pro Editor</h3>
-            <p>Built-in filters and cropping tools for the perfect shot.</p>
-          </div>
-          <div className="feature-item">
-            <div className="feature-icon">🔍</div>
-            <h3>Instant Search</h3>
-            <p>Search your "back-of-photo" notes to find memories instantly.</p>
-          </div>
-          <div className="feature-item">
-            <div className="feature-icon">🔒</div>
-            <h3>Cloud Secure</h3>
-            <p>Your gallery is synced to your private Supabase storage.</p>
-          </div>
-        </section>
+            {/* Move the Modal outside of the inline text flow for better rendering */}
+            {isPrivacyOpen && (
+              <div className="modal-overlay" onClick={togglePrivacy}>
+                <div
+                  className="modal-content"
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  <div className="modal-header">
+                    <h2>Privacy Policy</h2>
+                  </div>
 
-        {/* 5. B2B / PRO SECTION */}
-        <section className="business-pitch">
-          <h2>Business Ready</h2>
-          <p>
-            Field inspections, real estate, and inventory. Snap, note, and
-            export as a structured ZIP file for your records.
-          </p>
-          <button onClick={onEnter} className="outline-button">
-            Get Started
-          </button>
-        </section>
+                  <div className="modal-body">
+                    <h1>Privacy Policy for Photo Flip</h1>
+                    <div className="last-updated">
+                      <strong>Last Updated:</strong> April 20, 2026
+                    </div>
 
-        <footer className="landing-footer">
-          <p>© 2026 PhotoFlip • Patent Pending Technology</p>
-          <div className="footer-links">
-            <span>Privacy Policy</span> • <span>Terms of Service</span>
-          </div>
-        </footer>
+                    <h2>1. Introduction</h2>
+                    <p>
+                      Welcome to Photo Flip. We are committed to protecting your
+                      personal information and your right to privacy. This
+                      Privacy Policy explains how we collect, use, and safeguard
+                      your data when you use our mobile application.
+                    </p>
+
+                    <h2>2. Data We Collect</h2>
+                    <ul>
+                      <li>
+                        <strong>Account Information:</strong> When you use "Sign
+                        in with Apple," we collect your email address and name
+                        to create and manage your account.
+                      </li>
+                      <li>
+                        <strong>User Content:</strong> We store the photos you
+                        upload and the notes you write (the "flips") to ensure
+                        they are available to you across your devices.
+                      </li>
+                      <li>
+                        <strong>Usage Data:</strong> We may collect minimal
+                        technical data (e.g., device type and app version) to
+                        help us troubleshoot bugs and improve performance on
+                        devices like the iPhone 17 Pro.
+                      </li>
+                    </ul>
+
+                    <h2>3. How We Use Your Data</h2>
+                    <p>
+                      We use your data solely to provide the core services of
+                      Photo Flip, including:
+                    </p>
+                    <ul>
+                      <li>Authenticating your identity via Apple.</li>
+                      <li>
+                        Storing and retrieving your personal photo gallery and
+                        notes via our secure backend (Supabase).
+                      </li>
+                      <li>Providing customer support when requested.</li>
+                    </ul>
+                    <p>
+                      <strong>
+                        We do not sell your data to third parties or use your
+                        photos for advertising.
+                      </strong>
+                    </p>
+
+                    <h2>4. Data Storage and Security</h2>
+                    <p>
+                      Your data is stored securely using Supabase cloud
+                      services. We implement industry-standard security measures
+                      to protect your information. Your photos remain your
+                      property, and we do not access them unless required for
+                      technical support requested by you.
+                    </p>
+
+                    <h2>5. Your Rights and Data Deletion</h2>
+                    <p>
+                      You have the right to access, modify, or delete your
+                      personal data.
+                    </p>
+                    <ul>
+                      <li>
+                        <strong>Account Deletion:</strong> You may delete your
+                        account and all associated data (photos and notes)
+                        directly within the App Settings or by contacting us at
+                        <a href="mailto:photoflipsupport@gmail.com">
+                          photoflipsupport@gmail.com
+                        </a>
+                        .
+                      </li>
+                      <li>
+                        <strong>Apple Sign-In:</strong> You can manage or revoke
+                        app access through your Apple ID settings.
+                      </li>
+                    </ul>
+
+                    <h2>6. Contact Us</h2>
+                    <div className="contact">
+                      <p>
+                        If you have any questions about this Privacy Policy,
+                        please contact us at:
+                      </p>
+                      <p>
+                        <strong>Email:</strong>{" "}
+                        <a href="mailto:photoflipsupport@gmail.com">
+                          photoflipsupport@gmail.com
+                        </a>
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="modal-footer">
+                    <button className="confirm-btn" onClick={togglePrivacy}>
+                      Close
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
+          </footer>
+        </div>
       </div>
     </div>
   );
-}
+};
+
+export default LandingPage;

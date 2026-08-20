@@ -6,10 +6,14 @@ const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
 export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
   auth: {
     persistSession: true,
-    storageKey: "photoflip-auth-token",
-    storage: window.localStorage,
     autoRefreshToken: true,
     detectSessionInUrl: true,
-    flowType: "implicit",
+    flowType: "pkce",
   },
 });
+
+console.log("📡 [SUPABASE CLIENT INIT] Target URL:", supabaseUrl);
+
+if (typeof window !== "undefined") {
+  window.supabase = supabase;
+}

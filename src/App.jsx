@@ -3,8 +3,13 @@ import React, {
   useState,
   useMemo,
   useCallback,
+  memo,
   useRef,
 } from "react";
+import { SignInWithApple } from "@capacitor-community/apple-sign-in";
+import { GoogleAuth } from "@codetrix-studio/capacitor-google-auth";
+import { SplashScreen } from "@capacitor/splash-screen";
+import { ImageManipulator } from "@capacitor-community/image-manipulator";
 window.React = React;
 import FilerobotImageEditor, {
   TABS,
@@ -12,7 +17,7 @@ import FilerobotImageEditor, {
 } from "react-filerobot-image-editor";
 import {
   DndContext,
-  rectIntersection,
+  closestCenter,
   PointerSensor,
   TouchSensor,
   useSensor,
@@ -26,62 +31,97 @@ import {
   rectSortingStrategy,
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { snapCenterToCursor } from "@dnd-kit/modifiers";
 import { supabase } from "./supabaseClient";
-import "./styles.css";
+import "./styles1.css";
 import { Capacitor } from "@capacitor/core";
-//import { SignInWithApple } from "@capacitor-community/apple-sign-in";
-
+import { processPhotoMetadata } from "./metadataUtils";
+import { Camera, CameraResultType, CameraSource } from "@capacitor/camera";
 import {
-  loadFolders,
   saveFolders,
   filterItems,
   exportGalleryZip,
   importGalleryZip,
-  convertPdfToImage,
 } from "./helpers/galleryHelpers";
 import LandingPage from "./LandingPage";
+import TipsModal from "./TipsModal";
+import { Haptics, ImpactStyle } from "@capacitor/haptics";
 
 /* ---------- AUTH COMPONENT ---------- */
-function Auth({ setSession }) {
-  const [email, setEmail] = useState("");
-  const [loading, setLoading] = useState(false);
 
-  const handleLogin = async (e) => {
+// Add this helper function outside your Auth component to generate a safe nonce string
+const generateNonce = (length = 32) => {
+  const chars =
+    "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
+  let result = "";
+  for (let i = 0; i < length; i++) {
+    result += chars.charAt(Math.floor(Math.random() * chars.length));
+  }
+  return result;
+};
+
+function Auth({ setSession, setView, supabase }) {
+  const [email, setEmail] = useState("");
+  const [token, setToken] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [showOtpInput, setShowOtpInput] = useState(false);
+
+  // Initialize GoogleAuth plugin when component mounts (Native iOS/Android only)
+  useEffect(() => {
+    if (Capacitor.isNativePlatform()) {
+      GoogleAuth.initialize({
+        clientId:
+          "222744775554-l8g08tgm33esioc0hlaoa861dao9allt.apps.googleusercontent.com",
+        scopes: ["profile", "email"],
+        grantOfflineAccess: true,
+      });
+    }
+  }, []);
+
+  const isEmailValid = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+
+  const isTokenReady = token.length === 6;
+
+  const handleRequestOtp = async (e) => {
     e.preventDefault();
+    if (!isEmailValid) return;
     setLoading(true);
+
     const { error } = await supabase.auth.signInWithOtp({
       email,
-      options: { emailRedirectTo: window.location.origin },
+      options: {
+        shouldCreateUser: true,
+      },
     });
-    if (error) alert(error.message);
-    else alert("Check your email for the login link!");
+
+    if (error) {
+      alert(error.message);
+    } else {
+      setShowOtpInput(true);
+    }
     setLoading(false);
   };
 
-  const handleAppleLogin = () => {
-    console.log("Fake Apple Login Clicked - Bypassing...");
-    // Set your authenticated state to true here.
-    // For example, if you use a 'setIsLoggedIn' state:
-    setSession({
-      user: {
-        id: "00000000-0000-0000-0000-000000000000",
-        email: "test-apple-user@example.com",
-      },
-    });
-  };
-  /*
-  const handleAppleLogin = async () => {
-    if (!Capacitor.isNativePlatform()) {
-      alert(
-        "Apple Sign-In only works on the iOS Simulator or a physical iPhone.",
-      );
-      return;
-    }
+  const handleVerifyOtp = async (e) => {
+    e.preventDefault();
+    setLoading(true);
 
+    const { data, error } = await supabase.auth.verifyOtp({
+      email,
+      token,
+      type: "email",
+    });
+
+    if (error) {
+      alert("Invalid code. Please try again.");
+    } else if (data.session) {
+      setSession(data.session);
+    }
+    setLoading(false);
+  };
+
+  const handleAppleLogin = async () => {
+    setLoading(true);
     try {
-      // 1. Authorize with Apple Native
-      // (Note: We use SignInWithApple directly now)
       const result = await SignInWithApple.authorize({
         clientId: "com.ronwiener.fotoflip",
         redirectURI:
@@ -89,83 +129,192 @@ function Auth({ setSession }) {
         scopes: "email name",
       });
 
-      // 2. Pass the token to Supabase
       const { data, error } = await supabase.auth.signInWithIdToken({
         provider: "apple",
         token: result.response.identityToken,
       });
 
       if (error) throw error;
-
-      // Success! Your onAuthStateChange listener will take it from here.
-    } catch (err) {
-      // 3. Handle User Cancellation
-      // The plugin message can vary slightly, so we check for "cancel" or "canceled"
-      const isCancelled = err.message?.toLowerCase().includes("cancel");
-
-      if (!isCancelled) {
-        console.error("Apple Sign-In failed:", err);
-        alert("Apple Sign-In failed: " + err.message);
-      } else {
-        console.log("User cancelled the Apple Sign-in flow.");
+      if (data.session) setSession(data.session);
+    } catch (error) {
+      if (error.message !== "user cancelled") {
+        console.error("Apple Auth Error:", error);
       }
+    } finally {
+      setLoading(false);
     }
   };
-*/
+
   const handleGoogleLogin = async () => {
-    const { error } = await supabase.auth.signInWithOAuth({
-      provider: "google",
-      options: { redirectTo: window.location.origin },
-    });
-    if (error) alert(error.message);
+    setLoading(true);
+    try {
+      // WEB DEVELOPMENT (localhost / web browser)
+      if (!Capacitor.isNativePlatform()) {
+        const { error } = await supabase.auth.signInWithOAuth({
+          provider: "google",
+          options: {
+            redirectTo: window.location.origin,
+            queryParams: {
+              prompt: "select_account", // Ensures Google forces the account picker cleanly on web
+            },
+          },
+        });
+        if (error) throw error;
+        return;
+      }
+
+      // NATIVE DEVICE PLATFORM (iOS / Android)
+      const rawNonce = generateNonce();
+
+      const googleUser = await GoogleAuth.signIn({
+        nonce: rawNonce,
+      });
+
+      const { data, error } = await supabase.auth.signInWithIdToken({
+        provider: "google",
+        token: googleUser.authentication.idToken,
+        nonce: rawNonce,
+      });
+
+      if (error) throw error;
+
+      if (data?.session) {
+        console.log("Login successful!");
+        setSession(data.session);
+      }
+    } catch (error) {
+      console.error("Google Login failed:", error.message || error);
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
-    <div className="auth-container">
-      <div className="auth-box">
-        <h1>Photo Flip</h1>
-        <p>Sign in to manage your gallery</p>
-
-        <button onClick={handleAppleLogin} className="apple-btn">
-          <img
-            src="https://upload.wikimedia.org/wikipedia/commons/f/fa/Apple_logo_black.svg"
-            alt="Apple"
-            style={{ width: "18px", filter: "brightness(0) invert(1)" }}
-          />
-          Continue with Apple
-        </button>
-
-        <button onClick={handleGoogleLogin} className="google-btn">
-          <img
-            src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg"
-            alt=""
-            width="18"
-          />
-          Continue with Google
-        </button>
-        <div className="divider">
-          <span>OR</span>
-        </div>
-        <form onSubmit={handleLogin}>
-          <input
-            type="email"
-            placeholder="Your email"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            required
-          />
+    <div className="auth-page-wrapper">
+      <div className="auth-container">
+        <div className="auth-header-actions">
           <button
-            type="submit"
-            disabled={loading}
-            className={email ? "btn-active" : ""}
+            className="back-btn-styled"
+            onClick={() => setView("landing")}
           >
-            {loading ? (
-              <span className="spinner-small"></span>
-            ) : (
-              "Send Magic Link"
-            )}
+            ← Back
           </button>
-        </form>
+        </div>
+
+        <div className="auth-box">
+          <div className="badge">SECURE ACCESS</div>
+          <h1>PHOTO FLIP</h1>
+
+          {!showOtpInput ? (
+            <>
+              <p>Sign in to manage your digital archive</p>
+
+              <button
+                onClick={handleAppleLogin}
+                className="apple-btn"
+                disabled={loading}
+              >
+                <img
+                  src="https://upload.wikimedia.org/wikipedia/commons/f/fa/Apple_logo_black.svg"
+                  alt="Apple"
+                  style={{ width: "18px", filter: "brightness(0) invert(1)" }}
+                />
+                Continue with Apple
+              </button>
+
+              <button
+                onClick={handleGoogleLogin}
+                className="google-btn"
+                disabled={loading}
+              >
+                <img
+                  src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg"
+                  alt=""
+                  width="18"
+                />
+                Continue with Google
+              </button>
+
+              <div className="divider">
+                <span>OR</span>
+              </div>
+
+              <form onSubmit={handleRequestOtp} className="auth-form">
+                <input
+                  type="email"
+                  placeholder="Your email address"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  required
+                />
+                <button
+                  type="submit"
+                  disabled={loading || !isEmailValid}
+                  className={`magic-link-btn ${
+                    isEmailValid && !loading ? "btn-active" : ""
+                  }`}
+                >
+                  {loading ? (
+                    <span className="spinner-small"></span>
+                  ) : (
+                    "Send Code to Email"
+                  )}
+                </button>
+              </form>
+            </>
+          ) : (
+            <>
+              <p>
+                Enter the 6-digit code sent to <strong>{email}</strong>
+              </p>
+
+              <form onSubmit={handleVerifyOtp} className="auth-form">
+                <input
+                  type="text"
+                  placeholder="000000"
+                  value={token}
+                  onChange={(e) => setToken(e.target.value.replace(/\D/g, ""))}
+                  maxLength={6}
+                  required
+                  style={{
+                    textAlign: "center",
+                    letterSpacing: "8px",
+                    fontSize: "28px",
+                    fontWeight: "900",
+                  }}
+                />
+                <button
+                  type="submit"
+                  disabled={loading || !isTokenReady}
+                  className={`magic-link-btn ${
+                    isTokenReady && !loading ? "btn-active" : ""
+                  }`}
+                >
+                  {loading ? (
+                    <span className="spinner-small"></span>
+                  ) : (
+                    "Verify & Log In"
+                  )}
+                </button>
+                <button
+                  type="button"
+                  className="back-link"
+                  onClick={() => setShowOtpInput(false)}
+                  style={{
+                    background: "none",
+                    border: "none",
+                    marginTop: "15px",
+                    color: "#64748b",
+                    cursor: "pointer",
+                    textDecoration: "underline",
+                  }}
+                >
+                  Entered wrong email? Go back
+                </button>
+              </form>
+            </>
+          )}
+        </div>
       </div>
     </div>
   );
@@ -188,12 +337,12 @@ function MainGalleryDropZone({ activeFolder, setActiveFolder }) {
       className={className}
       onClick={() => setActiveFolder("Select Folder")}
     >
-      <span className="main-text">Main Gallery</span>
+      <span className="main-text">Gallery</span>
     </div>
   );
 }
 
-function FolderButton({ f, activeFolder, setActiveFolder, onDelete }) {
+function FolderButton({ f, activeFolder, setActiveFolder, onDelete, count }) {
   const { isOver, setNodeRef } = useDroppable({ id: f });
 
   const className = [
@@ -207,7 +356,8 @@ function FolderButton({ f, activeFolder, setActiveFolder, onDelete }) {
   return (
     <div ref={setNodeRef} className={className}>
       <button onClick={() => setActiveFolder(f)} className="folder-name-btn">
-        {f}
+        <span className="folder-label">{f}</span>
+        {count > 0 && <span className="folder-count-pill">{count}</span>}
       </button>
       <button
         className="delete-folder-btn"
@@ -237,31 +387,86 @@ function TrashDropZone({ selectedCount, isDropping }) {
 
   return (
     <div ref={setNodeRef} className={className}>
-      <span>{selectedCount > 0 ? `🗑 (${selectedCount})` : "🗑 Trash"}</span>
+      <svg
+        width="22"
+        height="22"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="2.5"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      >
+        <polyline points="3 6 5 6 21 6"></polyline>
+        <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+      </svg>
+      {selectedCount > 0 && (
+        <span style={{ fontWeight: "bold", fontSize: "14px" }}>
+          {selectedCount}
+        </span>
+      )}
     </div>
   );
 }
 
-function ZoomOverlay({ data, items, updateNotes, onClose }) {
+function debounce(func, wait) {
+  let timeout;
+  return function (...args) {
+    clearTimeout(timeout);
+    timeout = setTimeout(() => func.apply(this, args), wait);
+  };
+}
+
+function ZoomOverlay({ data, item, updateNotes, onClose }) {
+  const textareaRef = useRef(null);
+  const [localNotes, setLocalNotes] = useState(item?.notes || "");
   const [isSuccessClosing, setIsSuccessClosing] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
+
+  const debouncedUpdate = useMemo(
+    () =>
+      debounce(async (id, val) => {
+        setIsSaving(true);
+        await updateNotes(id, val);
+        setIsSaving(false);
+      }, 500),
+    [updateNotes],
+  );
+
+  useEffect(() => {
+    if (data && textareaRef.current) {
+      const timer = setTimeout(() => {
+        textareaRef.current.focus();
+        const len = textareaRef.current.value.length;
+        textareaRef.current.setSelectionRange(len, len);
+      }, 150);
+      return () => clearTimeout(timer);
+    }
+  }, [data]);
+
+  // 2. CLEAN UP DEBOUNCE
+  useEffect(() => {
+    return () => debouncedUpdate.cancel?.();
+  }, [debouncedUpdate]);
 
   if (!data) return null;
-  const item = items.find((i) => i.id === data.id);
 
-  const handleCloseClick = (e) => {
+  const handleCloseClick = async (e) => {
     if (e) e.stopPropagation();
-
-    // 1. Trigger the "Saved" visual state
+    // Save one last time before exiting
+    await updateNotes(item.id, localNotes);
     setIsSuccessClosing(true);
-
-    // 2. Wait 1000ms (1 second) before calling the actual onClose from props
     setTimeout(() => {
-      setIsSuccessClosing(false); // Reset for next time
+      setIsSuccessClosing(false);
       onClose();
     }, 1000);
   };
+
   return (
-    <div className="zoom-overlay" onPointerDown={handleCloseClick}>
+    <div className="zoom-overlay">
+      {/* BACKGROUND BACKDROP */}
+      <div className="overlay-backdrop" onClick={handleCloseClick} />
+
       {data.type === "img" ? (
         <div
           className="zoomed-image-container"
@@ -270,26 +475,40 @@ function ZoomOverlay({ data, items, updateNotes, onClose }) {
           <img src={data.url} alt="" className="zoomed-image" />
         </div>
       ) : (
-        <div className="zoomed-notes-box" onClick={(e) => e.stopPropagation()}>
+        <div
+          className="zoomed-notes-box"
+          /* Stop clicks from reaching the gallery behind */
+          onClick={(e) => e.stopPropagation()}
+        >
           <div className="zoomed-notes-header">
             <h3>Notes</h3>
-            {isSuccessClosing && <div className="save-indicator">✓ Saved</div>}
+            {isSuccessClosing && <div className="save-pill">✓ Saved</div>}
           </div>
+
           <textarea
-            value={item?.notes || ""}
+            ref={textareaRef}
+            value={localNotes || ""}
             onPointerDown={(e) => e.stopPropagation()}
-            onChange={(e) => updateNotes(data.id, e.target.value)}
-            autoFocus
+            onChange={(e) => {
+              const val = e.target.value;
+              setLocalNotes(val);
+              debouncedUpdate(data.id, val);
+            }}
+            placeholder="Write notes here..."
           />
+
           <button
             className="notes-close-footer"
             onClick={handleCloseClick}
             style={{
-              backgroundColor: isSuccessClosing ? "#28a745" : "#64748b",
-              transition: "background-color 0.3s ease",
+              backgroundColor: isSuccessClosing ? "#22c55e" : "#64748b",
             }}
           >
-            {isSuccessClosing ? "Saved!" : "Close Notes"}
+            {isSuccessClosing
+              ? "✓ Saved"
+              : isSaving
+              ? "Auto-saving..."
+              : "Done"}
           </button>
         </div>
       )}
@@ -297,17 +516,13 @@ function ZoomOverlay({ data, items, updateNotes, onClose }) {
   );
 }
 
-function DraggableCard({
+const DraggableCard = memo(function DraggableCard({
   item,
   isSelected,
   selectedIds,
-  isClosingZoomRef,
   onToggleSelect,
   onFlip,
   onZoom,
-  onEdit,
-  updateNotes,
-  isSaved,
 }) {
   const {
     attributes,
@@ -318,29 +533,57 @@ function DraggableCard({
     isDragging,
   } = useSortable({
     id: item.id,
-    disabled: false,
+    disabled: item.flipped, // Correct: Disable dragging when flipped
   });
 
-  if (!item) return null;
+  const longPressTimer = useRef(null);
+  const isLongPressActive = useRef(false);
 
-  const style = {
-    transform: CSS.Transform.toString(transform),
-    transition,
-    zIndex: isDragging ? 1000 : 1,
-    touchAction: "none",
+  const handlePointerDown = () => {
+    isLongPressActive.current = false;
+
+    if (selectedIds.size === 0 && !item.flipped) {
+      longPressTimer.current = setTimeout(() => {
+        if (
+          typeof navigator !== "undefined" &&
+          typeof navigator.vibrate === "function"
+        ) {
+          try {
+            navigator.vibrate(50);
+          } catch {
+            void 0;
+          }
+        }
+
+        console.log("DEBUG: Triggering selection for ID:", item.id);
+        onToggleSelect(item.id);
+        isLongPressActive.current = true;
+      }, 350);
+    }
   };
 
-  // Improved click handler to distinguish from drag
+  const clearTimer = () => {
+    if (longPressTimer.current) {
+      clearTimeout(longPressTimer.current);
+      longPressTimer.current = null;
+    }
+  };
+
   const handleFrontClick = (e) => {
     e.stopPropagation();
-    // If we just finished a drag, don't flip
-    if (isDragging || isClosingZoomRef.current) return;
-
-    if (isSelected || selectedIds.size > 0) {
+    if (isLongPressActive.current) return;
+    if (selectedIds.size > 0) {
       onToggleSelect(item.id);
     } else {
       onFlip(item.id);
     }
+  };
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    zIndex: isDragging ? 1000 : item.flipped ? 10 : 1, // Lift flipped cards slightly
+    touchAction: item.flipped ? "auto" : "none", // Allow scrolling on the back side
   };
 
   return (
@@ -348,98 +591,133 @@ function DraggableCard({
       ref={setNodeRef}
       style={style}
       className={`card-wrapper ${isSelected ? "selected" : ""}`}
-      {...attributes}
     >
       <div className={`card ${item.flipped ? "flipped" : ""}`}>
-        <div className="card-face card-front">
-          <div
-            className={`select-indicator ${isSelected ? "active" : ""}`}
-            onPointerDown={(e) => {
-              e.stopPropagation(); // Stops dnd-kit drag
-              onToggleSelect(item.id);
-            }}
-          >
-            {isSelected ? "✓" : ""}
-          </div>
-
-          {/* ZOOM BUTTON */}
-          <button
-            className="zoom-btn"
-            onPointerDown={(e) => e.stopPropagation()}
-            onClick={(e) => {
-              e.stopPropagation();
-              onZoom({ type: "img", url: item.imageURL });
-            }}
-          >
-            🔍
-          </button>
-
-          {/* EDIT BUTTON */}
-          <button
-            className="edit-btn"
-            onPointerDown={(e) => e.stopPropagation()}
-            onClick={(e) => {
-              e.stopPropagation();
-              onEdit(item);
-            }}
-          >
-            🎨
-          </button>
-
-          <img
-            src={item.imageURL}
-            alt=""
-            {...listeners}
-            onClick={handleFrontClick}
-            style={{ cursor: "grab", touchAction: "none" }}
-          />
+        {/* FRONT SIDE */}
+        <div
+          className="card-face card-front"
+          {...(!item.flipped ? { ...attributes, ...listeners } : {})}
+          onPointerDown={handlePointerDown}
+          onPointerUp={clearTimer}
+          onPointerLeave={clearTimer}
+          onPointerMove={clearTimer}
+          onClick={handleFrontClick}
+        >
+          {isSelected && <div className="select-indicator active">✓</div>}
+          <img src={item.imageURL} alt="" draggable="false" />
         </div>
 
         {/* BACK SIDE */}
-        <div className="card-face card-back">
-          <div className="notes-content">
-            {isSaved && <div className="save-indicator-card">✓ Saved</div>}
-            <textarea
-              value={item.notes}
-              onPointerDown={(e) => e.stopPropagation()} // Allow typing without dragging
-              onChange={(e) => updateNotes(item.id, e.target.value)}
-              placeholder="Zoom to write..."
-            />
-            <div className="notes-actions">
-              <button
-                className="btn-zoom"
-                onPointerDown={(e) => e.stopPropagation()}
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onZoom({ type: "notes", id: item.id });
-                }}
-              >
-                Zoom
-              </button>
-              <button
-                className="btn-flip"
-                onPointerDown={(e) => e.stopPropagation()}
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onFlip(item.id);
-                }}
-              >
-                Flip
-              </button>
+        <div
+          className="card-face card-back"
+          onPointerDown={(e) => e.stopPropagation()}
+          onClick={(e) => {
+            e.stopPropagation();
+            // This is where we trigger the Zoom!
+            onZoom({ id: item.id, type: "notes", url: item.imageURL });
+          }}
+          style={{
+            transform: "rotateY(180deg)",
+            padding: "15px",
+            display: "flex",
+            flexDirection: "column",
+          }}
+        >
+          <div
+            className="meta-header"
+            style={{ fontSize: "10px", color: "#64748b", marginBottom: "10px" }}
+          >
+            <span>{item.location_name || "Unknown Location"}</span>
+            <span style={{ margin: "0 5px" }}>•</span>
+            <span>
+              {item.created_at
+                ? new Date(item.created_at).toLocaleDateString()
+                : ""}
+            </span>
+          </div>
+          <div className="notes-content" style={{ flex: 1 }}>
+            <div className="notes-display">
+              {item.notes ? (
+                <p
+                  style={{
+                    fontFamily: "Georgia, serif",
+                    fontStyle: "italic",
+                    fontSize: "1.2rem",
+                    color: "#1e293b",
+                    lineHeight: "1.5",
+                  }}
+                >
+                  {item.notes}
+                </p>
+              ) : (
+                <p
+                  style={{
+                    fontFamily: "Georgia, serif",
+                    fontStyle: "italic",
+                    fontSize: "1.2rem",
+                    color: "#1e293b",
+                    lineHeight: "1.5",
+                  }}
+                >
+                  Tap here to write notes...
+                </p>
+              )}
             </div>
+          </div>
+
+          <div className="notes-actions">
+            <button
+              type="button"
+              className="flip-back-btn"
+              onClick={(e) => {
+                e.stopPropagation();
+                onFlip(item.id);
+              }}
+            >
+              Tap to Flip Back
+            </button>
           </div>
         </div>
       </div>
     </div>
   );
-}
+});
 
+const addImageBuffer = (imageUrl) => {
+  return new Promise((resolve) => {
+    const img = new Image();
+    img.crossOrigin = "anonymous";
+    img.onload = () => {
+      const canvas = document.createElement("canvas");
+      const ctx = canvas.getContext("2d");
+
+      // 10% buffer on all sides
+      const buffer = 0.04;
+      canvas.width = img.width * (1 + buffer * 2);
+      canvas.height = img.height * (1 + buffer * 2);
+
+      // Match the background to your card color (White)
+      ctx.fillStyle = "#ffffff";
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+      // Center the image
+      const x = (canvas.width - img.width) / 2;
+      const y = (canvas.height - img.height) / 2;
+      ctx.drawImage(img, x, y);
+
+      resolve(canvas.toDataURL("image/jpeg", 0.9));
+    };
+    img.onerror = () => resolve(imageUrl); // Fallback if it fails
+    img.src = imageUrl;
+  });
+};
 /* ---------- MAIN APP ---------- */
 export default function App() {
   // --- States ---
   const [session, setSession] = useState(null);
   const [view, setView] = useState("landing"); // New View State
   const [items, setItems] = useState([]);
+  const [isReady, setIsReady] = useState(false);
   const [folders, setFolders] = useState([]);
   const [activeFolder, setActiveFolder] = useState("Select Folder");
   const [search, setSearch] = useState("");
@@ -453,140 +731,155 @@ export default function App() {
     current: 0,
     total: 0,
   });
-  const [isLoggingIn, setIsLoggingIn] = useState(false);
+
   const [showScrollTop, setShowScrollTop] = useState(false);
-  const [isSavedItemId, setIsSavedItemId] = useState(false);
   const [editingItem, setEditingItem] = useState(null);
+  const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const [toastMessage, setToastMessage] = useState("");
+  const [isCreatingFolder, setIsCreatingFolder] = useState(false);
+  const [newFolderName, setNewFolderName] = useState("");
+  const [editingId, setEditingId] = useState(null);
+  const [showTips, setShowTips] = useState(false);
+  const [showManageAccount, setShowManageAccount] = useState(false);
 
   const galleryRef = useRef(null);
-  const timerRef = useRef(null);
+
   const isClosingZoomRef = useRef(false);
 
   const sensors = useSensors(
-    useSensor(PointerSensor, {
-      activationConstraint: { distance: 5 },
-    }),
     useSensor(TouchSensor, {
-      // 250ms is too fast; let's increase it.
-      // Also adding 'tolerance', so if the finger wobbles
-      // while holding, it doesn't cancel the drag.
       activationConstraint: {
-        delay: 250, // User must hold for half a second to drag
-        tolerance: 5,
+        delay: 300,
+        tolerance: 15,
+      },
+    }),
+    useSensor(PointerSensor, {
+      activationConstraint: {
+        distance: 20,
       },
     }),
   );
 
-  // --- Logic Functions ---
+  const menuRef = useRef(null);
+
+  useEffect(() => {
+    const hideSplash = async () => {
+      await SplashScreen.hide();
+    };
+
+    hideSplash();
+  }, []);
+
   const fetchItems = useCallback(async (userId) => {
-    if (!userId) return;
+    console.log("🔍 [DEBUG] fetchItems called with userId:", userId);
+    // Only proceed if we have a real user ID
+    if (!userId || userId === "00000000-0000-0000-0000-000000000000") {
+      console.log(
+        "⚠️ [DEBUG] fetchItems exited early: Invalid or guest userId",
+      );
+      setItems([]); // Clear items for the "test" user or guest
+      return;
+    }
+
+    try {
+      const { data, error } = await supabase
+        .from("items")
+        .select("*")
+        .eq("user_id", userId)
+        .order("created_at", { ascending: false });
+
+      if (error) throw error;
+      console.log("📦 [DEBUG] Raw DB rows returned from Supabase:", data);
+
+      const formatted = (data || []).map((item) => {
+        const { data: urlData } = supabase.storage
+          .from("gallery")
+          .getPublicUrl(item.image_path);
+
+        return {
+          ...item,
+          imageURL: urlData?.publicUrl || "",
+        };
+      });
+      console.log("🚀 [DEBUG] Formatted items set to state:", formatted);
+      // Single state update with complete data
+      setItems(formatted);
+    } catch (err) {
+      console.error("❌ [DEBUG] Fetch error in fetchItems:", err.message);
+    }
+  }, []);
+
+  const loadFolders = useCallback(async (userId) => {
+    if (!userId) return [];
     const { data, error } = await supabase
-      .from("items")
-      .select("*")
+      .from("folders")
+      .select("name")
       .eq("user_id", userId)
-      .order("created_at", { ascending: false });
+      .order("name", { ascending: true });
 
-    if (error) return console.error(error.message);
+    if (error) {
+      console.error("Error loading folders:", error.message);
+      return [];
+    }
 
-    const formatted = data.map((item) => {
-      const { data: urlData } = supabase.storage
-        .from("gallery")
-        .getPublicUrl(item.image_path);
-      return {
-        ...item,
-        imageURL: `${urlData.publicUrl}?t=${new Date().getTime()}`,
-      };
-    });
-    setItems(formatted);
+    const folderNames = data.map((f) => f.name);
+    setFolders(folderNames);
+    return folderNames;
+  }, []);
+
+  useEffect(() => {
+    const initApp = async () => {
+      try {
+        await new Promise((resolve) => setTimeout(resolve, 1500));
+        await SplashScreen.hide({ fadeOutDuration: 500 });
+      } catch (e) {
+        console.warn("Splash hide failed", e);
+      }
+      setIsReady(true);
+    };
+    initApp();
   }, []);
 
   useEffect(() => {
     let isMounted = true;
 
-    // 1. Immediate check for Magic Link tokens
-    const hasAuthToken =
-      window.location.hash.includes("access_token") ||
-      window.location.search.includes("code=");
-
-    if (hasAuthToken) {
-      setIsLoggingIn(true);
-    }
-
-    // FAIL-SAFE: If we are still "logging in" after 10 seconds,
-    // something went wrong. Send them back to landing.
-    setTimeout(() => {
-      if (isMounted && isLoggingIn) {
-        setIsLoggingIn(false);
-        setView("landing");
-        console.log("Login timed out - likely a browser mismatch.");
-      }
-    }, 10000);
-
-    // 2. Define an async function to handle the initial session check
-    const initializeAuth = async () => {
-      // Await the session - this gives the iPhone time to read from local storage
-      const {
-        data: { session: initialSession },
-      } = await supabase.auth.getSession();
-
-      if (!isMounted) return;
-
-      if (initialSession) {
-        // Session found! Restore state
-        setSession(initialSession);
-        setView("gallery");
-        fetchItems(initialSession.user.id);
-        loadFolders(initialSession.user.id).then((data) => setFolders(data));
-        setIsLoggingIn(false);
-      } else if (hasAuthToken) {
-        // No session yet, but URL has a token, so keep showing the "Logging in..." screen
-        // The onAuthStateChange listener below will catch the successful login
-      } else {
-        // No session and no tokens? Give it a tiny 500ms safety buffer
-        // just in case Safari is being slow to hydrate storage
-        setTimeout(() => {
-          if (isMounted && !session) {
-            setView("landing");
-            setIsLoggingIn(false);
-          }
-        }, 500);
-      }
-    };
-
-    initializeAuth();
-
-    // 3. Listen for Auth Changes (Handles login, logout, and token refreshes)
     const {
       data: { subscription },
-    } = supabase.auth.onAuthStateChange(async (event, currentSession) => {
+    } = supabase.auth.onAuthStateChange(async (event, session) => {
+      console.log("Auth Event:", event, "Session:", session?.user?.email);
+
       if (!isMounted) return;
-
-      console.log("Auth Event:", event);
-
-      if (
-        currentSession &&
-        (event === "SIGNED_IN" || event === "INITIAL_SESSION")
-      ) {
-        setSession(currentSession);
-        setView("gallery");
-        fetchItems(currentSession.user.id);
-        loadFolders(currentSession.user.id).then((data) => setFolders(data));
-
-        setIsLoggingIn(false);
-        setIsLoading(false);
-
-        // Clean URL of tokens
-        if (window.location.hash || window.location.search.includes("code=")) {
-          window.history.replaceState(null, null, window.location.pathname);
-        }
-      }
 
       if (event === "SIGNED_OUT") {
         setSession(null);
         setItems([]);
+        setFolders([]);
         setView("landing");
-        setIsLoggingIn(false);
-        setIsLoading(false);
+      } else if (session?.user) {
+        // Handles SIGNED_IN, INITIAL_SESSION (when session exists), and TOKEN_REFRESHED
+        setSession(session);
+        setView("gallery");
+
+        try {
+          await Promise.all([
+            fetchItems(session.user.id),
+            loadFolders(session.user.id),
+          ]);
+        } catch (err) {
+          console.error("Error fetching user data:", err);
+        }
+
+        // Clean up ?code= parameter safely without breaking the session
+        if (
+          typeof window !== "undefined" &&
+          window.location.search.includes("code=")
+        ) {
+          window.history.replaceState(
+            {},
+            document.title,
+            window.location.pathname,
+          );
+        }
       }
     });
 
@@ -594,7 +887,7 @@ export default function App() {
       isMounted = false;
       subscription.unsubscribe();
     };
-  }, [fetchItems]);
+  }, [fetchItems, loadFolders]);
 
   useEffect(() => {
     const galleryEl = galleryRef.current;
@@ -604,103 +897,231 @@ export default function App() {
     return () => galleryEl.removeEventListener("scroll", handleScroll);
   }, [items]);
 
-  const handleUpload = async (event) => {
-    const files = event.target.files;
-    if (!files || !session?.user) {
-      console.log("Upload blocked: No files or no session", {
-        files: !!files,
-        user: session?.user?.id,
-      }); // NEW
-      return;
-    }
-    setIsLoading(true);
-    setUploadProgress({ current: 0, total: files.length });
-    let completedCount = 0;
-
-    for (const file of files) {
-      let fileToUpload = file;
-      let fileName = file.name;
-      let initialNotes = "";
-
-      if (file.type === "application/pdf") {
-        try {
-          setImportProgress(`Converting ${file.name}...`);
-          const pdfBlob = await convertPdfToImage(file);
-          fileToUpload = pdfBlob;
-          fileName = file.name.replace(/\.[^/.]+$/, "") + ".jpg";
-          initialNotes = "";
-        } catch (err) {
-          console.error("PDF conversion failed:", err);
-        }
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (menuRef.current && !menuRef.current.contains(event.target)) {
+        setIsMenuOpen(false);
       }
-
-      const filePath = `${session.user.id}/${Date.now()}-${fileName}`;
-
-      const { error: uploadError } = await supabase.storage
-        .from("gallery")
-        .upload(filePath, fileToUpload);
-
-      if (uploadError) {
-        alert("Upload Error: " + uploadError.message); // NEW
-      }
-
-      if (!uploadError) {
-        // We capture the result in a variable called 'dbResult' to check for errors
-        const dbResult = await supabase.from("items").insert([
-          // NEW
-          {
-            image_path: filePath,
-            user_id: session.user.id,
-            notes: initialNotes,
-            flipped: false,
-            folder: activeFolder === "Select Folder" ? "" : activeFolder,
-          },
-        ]);
-
-        if (dbResult.error) {
-          // NEW
-          alert("Database Error: " + dbResult.error.message); // NEW
-        } else {
-          // NEW
-          completedCount++;
-          setUploadProgress({ current: completedCount, total: files.length });
-        } // NEW
-      }
-    }
-
-    console.log("Refreshing gallery for user:", session.user.id); // NEW
-    await fetchItems(session.user.id);
-    setIsLoading(false);
-    setImportProgress("");
-    event.target.value = null;
-    setTimeout(() => setUploadProgress({ current: 0, total: 0 }), 2000);
-  };
-
-  const updateNotes = useCallback((id, notes) => {
-    setItems((prev) => prev.map((i) => (i.id === id ? { ...i, notes } : i)));
-    if (timerRef.current) clearTimeout(timerRef.current);
-    timerRef.current = setTimeout(async () => {
-      const { error } = await supabase
-        .from("items")
-        .update({ notes })
-        .eq("id", id);
-      if (!error) {
-        setIsSavedItemId(id);
-        setTimeout(() => setIsSavedItemId(null), 3000);
-      }
-    }, 1000);
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
-  const handleFlip = useCallback(async (id) => {
+  /** * 1. THE DISPATCHER
+   * Use this on your Upload Button: onClick={(e) => handlePrimaryUpload(e)}
+   */
+  const handlePrimaryUpload = async (e) => {
+    const isNative =
+      typeof window !== "undefined" &&
+      window.Capacitor &&
+      window.Capacitor.isNative;
+    if (isNative) {
+      await handleNativeImport();
+    } else {
+      await handleUpload(e);
+    }
+  };
+
+  const handleUpload = async (event) => {
+    const files = Array.from(event.target.files);
+    const total = files.length;
+    if (total === 0) return;
+
+    setUploadProgress({ current: 0, total });
+    setIsLoading(true);
+
+    for (let i = 0; i < total; i++) {
+      setImportProgress(`Uploading ${i + 1} of ${total}...`);
+      await uploadToGallery(files[i]);
+      setUploadProgress({ current: i + 1, total });
+    }
+
+    setImportProgress("");
+    setIsLoading(false);
+    event.target.value = null;
+  };
+
+  const handleNativeImport = async () => {
+    setIsMenuOpen(false);
+    try {
+      const image = await Camera.pickImages({
+        quality: 90,
+        width: 1200,
+        height: 1200,
+        allowEditing: false,
+        resultType: CameraResultType.Uri,
+      });
+
+      setIsLoading(true);
+      const total = image.photos.length;
+
+      for (let i = 0; i < total; i++) {
+        setImportProgress(`Importing ${i + 1} of ${total}...`);
+        const response = await fetch(image.photos[i].webPath);
+        const blob = await response.blob();
+        const file = new File([blob], `photo-${Date.now()}.jpg`, {
+          type: "image/jpeg",
+        });
+        await uploadToGallery(file);
+      }
+
+      setImportProgress("");
+      setIsLoading(false);
+    } catch (err) {
+      console.error("Native Import failed:", err);
+      setIsLoading(false);
+    }
+  };
+
+  const uploadToGallery = async (file) => {
+    console.log("🚀 [STEP 1] uploadToGallery called for file:", file.name);
+
+    try {
+      // A. Safe Metadata Processing
+      let metadataString = "Taken on Unknown Date in Unknown Location.";
+      try {
+        metadataString = await processPhotoMetadata(file);
+        console.log("✅ [STEP 2] Metadata result:", metadataString);
+      } catch (metaErr) {
+        console.warn("⚠️ Metadata extraction failed, continuing:", metaErr);
+      }
+
+      // B. Verify User ID
+      console.log("🔍 [STEP 3] Checking active user session...");
+      let userId = session?.user?.id;
+
+      if (!userId) {
+        const { data: authData } = await supabase.auth.getUser();
+        userId = authData?.user?.id;
+      }
+
+      if (!userId) {
+        console.error("❌ [ERROR] No valid user ID found. Aborting upload.");
+        alert("Upload failed: User session not found. Please log in again.");
+        return;
+      }
+
+      console.log("👤 [STEP 4] Uploading under User ID:", userId);
+
+      // C. Prepare Path & Payload (Converted to ArrayBuffer for desktop compatibility)
+      const cleanFileName = file.name
+        ? file.name.replace(/[^a-zA-Z0-9.-]/g, "_")
+        : "photo.jpg";
+      const filePath = `${userId}/${Date.now()}-${cleanFileName}`;
+
+      console.log("📂 [STEP 5] Storage Target Path:", filePath);
+
+      // Convert payload to ArrayBuffer to prevent web stream freezes on desktop
+      const fileBuffer = await file.arrayBuffer();
+
+      // D. Upload to Supabase Storage with 10s Timeout
+      console.log(
+        "⏳ [STEP 6] Sending file to Supabase Storage bucket 'gallery'...",
+      );
+
+      const storageCall = supabase.storage
+        .from("gallery")
+        .upload(filePath, fileBuffer, {
+          contentType: file.type || "image/jpeg",
+          upsert: true,
+        });
+
+      const timeout = new Promise((_, reject) =>
+        setTimeout(
+          () => reject(new Error("Storage request timed out after 10 seconds")),
+          10000,
+        ),
+      );
+
+      const { data: storageData, error: uploadError } = await Promise.race([
+        storageCall,
+        timeout,
+      ]);
+
+      if (uploadError) {
+        console.error(
+          "❌ [STEP 6 FAILED] Storage Upload Error:",
+          uploadError.message,
+        );
+        alert(`Storage Error: ${uploadError.message}`);
+        return;
+      }
+
+      console.log("✅ [STEP 6 SUCCESS] File uploaded to storage:", storageData);
+
+      // E. Database Insert
+      console.log("📝 [STEP 7] Inserting metadata row into 'items' table...");
+
+      const { data: dbData, error: dbError } = await supabase
+        .from("items")
+        .insert([
+          {
+            image_path: filePath,
+            user_id: userId,
+            folder: activeFolder === "Select Folder" ? "" : activeFolder,
+            location_description: metadataString,
+            notes: "",
+          },
+        ])
+        .select();
+
+      if (dbError) {
+        console.error(
+          "❌ [STEP 7 FAILED] Database Insert Error:",
+          dbError.message,
+        );
+        alert(`Database Error: ${dbError.message}`);
+        return;
+      }
+
+      console.log("🎉 [STEP 7 SUCCESS] Database row created:", dbData);
+
+      // F. Refresh Gallery State
+      console.log("🔄 [STEP 8] Refreshing gallery items...");
+      await fetchItems(userId);
+      console.log("✨ [COMPLETE] Upload flow finished successfully!");
+    } catch (err) {
+      console.error(
+        "💥 [CRITICAL ERROR] uploadToGallery crashed:",
+        err.message || err,
+      );
+      alert(`Upload crashed: ${err.message || err}`);
+    }
+  };
+
+  const updateNotes = async (id, newNotes) => {
+    try {
+      const { error } = await supabase
+        .from("items")
+        .update({ notes: newNotes })
+        .eq("id", id);
+
+      if (error) throw error;
+
+      setItems((prevItems) =>
+        prevItems.map((item) =>
+          item.id === id ? { ...item, notes: newNotes } : item,
+        ),
+      );
+    } catch (err) {
+      console.error("Error updating notes:", err);
+    }
+  };
+
+  const handleFlip = useCallback((id) => {
     setItems((prev) =>
       prev.map((i) => {
         if (i.id === id) {
-          const updated = { ...i, flipped: !i.flipped };
+          const newFlippedState = !i.flipped;
+
           supabase
             .from("items")
-            .update({ flipped: updated.flipped })
-            .eq("id", id);
-          return updated;
+            .update({ flipped: newFlippedState })
+            .eq("id", id)
+            .then(({ error }) => {
+              if (error) console.error("Flip sync error:", error);
+            });
+          return { ...i, flipped: newFlippedState };
         }
         return i;
       }),
@@ -715,17 +1136,32 @@ export default function App() {
     });
   }, []);
 
+  const handleEditRequest = (item) => {
+    setEditingId(item.id);
+  };
+
+  const handleSelectEditFromMenu = async (item) => {
+    setEditingId(null);
+    const bufferedUrl = await addImageBuffer(item.imageURL);
+
+    setEditingItem({
+      ...item,
+      displayURL: bufferedUrl,
+    });
+  };
+
   const handleDragEnd = async (event) => {
     const { active, over } = event;
+
+    // 1. ALWAYS unlock the UI first
     setActiveDragItem(null);
-    if (!over || active.id === over.id) {
-      setSelectedIds(new Set());
-      return;
-    }
+
+    if (!over || active.id === over.id) return;
 
     const draggedIds = selectedIds.has(active.id)
       ? Array.from(selectedIds)
       : [active.id];
+
     const isTrash = over.id === "TRASH_BIN";
     const targetFolder = isTrash
       ? "DELETE"
@@ -733,6 +1169,7 @@ export default function App() {
       ? ""
       : over.id;
 
+    // 2. Perform Optimistic Update (Update local state immediately so UI remains snappy)
     setItems((prev) =>
       isTrash
         ? prev.filter((i) => !draggedIds.includes(i.id))
@@ -742,288 +1179,654 @@ export default function App() {
     );
     setSelectedIds(new Set());
 
-    if (isTrash) {
-      setIsDropping(true);
-      const pathsToDelete = items
-        .filter((i) => draggedIds.includes(i.id))
-        .map((i) => i.image_path);
-      await supabase.from("items").delete().in("id", draggedIds);
-      if (pathsToDelete.length > 0)
-        await supabase.storage.from("gallery").remove(pathsToDelete);
-      setTimeout(() => setIsDropping(false), 500);
-    } else {
-      await supabase
-        .from("items")
-        .update({ folder: targetFolder })
-        .in("id", draggedIds);
+    // 3. Handle Database and Storage work in the background
+    try {
+      if (isTrash) {
+        setIsDropping(true);
+
+        // Find the matching storage paths for all dragged items
+        const pathsToDelete = items
+          .filter((i) => draggedIds.includes(i.id))
+          .map((i) => i.image_path);
+
+        // A. Delete physical files from your actual storage bucket
+        if (pathsToDelete.length > 0) {
+          const { error: storageError } = await supabase.storage
+            .from("gallery")
+            .remove(pathsToDelete);
+
+          if (storageError) {
+            console.warn("Storage removal warning:", storageError.message);
+          }
+        }
+
+        // B. Delete the tracking row from your database table
+        const { error: dbError } = await supabase
+          .from("items")
+          .delete()
+          .in("id", draggedIds);
+
+        if (dbError) throw dbError;
+
+        // Trigger a noticeable tactile rumble on mobile to confirm deletion
+        try {
+          await Haptics.impact({ style: ImpactStyle.Heavy });
+        } catch (e) {
+          void 0;
+        }
+
+        setTimeout(() => setIsDropping(false), 500);
+      } else {
+        // Move file to a folder configuration path
+        const { error } = await supabase
+          .from("items")
+          .update({ folder: targetFolder })
+          .in("id", draggedIds);
+        if (error) throw error;
+      }
+    } catch (err) {
+      console.error("Database or storage sync failed:", err);
+      alert("Changes could not be saved to the server: " + err.message);
+
+      // Safety Rollback: Refresh original state if server rejects delete action
+      if (session?.user?.id) {
+        await fetchItems(session.user.id);
+      }
     }
   };
 
+  const handleDragCancel = () => {
+    console.log("DEBUG: Drag Cancelled - Cleaning up state");
+    setActiveDragItem(null);
+    // This ensures that even if the drag fails, the 'isDragging'
+    // flags in your cards are reset so you can flip them again.
+  };
+
   const visibleItems = useMemo(() => {
-    if (search.trim())
-      return items.filter((i) =>
-        i.notes.toLowerCase().includes(search.toLowerCase()),
-      );
-    return filterItems(items, activeFolder, "");
+    // We let the helper function handle the "Search vs Folder" logic internally
+    return filterItems(items, activeFolder, search);
   }, [items, activeFolder, search]);
 
-  /* ---------- VIEW CONTROLLER ---------- */
+  const saveNewFolderInline = async () => {
+    const trimmed = newFolderName.trim();
 
-  // 1. SAFARI/MAGIC LINK LOADING GATE
-  if (isLoggingIn) {
-    return (
-      <div className="auth-loading-screen">
-        <div className="spinner"></div>
-        <h2>Authenticating with Safari...</h2>
-        <p>Please wait while we secure your session.</p>
-      </div>
-    );
-  }
-
-  // 2. NOT LOGGED IN GATES
-  if (!session) {
-    if (view === "landing") {
-      return (
-        <div className="landing-wrapper">
-          <LandingPage onEnter={() => setView("auth")} />
-        </div>
-      );
+    // If empty, just close and reset
+    if (!trimmed) {
+      setIsCreatingFolder(false);
+      return;
     }
-    // Auth screen (Login)
-    return (
-      <div className="relative">
-        <button
-          onClick={() => setView("landing")}
-          className="back-to-landing-btn"
-        >
-          ← Back to Info
-        </button>
-        <Auth setSession={setSession} />
-      </div>
+
+    const isDuplicate = folders.some(
+      (f) => f.toLowerCase() === trimmed.toLowerCase(),
+    );
+
+    if (isDuplicate) {
+      setToastMessage("Folder already exists! 📂");
+      setTimeout(() => setToastMessage(""), 2000);
+      // Don't close the UI yet, let them fix the name
+      return;
+    }
+
+    // Success path
+    if (session?.user) {
+      try {
+        // 1. Immediately update UI so it feels fast
+        setFolders((prev) => [...prev, trimmed]);
+        setIsCreatingFolder(false); // CLOSE THE BOX NOW
+        setNewFolderName("");
+
+        // 2. Save to database in background
+        await saveFolders(session.user.id, trimmed);
+
+        setToastMessage("Folder Created! 📂");
+        setTimeout(() => setToastMessage(""), 2000);
+      } catch (error) {
+        console.error("Failed to save folder:", error);
+        setToastMessage("Save failed");
+      }
+    }
+  };
+
+  const deleteFolder = async (fol) => {
+    if (!session?.user) return;
+
+    try {
+      // 1. Move all items in this folder to the root gallery (folder = "")
+      const { error: updateError } = await supabase
+        .from("items")
+        .update({ folder: "" })
+        .eq("user_id", session.user.id)
+        .eq("folder", fol);
+
+      if (updateError) throw updateError;
+
+      // 2. Remove the folder name from your folder storage
+      // Assuming saveFolders(userId, name, isDelete) handles the DB delete
+      await saveFolders(session.user.id, fol, true);
+
+      // 3. Update local state
+      setFolders((prev) => prev.filter((r) => r !== fol));
+      setItems((prev) =>
+        prev.map((item) =>
+          item.folder === fol ? { ...item, folder: "" } : item,
+        ),
+      );
+
+      // 4. If we were currently viewing that folder, switch to the main gallery
+      if (activeFolder === fol) {
+        setActiveFolder("Select Folder");
+      }
+
+      setToastMessage(`Folder removed. Photos moved to Gallery.`);
+      setTimeout(() => setToastMessage(""), 3000);
+    } catch (error) {
+      console.error("Error deleting folder:", error);
+      setToastMessage("Could not delete folder.");
+    }
+  };
+
+  const getFolderCount = (folderName) => {
+    return items.filter((item) => item.folder === folderName).length;
+  };
+
+  const handleSignOut = () => {
+    setSession(null);
+    setItems([]);
+    setFolders([]);
+    setView("landing");
+  };
+
+  const handleDeleteAccount = async () => {
+    setIsLoading(true);
+    try {
+      const { user } = session; // Ensure you have access to your session/user object
+
+      // This insert triggers the SQL function we just wrote
+      const { error } = await supabase
+        .from("delete_requests")
+        .insert([{ id: user.id }]);
+
+      if (error) throw error;
+
+      // The user is now deleted on the server.
+      // We sign out locally to clear the session and redirect.
+      await supabase.auth.signOut();
+
+      alert(
+        "Your account and all associated data have been permanently deleted.",
+      );
+      // Optionally: window.location.href = '/login'; or your routing logic
+    } catch (err) {
+      console.error(err);
+      alert("Error: Could not complete deletion. Please contact support.");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  /* ---------- VIEW CONTROLLER ---------- */
+  if (!isReady) return null;
+
+  if (!session) {
+    return view === "auth" ? (
+      <Auth setSession={setSession} setView={setView} supabase={supabase} />
+    ) : (
+      <LandingPage onEnter={() => setView("auth")} />
     );
   }
+
+  // Debug logs right before rendering the gallery view
+  console.log("Current items state in render:", items);
+  console.log("Current activeFolder filter:", activeFolder);
 
   // 3. MAIN GALLERY (HAVE SESSION)
   return (
-    <DndContext
-      sensors={sensors}
-      collisionDetection={rectIntersection}
-      onDragStart={(e) =>
-        setActiveDragItem(items.find((i) => i.id === e.active.id))
-      }
-      onDragEnd={handleDragEnd}
-      onDragCancel={() => {
-        setActiveDragItem(null);
-        setSelectedIds(new Set());
-      }}
-    >
-      <div className="app">
-        {isLoading && importProgress && (
-          <div className="loading-overlay">
-            <div className="spinner"></div>
-            <p className="pulse-text">{importProgress}</p>
-          </div>
-        )}
+    <>
+      {" "}
+      <DndContext
+        sensors={sensors}
+        collisionDetection={closestCenter}
+        onDragStart={(event) => {
+          if (!event || !event.active) return;
+          const activeId = event.active.id;
+          const draggedItem = items.find((i) => i.id === activeId);
+          if (draggedItem) setActiveDragItem(draggedItem);
+        }}
+        onDragEnd={(e) => {
+          setActiveDragItem(null);
+          handleDragEnd(e);
+        }}
+        onDragCancel={() => {
+          setActiveDragItem(null);
+          handleDragCancel();
+        }}
+      >
+        <div className="app">
+          <div className="controls">
+            <h1 className="app-title">
+              <span className="photo-text">Photo</span>{" "}
+              <span className="flip-animation">Flip</span>
+            </h1>
+            <div className="controls-row">
+              <label className="upload-main-btn" aria-label="Upload photos">
+                <svg
+                  width="28"
+                  height="28"
+                  viewBox="0 0 28 28"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2.5"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                >
+                  <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
+                  <circle cx="8.5" cy="8.5" r="1.5"></circle>
+                  <polyline points="21 15 16 10 5 21"></polyline>
+                  <line x1="12" y1="5" x2="12" y2="9"></line>
+                  <line x1="10" y1="7" x2="14" y2="7"></line>
+                </svg>
+                <input
+                  type="file"
+                  multiple
+                  hidden
+                  onChange={(e) => handlePrimaryUpload(e)}
+                />
+              </label>
 
-        <div className="controls">
-          <label className="upload-label">
-            ☁️ Upload{" "}
-            <input type="file" multiple onChange={handleUpload} hidden />
-          </label>
-
-          {selectedIds.size > 0 && (
-            <div className="selection-status-inline">
-              <span className="count-badge">{selectedIds.size}</span>
-              <span className="status-text">
-                Selected — Drag to folder or Trash
-              </span>
-              <button
-                className="clear-selection-btn"
-                onClick={() => setSelectedIds(new Set())}
+              <div
+                className="search-wrapper"
+                style={{
+                  position: "relative",
+                  display: "flex",
+                  alignItems: "center",
+                }}
               >
-                ✕
-              </button>
-            </div>
-          )}
-          <button
-            className="util-btn"
-            onClick={() => exportGalleryZip(items, selectedIds)}
-          >
-            📤 Export {selectedIds.size > 0 ? `(${selectedIds.size})` : ""}
-          </button>
+                <span className="search-icon">🔍</span>
+                <input
+                  type="text"
+                  className="search-input"
+                  placeholder="key notes..."
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                />
+                {search.length > 0 && (
+                  <button
+                    onClick={() => setSearch("")}
+                    className="search-clear-btn"
+                  >
+                    ×
+                  </button>
+                )}
+              </div>
 
-          <label className="util-btn">
-            📥 Import{" "}
-            <input
-              type="file"
-              accept=".zip"
-              onChange={async (e) => {
-                const file = e.target.files[0];
-                if (!file) return;
-                setIsLoading(true);
-                try {
-                  await importGalleryZip(file, (c, t) =>
-                    setImportProgress(`Importing ${c} of ${t}...`),
-                  );
-                  await fetchItems(session.user.id);
-                  const updatedFolders = await loadFolders(session.user.id);
-                  setFolders(updatedFolders);
-                } catch (err) {
-                  alert("Import failed: " + err.message);
-                } finally {
-                  setIsLoading(false);
-                  setImportProgress("");
-                  e.target.value = "";
-                }
-              }}
-              hidden
-            />
-          </label>
-          <input
-            type="text"
-            className="search-input"
-            placeholder="Search..."
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-          />
-        </div>
-
-        <main className="main">
-          {isLoading && uploadProgress.total > 0 && !importProgress && (
-            <div className="gallery-upload-status">
-              <p className="pulse-text">
-                Uploading {uploadProgress.current} / {uploadProgress.total}
-              </p>
-              <div className="progress-bar-container">
-                <div
-                  className="progress-bar-fill"
-                  style={{
-                    width: `${
-                      (uploadProgress.current / uploadProgress.total) * 100
-                    }%`,
+              <div className="menu-container" ref={menuRef}>
+                <button
+                  className="menu-trigger"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setIsMenuOpen(!isMenuOpen);
+                    setShowManageAccount(false);
                   }}
-                ></div>
+                >
+                  •••
+                </button>
+
+                {isMenuOpen && (
+                  <div className="dropdown-menu">
+                    {selectedIds.size === 1 && (
+                      <>
+                        <button
+                          className="menu-item"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            const selectedItem = items.find((i) =>
+                              selectedIds.has(i.id),
+                            );
+                            if (selectedItem)
+                              handleSelectEditFromMenu(selectedItem);
+                            setIsMenuOpen(false);
+                          }}
+                        >
+                          <span>📝</span> Edit Photo
+                        </button>
+                        <button
+                          className="menu-item"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setSelectedIds(new Set());
+                            setIsMenuOpen(false);
+                          }}
+                        >
+                          <span>⚪</span> Deselect
+                        </button>
+                      </>
+                    )}
+                    {selectedIds.size > 1 && (
+                      <button
+                        className="menu-item"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setSelectedIds(new Set());
+                          setIsMenuOpen(false);
+                        }}
+                      >
+                        <span>⚪</span> Deselect All ({selectedIds.size})
+                      </button>
+                    )}
+                    {selectedIds.size === 0 && (
+                      <>
+                        <button
+                          className="menu-item"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setIsCreatingFolder(true);
+                            setIsMenuOpen(false);
+                          }}
+                        >
+                          <span>📂</span> Add Folder
+                        </button>
+                        {visibleItems.length >= 2 && (
+                          <button
+                            className="menu-item"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setSelectedIds(
+                                new Set(visibleItems.map((i) => i.id)),
+                              );
+                              setIsMenuOpen(false);
+                            }}
+                          >
+                            <span style={{ color: "#007aff" }}>🔵</span> Select
+                            All
+                          </button>
+                        )}
+                        <label className="menu-item">
+                          <span>📥</span> Import
+                          <input
+                            type="file"
+                            accept=".zip, image/*"
+                            onChange={async (e) => {
+                              e.stopPropagation();
+                              const file = e.target.files?.[0];
+                              if (!file) return;
+                              setIsMenuOpen(false);
+                              setIsLoading(true);
+                              try {
+                                if (file.name.toLowerCase().endsWith(".zip")) {
+                                  await importGalleryZip(
+                                    file,
+                                    (current, total) => {
+                                      setImportProgress(
+                                        `Importing ${current} of ${total}...`,
+                                      );
+                                    },
+                                  );
+                                } else {
+                                  await uploadToGallery(file);
+                                }
+                              } catch (err) {
+                                console.error("Import failed:", err);
+                              } finally {
+                                setIsLoading(false);
+                                setImportProgress("");
+                                e.target.value = "";
+                              }
+                            }}
+                            hidden
+                          />
+                        </label>
+                      </>
+                    )}
+                    <div
+                      style={{
+                        height: "1px",
+                        background: "#eee",
+                        margin: "4px 0",
+                      }}
+                    />
+                    <button
+                      className="menu-item"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        exportGalleryZip(items, selectedIds);
+                        setIsMenuOpen(false);
+                      }}
+                    >
+                      <span>📤</span> Export{" "}
+                      {selectedIds.size > 0 ? `(${selectedIds.size})` : "All"}
+                    </button>
+                    <button
+                      className="menu-item"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setShowTips(true);
+                        setIsMenuOpen(false);
+                      }}
+                    >
+                      <span>💡</span> Tips & Gestures
+                    </button>
+                    {!showManageAccount ? (
+                      <button
+                        className="menu-item"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setShowManageAccount(true);
+                        }}
+                      >
+                        <span>⚙️</span> Manage Account
+                      </button>
+                    ) : (
+                      <>
+                        <button
+                          className="menu-item"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setShowManageAccount(false);
+                          }}
+                        >
+                          <span>⬅️</span> Back
+                        </button>
+                        <button
+                          className="menu-item logout-item"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleSignOut();
+                            setIsMenuOpen(false);
+                            setShowManageAccount(false);
+                          }}
+                        >
+                          <span>🚪</span> Sign Out
+                        </button>
+                        <button
+                          className="menu-item delete-item"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setIsMenuOpen(false);
+                            if (window.confirm("Permanent delete?"))
+                              handleDeleteAccount();
+                          }}
+                        >
+                          <span>🗑️</span> Delete Account
+                        </button>
+                      </>
+                    )}
+                  </div>
+                )}
               </div>
             </div>
-          )}
+          </div>
 
-          <SortableContext
-            items={visibleItems.map((i) => i.id)}
-            strategy={rectSortingStrategy}
-          >
-            <div
-              className="gallery"
-              ref={galleryRef}
-              onPointerUp={(e) =>
-                e.target === galleryRef.current && setSelectedIds(new Set())
-              }
-            >
-              {visibleItems.map((item) => (
-                <DraggableCard
-                  key={item.id}
-                  item={item}
-                  isClosingZoomRef={isClosingZoomRef}
-                  selectedIds={selectedIds}
-                  isSelected={selectedIds.has(item.id)}
-                  onToggleSelect={handleToggleSelect}
-                  onFlip={handleFlip}
-                  onZoom={setZoomData}
-                  onEdit={setEditingItem}
-                  updateNotes={updateNotes}
-                  isSaved={isSavedItemId === item.id}
-                />
-              ))}
-            </div>
-          </SortableContext>
-          {showScrollTop && (
-            <button
-              className="scroll-to-top visible"
-              onClick={() =>
-                galleryRef.current.scrollTo({ top: 0, behavior: "smooth" })
-              }
-            >
-              ↑
-            </button>
-          )}
-        </main>
+          <main className="main">
+            {isLoading && uploadProgress.total > 0 && (
+              <div className="gallery-upload-status">
+                <p className="pulse-text">{importProgress}</p>
+                <div className="progress-bar-container">
+                  <div
+                    className="progress-bar-fill"
+                    style={{
+                      width: `${
+                        (uploadProgress.current / uploadProgress.total) * 100
+                      }%`,
+                    }}
+                  ></div>
+                </div>
+              </div>
+            )}
 
-        <aside className="sidebar">
-          <div className="sidebar-top">
-            <MainGalleryDropZone
-              activeFolder={activeFolder}
-              setActiveFolder={setActiveFolder}
-            />
-            <div className="folders-list">
-              {folders.map((f) => (
-                <FolderButton
-                  key={f}
-                  f={f}
+            {visibleItems.length === 0 ? (
+              <div className="empty-state">
+                <div className="empty-icon">{search ? "🔍" : "📸"}</div>
+                <h2>{search ? "No Matches Found" : "Let's Get Started!"}</h2>
+                <p>
+                  {search
+                    ? `We couldn't find anything matching "${search}".`
+                    : "Tap the upload icon to start adding photos."}
+                </p>
+              </div>
+            ) : (
+              <>
+                <SortableContext
+                  items={visibleItems.map((i) => i.id)}
+                  strategy={rectSortingStrategy}
+                >
+                  <div
+                    key={activeFolder + search}
+                    className="gallery"
+                    ref={galleryRef}
+                    onClick={(e) => {
+                      if (e.target === galleryRef.current)
+                        setSelectedIds(new Set());
+                    }}
+                  >
+                    {visibleItems.map((item) => (
+                      <DraggableCard
+                        key={item.id}
+                        item={item}
+                        isClosingZoomRef={isClosingZoomRef}
+                        selectedIds={selectedIds}
+                        isSelected={selectedIds.has(item.id)}
+                        onToggleSelect={handleToggleSelect}
+                        onFlip={handleFlip}
+                        onZoom={setZoomData}
+                        onEditRequest={handleEditRequest}
+                        onSelectEdit={handleSelectEditFromMenu}
+                        editingId={editingId}
+                        setEditingId={setEditingId}
+                        onDelete={(id) => {
+                          handleDragEnd({
+                            active: { id },
+                            over: { id: "TRASH_BIN" },
+                          });
+                        }}
+                      />
+                    ))}
+                  </div>
+                </SortableContext>
+                {showScrollTop && (
+                  <button
+                    className="scroll-to-top visible"
+                    onClick={() =>
+                      galleryRef.current.scrollTo({
+                        top: 0,
+                        behavior: "smooth",
+                      })
+                    }
+                  >
+                    ↑
+                  </button>
+                )}
+              </>
+            )}
+          </main>
+
+          <aside className="sidebar">
+            {folders.length > 0 && (
+              <div className="folder-list-container">
+                {folders.map((f) => (
+                  <FolderButton
+                    key={f}
+                    f={f}
+                    count={getFolderCount(f)}
+                    activeFolder={activeFolder}
+                    setActiveFolder={setActiveFolder}
+                    onDelete={deleteFolder}
+                  />
+                ))}
+              </div>
+            )}
+            <div className={`nav-bar-elastic`}>
+              <div className="nav-item-wrapper">
+                <MainGalleryDropZone
                   activeFolder={activeFolder}
                   setActiveFolder={setActiveFolder}
-                  onDelete={async (fol) => {
-                    await saveFolders(session.user.id, fol, true);
-                    setFolders(folders.filter((r) => r !== fol));
-                  }}
                 />
-              ))}
+              </div>
+              <div className="nav-item-wrapper">
+                <TrashDropZone
+                  selectedCount={selectedIds.size}
+                  isDropping={isDropping}
+                />
+              </div>
             </div>
-          </div>
-          <div className="sidebar-bottom">
-            <button
-              className="nav-btn"
-              onClick={async () => {
-                const n = prompt("New Folder:");
-                if (n && folders.includes(n)) {
-                  alert("This folder already exists!");
-                  return;
-                }
-                if (n && session?.user) {
-                  await saveFolders(session.user.id, n);
-                  setFolders([...folders, n]);
-                }
-              }}
-            >
-              ➕ Folder
-            </button>
-            <button
-              className="nav-btn logout-btn"
-              onClick={async () => {
-                await supabase.auth.signOut();
-                setSession(null);
-                setItems([]);
-                setView("landing");
-              }}
-            >
-              Sign Out
-            </button>
-            <TrashDropZone
-              selectedCount={selectedIds.size}
-              isDropping={isDropping}
-            />
-          </div>
-        </aside>
+          </aside>
 
-        <DragOverlay modifiers={[snapCenterToCursor]}>
-          {activeDragItem && (
-            <div className="card-drag-preview">
-              <img
-                src={activeDragItem.imageURL}
-                alt=""
-                style={{
-                  width: "100px",
-                  borderRadius: "8px",
-                  boxShadow: "0 10px 20px rgba(0,0,0,0.3)",
+          {toastMessage && (
+            <div className="toast-container">
+              <div className="toast">{toastMessage}</div>
+            </div>
+          )}
+
+          {isCreatingFolder && (
+            <div className="folder-input-overlay">
+              <input
+                className="large-inline-input"
+                autoFocus
+                type="text"
+                maxLength={20}
+                enterKeyHint="done"
+                placeholder="Folder Name..."
+                value={newFolderName}
+                onChange={(e) => setNewFolderName(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") {
+                    e.preventDefault();
+                    e.currentTarget.blur();
+                    saveNewFolderInline();
+                  }
+                  if (e.key === "Escape") setIsCreatingFolder(false);
                 }}
               />
             </div>
           )}
-        </DragOverlay>
 
+          <DragOverlay
+            dropAnimation={null}
+            zIndex={10000}
+            style={{ pointerEvents: "none" }}
+          >
+            {activeDragItem ? (
+              <div
+                style={{
+                  width: "100px",
+                  height: "100px",
+                  backgroundImage: `url(${activeDragItem.imageURL})`,
+                  backgroundSize: "cover",
+                  backgroundPosition: "center",
+                  borderRadius: "12px",
+                  boxShadow: "0 20px 50px rgba(0,0,0,0.5)",
+                  opacity: 0.9,
+                }}
+              />
+            ) : null}
+          </DragOverlay>
+        </div>{" "}
+        {/* This closes .app */}
+      </DndContext>
+      {zoomData && (
         <ZoomOverlay
           data={zoomData}
-          items={items}
+          item={visibleItems.find((i) => i.id === zoomData.id)}
           updateNotes={updateNotes}
-          isSaved={isSavedItemId}
           onClose={() => {
             isClosingZoomRef.current = true;
             setZoomData(null);
@@ -1032,60 +1835,51 @@ export default function App() {
             }, 300);
           }}
         />
-
-        {editingItem && (
-          <div className="editor-overlay">
-            <div className="editor-wrapper-container">
-              <button
-                className="custom-editor-close-btn"
-                onClick={() => setEditingItem(null)}
-              >
-                ✕
-              </button>
-              <FilerobotImageEditor
-                key={editingItem.id}
-                source={editingItem.imageURL}
-                onSave={async (obj) => {
-                  const blob = await (await fetch(obj.imageBase64)).blob();
-                  await supabase.storage
+      )}
+      {editingItem && (
+        <div className="editor-overlay">
+          <div className="editor-wrapper-container">
+            <FilerobotImageEditor
+              key={editingItem.image_path}
+              source={editingItem.displayURL || editingItem.imageURL}
+              onSave={async (obj) => {
+                try {
+                  const response = await fetch(obj.imageBase64);
+                  const blob = await response.blob();
+                  const { error } = await supabase.storage
                     .from("gallery")
                     .upload(editingItem.image_path, blob, { upsert: true });
-                  fetchItems(session.user.id);
+                  if (error) throw error;
+                  setItems((prev) =>
+                    prev.map((item) =>
+                      item.image_path === editingItem.image_path
+                        ? {
+                            ...item,
+                            imageURL: `${
+                              item.imageURL.split("?")[0]
+                            }?t=${Date.now()}`,
+                          }
+                        : item,
+                    ),
+                  );
                   setEditingItem(null);
-                }}
-                onClose={() => setEditingItem(null)}
-                tabsIds={[TABS.ADJUST, TABS.FILTERS, TABS.ANNOTATE]}
-                defaultTabId={TABS.ADJUST}
-                defaultToolId={TOOLS.CROP}
-                config={{
-                  useCloudimageResponsive: true,
-                  observePluginContainerSize: true,
-                  loadNativeImage: true,
-                  noScaleUp: false,
-                  reduceBeforeEdit: {
-                    mode: "auto",
-                    widthLimit: 2000,
-                    heightLimit: 1500,
-                  },
-                  imageGrid: { padding: 30 },
-                  adjust: {
-                    allowNegativeCrop: true,
-                    cropPresets: [
-                      { title: "Default", ratio: "custom" },
-                      { title: "Square", ratio: 1 },
-                      { title: "Vertical Post", ratio: 4 / 3 },
-                      { title: "Wide Banner", ratio: 16 / 9 },
-                    ],
-                  },
-                  showNavigationControls: false,
-                }}
-                savingPixelRatio={window.devicePixelRatio || 2}
-                previewPixelRatio={window.devicePixelRatio || 2}
-              />
-            </div>
+                  setToastMessage("Image updated! ✨");
+                  setTimeout(() => setToastMessage(""), 2000);
+                } catch (err) {
+                  console.error("Save failed:", err);
+                  alert("Failed to save changes.");
+                }
+              }}
+              onClose={() => setEditingItem(null)}
+              tabsIds={["ADJUST", "FILTERS", "ANNOTATE"]}
+              defaultTabId={"ADJUST"}
+              defaultToolId={"CROP"}
+              config={{ layout: "compact", observePluginContainerSize: true }}
+            />
           </div>
-        )}
-      </div>
-    </DndContext>
+        </div>
+      )}
+      {showTips && <TipsModal onClose={() => setShowTips(false)} />}
+    </>
   );
 }

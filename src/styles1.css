@@ -1,0 +1,1932 @@
+/* ================================================================
+   1. CORE FIXES (CENTERING & SCROLL)
+   ================================================================ */
+:root {
+  --primary: #6366f1; /* Slightly brighter indigo for dark mode */
+  --text-main: #f8fafc; /* Near white for text */
+  --bg-app: rgb(230, 230, 230);
+  --bg-card: #111827; /* Deep Slate for card backgrounds */
+}
+
+* {
+  box-sizing: border-box;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.card-back,
+.card-back button {
+  touch-action: auto;
+  pointer-events: auto;
+}
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+  width: 100%;
+  background: var(--bg-app);
+  font-family: system-ui, -apple-system, sans-serif;
+  overflow-x: hidden;
+  position: relative;
+}
+
+.app {
+  display: flex;
+  flex-direction: column;
+  height: 100dvh;
+  overflow: hidden;
+}
+
+img {
+  image-rendering: -webkit-optimize-contrast;
+  will-change: transform;
+}
+
+/* ================================================================
+   2. NAVIGATION (FIXED & SAFE AREA)
+   ================================================================ */
+.landing-nav {
+  position: fixed; /* Keep it locked at the top */
+  top: 0;
+  left: 0;
+  right: 0;
+  width: 100%;
+  z-index: 2000;
+  background: rgba(255, 255, 255, 0.98);
+  border-bottom: 1px solid #e2e8f0;
+
+  /* Adjusted padding to not be "too far" from notch */
+  padding: env(safe-area-inset-top) 20px 10px 20px;
+  height: auto;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+}
+
+.landing-logo {
+  font-size: 22px;
+  font-weight: 800;
+  color: var(--primary);
+}
+
+.landing-login-btn {
+  background: var(--primary);
+  color: white;
+  padding: 8px 18px;
+  border-radius: 99px;
+  border: none;
+  font-weight: 600;
+}
+
+/* ================================================================
+   3. CONTENT LAYOUT (FORCED CENTERING)
+   ================================================================ */
+.landing-page-container {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center; /* Forces everything to the center of the screen */
+  justify-content: center;
+}
+
+.landing-content {
+  width: 100%;
+  max-width: 600px; /* Keeps content from stretching too wide */
+  margin: 0 auto; /* Centers the column on the page */
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.landing-hero {
+  width: 100%;
+  padding: 120px 24px 10px; /* 100px accounts for fixed nav height */
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+}
+
+.landing-wrapper img,
+.hero-image {
+  width: 100% !important;
+  max-width: 100vw;
+  height: auto !important;
+  object-fit: contain;
+  will-change: transform;
+}
+.how-to-section {
+  width: 100%;
+  padding: 30px 20px 80px;
+  background: white;
+}
+
+.how-to-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 32px;
+  width: 100%;
+  max-width: 500px;
+  margin: 0 auto;
+}
+
+.how-to-section h2 {
+  font-size: 2rem;
+  font-weight: 800;
+  text-align: center;
+  color: #1e293b;
+  margin-bottom: 40px;
+  letter-spacing: -0.02em;
+  position: relative;
+  display: block;
+  width: 100%;
+}
+
+/* Optional: Adds a small decorative line under the title to anchor it */
+.how-to-section h2::after {
+  content: "";
+  display: block;
+  width: 60px;
+  height: 4px;
+  background: var(--primary); /* Uses your Indigo color */
+  border-radius: 99px;
+  margin: 12px auto 0;
+}
+
+.how-to-card {
+  background: #f5f3ff; /* Light background to define the card */
+  /* Generous internal padding */
+  padding: 40px 30px;
+  border-radius: 24px;
+  border: 4px solid #ede9fe;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05),
+    0 10px 15px -3px rgba(79, 70, 229, 0.1);
+  text-align: center;
+  transition: all 0.3s ease;
+  width: 100%;
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+/* BIGGER ICONS */
+.gesture-icon {
+  font-size: 54px; /* Significantly larger as requested */
+  display: block;
+  margin-bottom: 20px;
+}
+
+.how-to-card h3 {
+  font-size: 1.5rem;
+  font-weight: 800;
+  color: #0f172a;
+  margin-bottom: 12px;
+}
+
+.how-to-card p {
+  font-size: 1rem;
+  color: #475569;
+  line-height: 1.5;
+  margin: 0;
+}
+
+/* --- 1. DIGITAL ARCHIVE BADGE --- */
+.badge {
+  display: inline-block;
+  padding: 6px 16px;
+  background: #eef2ff; /* Very light indigo */
+  color: var(--primary);
+  border-radius: 99px;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  margin-bottom: 20px;
+  border: 1px solid #c7d2fe;
+}
+
+/* --- 2. THE HERO HEADLINE ("The back of the photo...") --- */
+.hero-text h1 {
+  width: 100%;
+  text-align: center;
+  font-size: clamp(2.4rem, 8vw, 3.8rem); /* Dynamic sizing */
+  font-weight: 900;
+  line-height: 1.05;
+  margin-bottom: 24px;
+  color: #0f172a; /* Deep, modern navy */
+  letter-spacing: -0.03em;
+}
+
+.accent-text {
+  background: linear-gradient(120deg, #4f46e5 0%, #818cf8 100%);
+  background-clip: text;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  font-style: italic;
+}
+
+/* --- 3. SUBTEXT ("Organize your digital memories...") --- */
+.hero-text p {
+  font-size: 1.15rem;
+  line-height: 1.6;
+  color: #475569; /* Slate grey */
+  max-width: 520px;
+  margin: 0 auto 40px auto;
+  font-weight: 450;
+}
+
+/* --- 4. OPEN MY GALLERY BUTTON --- */
+.cta-button {
+  background: var(--primary);
+  color: white;
+  padding: 18px 38px;
+  border-radius: 16px;
+  font-size: 18px;
+  font-weight: 700;
+  border: none;
+  cursor: pointer;
+  transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+  box-shadow: 0 10px 20px -5px rgba(79, 70, 229, 0.4);
+  display: inline-block;
+}
+
+.cta-button:hover {
+  transform: translateY(-4px) scale(1.02);
+  background: var(--primary-hover);
+  box-shadow: 0 15px 25px -5px rgba(79, 70, 229, 0.5);
+}
+
+.cta-button:active {
+  transform: translateY(0) scale(0.98);
+}
+
+/* ================================================================
+   4. FOOTER (CENTERED & DARKER)
+   ================================================================ */
+.landing-footer {
+  width: 100%;
+  padding: 50px 20px;
+  text-align: center;
+  border-top: 1px solid #e2e8f0;
+  background: white;
+  color: #334155; /* Dark Slate for readability */
+}
+
+.footer-links {
+  margin-top: 8px;
+  color: var(--primary);
+  font-weight: 700;
+}
+
+/* ================================================================
+   5. AUTH / LOGIN PAGE STYLING
+   ================================================================ */
+
+.auth-page-wrapper {
+  min-height: 100vh;
+  width: 100%;
+  background: var(--bg-app);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  /* Space for the notch */
+  padding-top: env(safe-area-inset-top);
+}
+
+.auth-nav {
+  width: 100%;
+  padding: 20px;
+  display: flex;
+  justify-content: flex-start;
+}
+
+.auth-container {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  /* Pulls the box up from the bottom home bar */
+  justify-content: flex-start;
+  /* 40px - 60px is the sweet spot to look "centered" but safe */
+  padding: 40px 20px 100px 20px;
+  width: 100%;
+}
+
+.auth-box {
+  width: 100%;
+  max-width: 400px;
+  background: white;
+  padding: 30px 24px;
+  border-radius: 24px;
+  text-align: center;
+  border: 1px solid #e2e8f0;
+  /* Matching the gesture card shadow for consistency */
+  box-shadow: 0 10px 15px -3px rgba(79, 70, 229, 0.1);
+}
+
+.auth-box h1 {
+  font-size: 1.8rem;
+  font-weight: 900;
+  color: #0f172a;
+  margin-bottom: 8px;
+  letter-spacing: -0.02em;
+}
+
+.auth-box p {
+  color: #64748b;
+  margin-bottom: 32px;
+  font-size: 15px;
+}
+
+/* Container to help position the button relative to the box */
+.auth-header-actions {
+  width: 100%;
+  max-width: 400px;
+  display: flex;
+  justify-content: flex-start;
+  margin-bottom: 12px;
+}
+
+.back-btn-styled {
+  background: #f1f5f9;
+  color: #64748b;
+  padding: 8px 16px;
+  border-radius: 99px;
+  font-size: 18px;
+  font-weight: 700;
+  border: 1px solid #e2e8f0;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  transition: all 0.2s ease;
+}
+
+.back-btn-styled:active {
+  transform: scale(0.95);
+  background: #e2e8f0;
+}
+
+/* SOCIAL BUTTONS */
+.apple-btn,
+.google-btn {
+  background-color: #000000;
+  color: #ffffff;
+  border: none;
+  border-radius: 6px;
+  font-weight: 600;
+  height: 44px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  width: 100%;
+  cursor: pointer;
+}
+
+.apple-btn {
+  background: #000;
+  color: white;
+  border: none;
+}
+
+.google-btn {
+  background: white;
+  color: #1f2937;
+  border: 1px solid #e2e8f0;
+}
+
+.apple-btn:active,
+.google-btn:active {
+  transform: scale(0.98);
+}
+
+/* DIVIDER */
+.divider {
+  margin: 24px 0;
+  position: relative;
+  border-bottom: 1px solid #e2e8f0;
+}
+
+.divider span {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  background: white;
+  padding: 0 12px;
+  color: #94a3b8;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+/* FORM INPUTS */
+.auth-form input {
+  width: 100%;
+  height: 52px;
+  padding: 0 16px;
+  border-radius: 12px;
+  border: 1px solid #e2e8f0;
+  background: #f8fafc;
+  font-size: 16px;
+  margin-bottom: 16px;
+  outline: none;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.auth-form input:focus {
+  background: white;
+  border-color: var(--primary) !important;
+  box-shadow: 0 0 0 4px rgba(79, 70, 229, 0.1);
+}
+
+.magic-link-btn {
+  width: 100%;
+  height: 54px;
+  background: #c9dbf3;
+  color: #879dbc;
+  border-radius: 12px;
+  border: none;
+  font-weight: 700;
+  font-size: 16px;
+  transition: all 0.3s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: not-allowed;
+}
+
+.magic-link-btn.btn-active {
+  background: var(--primary); /* Indigo */
+  color: white;
+  cursor: pointer;
+  box-shadow: 0 10px 15px -3px rgba(79, 70, 229, 0.3);
+}
+
+.magic-link-btn.btn-active:active {
+  transform: scale(0.98);
+}
+
+.spinner-small {
+  width: 20px;
+  height: 20px;
+  border: 3px solid rgba(255, 255, 255, 0.3);
+  border-radius: 50%;
+  border-top-color: #fff;
+  animation: spin 0.8s ease-in-out infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* ================================================================
+   6. GALLERY APP LAYOUT (POST-LOGIN)
+   ================================================================ */
+.app {
+  display: flex;
+  flex-direction: column;
+  width: 100vw;
+  height: 100dvh; /* Dynamic height for mobile bars */
+  overflow: hidden;
+  background: var(--bg-app);
+  position: fixed; /* Prevents background scroll on mobile */
+  inset: 0;
+}
+
+/* --- Controls Header --- */
+
+.controls {
+  display: flex;
+  flex-direction: column;
+  background: var(--bg-app);
+  padding-top: env(safe-area-inset-top, 4px);
+  padding-bottom: 8px;
+  position: sticky;
+  top: 0;
+  z-index: 2000;
+  width: 100%;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.05); /* Optional: subtle divider */
+}
+
+.app-title {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  width: 100%;
+  font-size: 1.2rem;
+  font-weight: 800;
+  margin: 4px 0;
+  text-transform: uppercase;
+  overflow: visible !important;
+}
+
+.photo-text {
+  background: linear-gradient(135deg, #1e293b 0%, #4f46e5 100%);
+  background-clip: text;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  display: inline-block;
+  margin-right: 6px;
+}
+
+.flip-animation {
+  display: inline-block;
+  color: #4f46e5; /* Bright blue/purple */
+
+  /* The "Safety" properties */
+  visibility: visible !important;
+  opacity: 1 !important;
+
+  /* The Animation */
+  animation: simple-flip 3s infinite linear;
+}
+
+@keyframes simple-flip {
+  0%,
+  75% {
+    transform: scaleX(1);
+  }
+  85% {
+    transform: scaleX(-1);
+  } /* Flips horizontally by mirroring */
+  100% {
+    transform: scaleX(1);
+  }
+}
+
+.flip-wrapper {
+  display: inline-block;
+  perspective: 1000px;
+  backface-visibility: visible;
+  -webkit-backface-visibility: visible;
+}
+
+.controls-row {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  padding: 0 12px;
+  box-sizing: border-box;
+  gap: 8px; /* Standard spacing between items */
+}
+
+.upload-main-btn {
+  width: 44px; /* Fixed size */
+  height: 44px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0; /* Prevents squishing */
+  background: var(--primary);
+  border-radius: 50%;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+.upload-main-btn:active {
+  /* Gives a nice "pressed" effect against the grey background */
+  background: #cbd5e1;
+  transform: scale(0.95);
+}
+
+.upload-main-btn svg {
+  width: 50px;
+  height: 50px;
+}
+
+/* --- Expanding Search Wrapper --- */
+.search-wrapper {
+  position: relative;
+  display: flex;
+  flex: 1; /* GROW to fill the space */
+  height: 44px;
+  min-width: 0; /* CRITICAL: Allows flex to work without overlapping */
+}
+.search-icon {
+  position: absolute;
+  left: 12px;
+  z-index: 5;
+  font-size: 18px;
+  color: #64748b;
+  pointer-events: none;
+}
+
+.search-input {
+  position: absolute;
+  left: 50%;
+  top: 0;
+  transform: translateX(-50%);
+  width: 100%;
+  height: 100%;
+  border: 2px solid #94a3b8;
+  box-sizing: border-box;
+  background: white;
+  font-size: 16px !important;
+  outline: none;
+  color: #1e293b;
+  transition: width 0.3s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.3s ease,
+    border-color 0.3s ease;
+  padding: 0 40px 0 40px;
+  border-radius: 10px;
+  z-index: 1;
+}
+
+/* Darker Placeholder text so it doesn't look "faded out" */
+.search-input::placeholder {
+  color: #64748b !important;
+  opacity: 1 !important;
+  font-weight: 500;
+  font-size: 16px;
+  white-space: nowrap;
+  text-indent: 0;
+}
+
+.search-input:focus {
+  width: calc(100vw - 40px);
+  border-color: var(--primary);
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.15);
+  z-index: 2100;
+}
+
+.search-clear-btn {
+  position: absolute;
+  right: 12px; /* Anchor it to the right inside the input */
+  top: 50%;
+  transform: translateY(-50%);
+  background: #cbd5e1;
+  color: red !important;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  border: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 28px;
+  font-weight: 900;
+  cursor: pointer;
+  z-index: 10;
+  padding: 0;
+  line-height: 1;
+  pointer-events: auto !important;
+}
+
+.search-clear-btn:active {
+  background: #94a3b8;
+  color: white;
+}
+
+.app:has(.search-input:focus) .main {
+  filter: grayscale(0.5) blur(2px);
+  opacity: 0.6;
+  pointer-events: none; /* Prevents clicking cards while searching */
+  transition: all 0.3s ease;
+}
+
+/* --- Main Gallery Area --- */
+.main {
+  flex: 1;
+  overflow-y: auto;
+  position: relative;
+  height: auto;
+  margin-bottom: 0;
+}
+
+.upload-main-btn {
+  /* Increase size slightly */
+  width: 60px;
+  height: 60px;
+
+  /* Flexbox settings */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  /* Styling to make it 'pop' */
+  background-color: var(--primary); /* Replace with your actual primary color */
+  color: white;
+  border-radius: 50%; /* Circle shape */
+
+  /* Layout constraints */
+  flex-shrink: 0;
+  cursor: pointer;
+  transition: transform 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275),
+    background-color 0.2s ease;
+
+  /* Shadow for depth */
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+/* Add a "pop" animation when tapped */
+.upload-main-btn:active {
+  transform: scale(0.9);
+  background-color: var(--primary-dark); /* Slightly darker on press */
+}
+
+/* Ensure the SVG inside stays centered and scales correctly */
+.upload-main-btn svg {
+  width: 32px;
+  height: 32px;
+  stroke: white;
+}
+.gallery {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 25px;
+  padding: 10px 15px 120px 15px !important;
+  overflow-y: auto;
+  touch-action: pan-y;
+  -webkit-overflow-scrolling: touch;
+  isolation: isolate;
+  position: relative;
+  z-index: 1;
+  background: var(--bg-app) !important;
+  pointer-events: auto;
+}
+
+/* --- Centered & Styled Upload Status --- */
+.gallery-upload-status {
+  display: flex;
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  padding: 20px 10px;
+  background: white;
+  border-bottom: 1px solid #e2e8f0;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+  animation: slideInDown 0.3s ease-out;
+}
+
+.gallery-upload-status p {
+  margin: 0 0 12px 0;
+  font-size: 18px; /* Larger text */
+  font-weight: 700;
+  color: #1e293b; /* Deep slate */
+  text-align: center;
+}
+
+/* Make the Progress Bar look sleek */
+.progress-bar-container {
+  width: 80%;
+  max-width: 300px;
+  height: 8px;
+  background: #f1f5f9;
+  border-radius: 99px;
+  overflow: hidden;
+  border-radius: 4px;
+  margin-top: 8px;
+}
+
+.progress-bar-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #4f46e5, #818cf8);
+  border-radius: 99px;
+  transition: width 0.3s ease;
+}
+
+/* Smooth entrance animation */
+@keyframes slideInDown {
+  from {
+    transform: translateY(-10px);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+/* ================================================================
+   7. DRAGGABLE CARDS & FLIP LOGIC
+   ================================================================ */
+.card-wrapper {
+  width: 85%;
+  max-width: 300px;
+  aspect-ratio: 3/4;
+  margin: 0 auto;
+  position: relative;
+  user-select: none;
+  -webkit-user-select: none;
+  pointer-events: auto;
+  perspective: 1000px;
+}
+
+.card-wrapper.selected {
+  outline: 4px solid var(--primary);
+  outline-offset: 4px;
+  border-radius: 16px;
+  transform: scale(1.02);
+}
+
+.card {
+  width: 100%;
+  height: 100%;
+  position: relative;
+  transform-style: preserve-3d;
+  transition: transform 0.8s cubic-bezier(0.4, 0, 0.2, 1);
+  will-change: transform;
+}
+
+.card.flipped {
+  transform: rotateY(180deg);
+  transform-style: preserve-3d;
+}
+
+.card-face {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  -webkit-backface-visibility: hidden !important;
+  backface-visibility: hidden !important;
+  border-radius: 16px;
+  overflow: hidden;
+  background: white;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+  transform: translateZ(1px);
+}
+
+/* FRONT SIDE STYLING */
+.card-front {
+  background: #f1f5f9;
+}
+
+.card-front img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  pointer-events: none;
+}
+
+/* BACK SIDE STYLING */
+.card-back {
+  transform: rotateY(180deg);
+  background: #ffffff;
+  display: flex;
+  flex-direction: column;
+  transform-style: preserve-3d;
+  z-index: 2;
+}
+
+.notes-content {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  padding: 10px 15px;
+  transform: translateZ(1px);
+}
+
+.notes-actions {
+  display: flex;
+  justify-content: center;
+  padding-top: 10px;
+}
+
+.flip-back-btn {
+  background: #eef2ff;
+  color: var(--primary);
+  border: 1px solid #c7d2fe;
+  border-radius: 99px;
+  padding: 10px 20px;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  pointer-events: auto !important; /* Force clickable */
+}
+
+/* SELECTION INDICATOR */
+.select-indicator.active {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  width: 34px;
+  height: 34px;
+  background-color: #007aff;
+  border: 2px solid white;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 99;
+  box-shadow: 0 3px 10px rgba(0, 0, 0, 0.3);
+  animation: popIn 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+.select-indicator.active::after {
+  content: "✓";
+  color: white;
+  font-size: 20px;
+  font-weight: 900;
+}
+
+@keyframes popIn {
+  0% {
+    transform: scale(0);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+/*7a. Landing Page Card Flip Styles */
+
+.landing-page-container .flip-card-group {
+  perspective: 1000px;
+  width: 280px;
+  height: 380px;
+  margin: 40px auto;
+  cursor: pointer;
+}
+
+.landing-page-container .flip-card-inner {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  transition: transform 0.8s cubic-bezier(0.4, 0, 0.2, 1);
+  transform-style: preserve-3d;
+}
+
+.landing-page-container .flip-card-inner.is-flipped {
+  transform: rotateY(180deg);
+}
+
+.landing-page-container .flip-card-front,
+.flip-card-back {
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+  border-radius: 20px;
+  overflow: hidden;
+  box-shadow: 0 15px 35px rgba(0, 0, 0, 0.1);
+}
+
+.landing-page-container .flip-card-back {
+  background: white;
+  transform: rotateY(180deg);
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  padding: 30px;
+  text-align: center;
+  border: 1px solid #eef2ff;
+}
+
+.landing-page-container .back-quote {
+  font-family: Georgia, serif;
+  font-style: italic;
+  font-size: 1.3rem;
+  color: #1e293b;
+  line-height: 1.5;
+}
+
+.touch-hint {
+  font-weight: 500;
+  font-size: 14px;
+  color: #4338ca;
+}
+
+.touch-hint-external {
+  color: #4338ca;
+}
+
+/* ================================================================
+   8. SIDEBAR & FOLDERS (MOBILE OPTIMIZED)
+   ================================================================ */
+
+.sidebar {
+  display: flex;
+  flex-direction: column; /* Stack Folders on top of Nav */
+  background: var(--bg-app); /* Matches your light grey bg */
+  padding-bottom: env(safe-area-inset-bottom); /* Fix for iPhone Notch */
+  z-index: 2000;
+}
+
+.nav-btn span,
+.folder-toggle span {
+  font-size: 20px; /* Slightly larger than the text for visual balance */
+}
+
+.nav-btn.active,
+.folder-toggle.active {
+  transition: font-size 0.2s ease;
+}
+
+/* Highlight effect when dragging an image OVER the button */
+.folder-hover-active {
+  background: #c7d2fe !important;
+  border: 2px dashed #4f46e5 !important;
+  transform: scale(1.05);
+  color: #312e81 !important;
+}
+
+@media (max-width: 768px) {
+  .gallery {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+/* 1. The Ribbon Container */
+.folder-list-container {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  height: 50px; /* Increased slightly to prevent clipping the X */
+  margin-top: 10px;
+  margin-bottom: 6px;
+  /* FORCE SCROLLING */
+  overflow-x: auto !important;
+  overflow-y: hidden !important;
+  white-space: nowrap;
+  border-bottom: 1px solid #eee;
+  /* This prevents the items from cramming */
+  flex-wrap: nowrap;
+  flex-shrink: 0;
+  /* Standard Scrollbar hiding */
+  scrollbar-width: none;
+  -webkit-overflow-scrolling: touch;
+
+  padding: 4px 8px !important;
+  background: rgba(255, 255, 255, 0.1);
+  backdrop-filter: blur(8px);
+  border-radius: 18px;
+  animation: slideUpFast 0.2s ease-out;
+}
+
+@keyframes slideUpFast {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* 2. The Folder Item */
+.folder-item {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  flex-shrink: 0 !important;
+  background: rgba(255, 255, 255, 0.7) !important;
+  border: 1px solid rgba(0, 0, 0, 0.1);
+  border-radius: 4px !important; /* Made slightly rounder */
+  height: 44px;
+  padding: 0 8px 0 14px;
+  transition: all 0.2s ease;
+  overflow: visible !important;
+}
+
+.folder-list-container::-webkit-scrollbar {
+  display: none;
+}
+
+.folder-input-overlay {
+  position: fixed;
+  top: 20%;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 90%;
+  max-width: 400px;
+  height: 60px;
+  background: white;
+  z-index: 99999;
+  display: flex;
+  align-items: center;
+  padding: 0 20px;
+  border-radius: 16px;
+  border: 3px solid var(--primary);
+  margin-top: env(safe-area-inset-top);
+  box-shadow: 0 0 0 100vmax rgba(0, 0, 0, 0.4), 0 10px 30px rgba(0, 0, 0, 0.2);
+  animation: slideInUp 0.2s ease-out;
+  transition: opacity 0.2s ease, transform 0.2s ease;
+  touch-action: none;
+}
+
+body:has(.folder-input-overlay) {
+  overflow: hidden;
+  position: fixed;
+  width: 100%;
+}
+
+.large-inline-input {
+  width: 100%;
+  height: 100%;
+  border: none !important;
+  outline: none !important;
+  background: transparent !important;
+  font-size: 20px !important; /* Prevents iOS auto-zoom on focus (keep >= 16px) */
+  font-weight: 800;
+  color: #1e293b;
+}
+.large-inline-input::placeholder {
+  color: #94a3b8;
+  font-weight: 500;
+  font-style: normal;
+}
+
+@keyframes slideInUp {
+  from {
+    opacity: 0;
+    transform: translateY(5px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.folder-label {
+  font-size: 17px;
+  font-weight: 600;
+  letter-spacing: -0.3px;
+  color: #1e293b;
+}
+
+.folder-item.active {
+  background: white !important; /* Keep it white so text/X stay visible */
+  border: 2px solid var(--primary) !important;
+  color: #1e293b;
+  z-index: 10; /* Ensure active folder sits above neighbors */
+}
+.folder-name-btn {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 4px;
+  background: transparent; /* Removes the grey box */
+  border: none;
+  cursor: pointer;
+  width: 100%;
+  text-align: left;
+}
+.folder-count-pill {
+  background: rgba(0, 0, 0, 0.08);
+  color: #000;
+  font-size: 12px;
+  font-weight: 700;
+  padding: 2px 8px;
+  border-radius: 12px;
+  transition: all 0.2s ease;
+}
+.folder-item.active .folder-count-pill {
+  background: rgba(255, 255, 255, 0.2);
+  color: white;
+}
+
+/* Hover/Drag effect: Make it slightly more opaque */
+.folder-item.folder-hover-active {
+  background: white !important;
+  border: 2px solid #4f46e5 !important;
+  transform: translateY(-2px);
+  z-index: 10;
+}
+
+.folder-item.active .folder-name-btn {
+  color: var(--primary) !important; /* Just color the text indigo */
+  background: none !important;
+}
+
+.delete-folder-btn {
+  font-size: 30px;
+  font-weight: 800;
+  color: rgb(241, 139, 139) !important;
+  background: rgba(255, 255, 255, 0.7);
+  border: none;
+  width: 44px;
+  height: 44px;
+  display: flex;
+  padding-left: 18px;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  position: relative; /* Changed from z-index: 20 to relative for layout stability */
+  z-index: 50; /* Higher than the folder-item.active */
+  opacity: 1 !important; /* Ensure no fade-out happens */
+}
+
+.delete-folder-btn:active {
+  color: #ef4444 !important;
+}
+
+.folder-item.active .delete-folder-btn {
+  background: rgba(255, 255, 255, 0.2);
+  color: white;
+  border: 1px solid rgba(255, 255, 255, 0.3);
+}
+
+/* ================================================================
+   9. OVERLAYS & STATUS INDICATORS
+   ================================================================ */
+.trash-zone {
+  width: 100%;
+  height: 50px;
+  max-width: 140px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  border-radius: 16px;
+  background: #fee2e2 !important; /* Light red wash */
+  color: #ef4444 !important;
+  border: 1px solid #fecaca;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+  transition: all 0.2s ease;
+}
+
+/* ONLY show red when an image is actually being hovered over the trash */
+.trash-zone.trash-over {
+  background: #ef4444 !important; /* Red background */
+  color: #ffffff !important; /* White icon */
+  border-color: #dc2626 !important;
+  transform: scale(1.05);
+}
+.trash-zone svg {
+  margin: 0 !important; /* Remove that 8px margin you had for the text */
+  stroke: currentColor; /* MAGIC: This forces the SVG to match the 'color' text property */
+  width: 30px;
+  height: 30px;
+  flex-shrink: 0;
+}
+
+/* ================================================================
+   10. DROP DOWN MENU
+   ================================================================ */
+
+/* Container to keep the menu anchored to the dots */
+.menu-container {
+  width: 44px; /* Matches upload button width for symmetry */
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  flex-shrink: 0; /* Prevents squishing */
+  position: relative;
+}
+
+.menu-trigger {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: none;
+  border: none;
+  font-size: 28px;
+  transition: opacity 0.2s ease;
+  outline: none;
+  flex-shrink: 0;
+  margin: 0;
+  cursor: pointer;
+  color: black;
+  font-weight: bold;
+  transition: opacity 0.2s ease;
+  outline: none;
+}
+
+/* Give a little visual feedback when you press the dots */
+.menu-trigger:active {
+  opacity: 1;
+}
+
+/* The floating menu box */
+.dropdown-menu {
+  position: absolute;
+  top: 45px;
+  right: 0;
+  width: 180px;
+  background: white;
+  border: 1px solid #e2e8f0;
+  border-radius: 14px;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.15);
+  z-index: 3000;
+  overflow: hidden;
+  padding: 4px;
+}
+
+.menu-item {
+  width: 100%;
+  padding: 12px 16px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background: none;
+  border: none;
+  border-bottom: 1px solid #f1f5f9;
+  font-size: 20px;
+  font-weight: 600;
+  color: #1e293b;
+  text-align: left;
+}
+
+.menu-item:last-child {
+  border-bottom: none;
+}
+
+.menu-item span {
+  font-size: 18px; /* For the emojis */
+}
+
+/* Add a nice "active" feel for touch */
+.menu-item:active {
+  background: #f8fafc;
+  color: var(--primary);
+}
+
+/* Visual divider for the bottom section */
+.menu-divider {
+  height: 1px;
+  background: #f1f5f9;
+  margin: 4px 8px;
+}
+
+/* Destructive action styling */
+.menu-item.delete-item {
+  border-bottom: none;
+  color: #ef4444; /* Red text */
+  margin-top: 8px;
+  border-top: 1px solid #fee2e2;
+}
+
+.menu-item.delete-item:active {
+  background: #fff5f5;
+  color: #d70015;
+}
+
+/* ================================================================
+   11. ELASTIC MAGIC (NAV BAR & TOASTS)
+   ================================================================ */
+
+/* Floating Elastic Nav Bar */
+.sidebar {
+  transition: transform 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275),
+    background-color 0.3s ease;
+}
+
+/* toast message */
+.toast-container {
+  position: fixed;
+  bottom: 160px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: auto;
+  z-index: 10001;
+  pointer-events: none;
+}
+
+.toast {
+  background: rgba(30, 41, 59, 0.98);
+  color: white;
+  padding: 12px 24px;
+  border-radius: 99px;
+  font-size: 16px;
+  font-weight: 700;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.25);
+  text-align: center;
+  white-space: nowrap;
+  animation: toast-in-out 3s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+}
+
+@keyframes toast-in-out {
+  0% {
+    transform: translateY(20px) scale(0.8);
+    opacity: 0;
+  }
+  15% {
+    transform: translateY(0) scale(1);
+    opacity: 1;
+  }
+  85% {
+    transform: translateY(0) scale(1);
+    opacity: 1;
+  }
+  100% {
+    transform: translateY(20px) scale(0.8);
+    opacity: 0;
+  }
+}
+
+/* Haptic-style feedback for button presses */
+.nav-btn:active,
+.upload-main-btn:active {
+  transform: scale(0.92);
+  transition: transform 0.1s ease;
+}
+
+/* 1. Force the items to sit side-by-side in a single row */
+.nav-bar-elastic {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  align-items: center;
+  justify-content: center;
+  gap: 15px;
+  width: 100%;
+  max-width: 400px;
+  margin: 0 auto;
+
+  padding: 10px 20px env(safe-area-inset-bottom);
+  background: transparent;
+}
+
+/* 2. Make the Home and Folder buttons share the space evenly */
+.nav-item-wrapper {
+  /* This tells the button: "Take up space, but never get wider than 140px" */
+  display: flex;
+  justify-content: center;
+  width: 100%;
+}
+
+/* 3. Ensure the buttons inside don't stretch vertically or look weird */
+
+.nav-btn {
+  width: 100%;
+  max-width: 150px;
+  height: 50px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 0 12px;
+  background: #f1f5f9;
+  color: #617b9d;
+  border-radius: 14px;
+  border: 1px solid rgba(0, 0, 0, 0.05);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+  transition: all 0.2s ease;
+  cursor: pointer;
+  font-size: 20px !important;
+  font-weight: 700 !important;
+  letter-spacing: 0.08em;
+}
+
+.nav-btn span {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Gallery Button (Primary Style) */
+.nav-btn.active {
+  background: #4f46e5; /* Indigo */
+  color: white;
+  border-radius: 14px;
+  border: none;
+  box-shadow: 0 4px 12px rgba(79, 70, 229, 0.2);
+}
+
+/* Ensure the buttons have their own distinct "pill" shape */
+.nav-btn,
+.trash-zone {
+  border-radius: 14px;
+  /* Add a subtle shadow here so they "float" above the gallery */
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+}
+
+/* Folder Menu Button (Secondary Style) */
+.folder-toggle {
+  background: #e0e7ff !important; /* Soft light blue/indigo wash */
+  color: #4338ca !important; /* Deep indigo text/icon */
+  border-radius: 14px;
+  border: 1px solid #c7d2fe;
+  font-weight: 700;
+  height: 50px;
+  flex: 1;
+}
+
+.folder-toggle.active {
+  background: #4338ca !important;
+  color: white !important;
+}
+
+/* 4. The Trash Zone Override */
+/* This makes the Trash slide in and push the other buttons slightly left */
+.trash-slide-wrapper {
+  flex: 0 0 90px;
+  display: flex;
+  justify-content: center;
+  margin-bottom: 4px;
+  overflow: hidden;
+  will-change: transform, opacity;
+  animation: trash-enter 0.25s ease-out;
+}
+/* 3. A cleaner, hardware-accelerated animation */
+@keyframes trash-enter {
+  0% {
+    transform: translate3d(20px, 0, 0);
+    opacity: 0;
+  }
+  100% {
+    transform: translate3d(0, 0, 0);
+    opacity: 1;
+  }
+}
+
+/* ================================================================
+   12. CUSTOM MENU POP-UP FOR EDITING & EDITOR OVERLAY
+   ================================================================ */
+
+/* Update your existing class */
+.custom-context-menu {
+  position: absolute;
+  bottom: 8px;
+  left: 50%;
+  transform: translateX(-50%);
+
+  /* Sizing: never wider than the photo */
+  width: 90%;
+  box-sizing: border-box;
+
+  background: white;
+  border-radius: 12px;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+  z-index: 5000;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  padding: 0;
+  margin: 0;
+}
+
+/* Bigger tap targets for the buttons */
+.custom-context-menu button {
+  width: 100%;
+  padding: 14px 0;
+  border: none;
+  background: white;
+  font-size: 16px;
+  font-weight: 600;
+  text-align: center;
+  border-bottom: 1px solid #eee;
+}
+
+.custom-context-menu button:last-child {
+  border-bottom: none;
+}
+
+@keyframes slideUpPop {
+  from {
+    opacity: 0;
+    transform: translate(-50%, 20px);
+  }
+  to {
+    opacity: 1;
+    transform: translate(-50%, 0);
+  }
+}
+
+.editor-overlay {
+  position: fixed;
+  inset: 0;
+  background-color: rgba(0, 0, 0, 0.95);
+  z-index: 9999;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.editor-wrapper-container {
+  position: absolute;
+  top: calc(env(safe-area-inset-top) + 20px);
+  bottom: calc(env(safe-area-inset-bottom) + 20px);
+  left: 4vw;
+  right: 4vw;
+  background: #fff;
+  border-radius: 24px;
+  display: flex;
+  flex-direction: column;
+  box-sizing: border-box !important;
+  overflow: visible !important;
+}
+
+.editor-wrapper-container > .filerobot-image-editor-root {
+  width: 100% !important;
+  height: 100% !important;
+  margin: auto !important;
+}
+
+.filerobot-image-editor-root {
+  width: 100% !important;
+  height: 100% !important;
+  overflow: visible !important;
+}
+
+.filerobot-edit-config-canvas-container,
+.SfxCanvas-root {
+  overflow: visible !important;
+  background: visible !important;
+}
+
+canvas.filerobot-edit-config-canvas {
+  max-width: 100% !important;
+  max-height: 100% !important;
+  transform: none !important;
+}
+
+/* ================================================================
+   13. TIPS MODAL & ZOOM OVERLAY
+   ================================================================ */
+
+.tips-modal {
+  background: white;
+  width: 90%;
+  max-width: 400px;
+  padding: 25px;
+  border-radius: 20px;
+  position: relative;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
+}
+
+.tips-section h3 {
+  color: #007aff; /* iOS Blue */
+  margin-bottom: 10px;
+  border-bottom: 1px solid #eee;
+  padding-bottom: 5px;
+}
+
+.tips-section ul {
+  list-style: none;
+  padding: 0;
+  margin-bottom: 20px;
+}
+
+.tips-section li {
+  margin-bottom: 12px;
+  font-size: 18px;
+  line-height: 1.4;
+}
+
+.done-btn {
+  width: 100%;
+  background: #007aff;
+  color: white;
+  font-size: 22px;
+  border: none;
+  padding: 12px;
+  border-radius: 12px;
+  font-weight: 600;
+  margin-top: 10px;
+}
+
+.zoom-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.85);
+  pointer-events: auto;
+}
+
+/* --- 1. THE GESTURE LAYER (Cards) --- */
+.card-wrapper {
+  /* Prevent scrolling while dragging, but avoid global 'none' */
+  touch-action: none;
+  /* Disable selection ONLY on the card itself to prevent accidental text highlighting during drag */
+  -webkit-user-select: none;
+  user-select: none;
+}
+
+/* --- 2. THE INTERACTIVE LAYER (Notes) --- */
+.notes-display {
+  cursor: pointer;
+  height: 100%;
+  width: 100%;
+}
+.meta-header {
+  border-bottom: 1px solid #f1f5f9;
+  padding-bottom: 5px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+.zoom-overlay {
+  /* Ensure the overlay is a completely fresh stacking context */
+  isolation: isolate;
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  /* Crucial: Reset user-select so children can override the parent 'none' */
+  -webkit-user-select: auto;
+  user-select: auto;
+}
+
+.zoomed-notes-box {
+  position: relative;
+  z-index: 10;
+  width: 90%;
+  max-width: 500px;
+  background: white;
+  padding: 20px;
+  border-radius: 20px;
+  /* Re-enable all pointer events for the modal box */
+  pointer-events: auto;
+}
+
+.zoomed-notes-box textarea {
+  /* Use 'auto' touch-action so iOS allows the cursor to move and the keyboard to trigger */
+  touch-action: auto;
+  /* Force text selection back on */
+  -webkit-user-select: text;
+  user-select: text;
+
+  width: 100%;
+  min-height: 150px;
+  padding: 12px;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  font-size: 16px; /* 16px prevents iOS from "zooming in" on focus */
+  resize: none;
+}
+
+.zoomed-notes-header {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+}
+
+.save-pill {
+  display: flex;
+  align-items: center;
+  background-color: #22c55e;
+  color: white;
+  padding: 4px 12px;
+  border-radius: 99px;
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  z-index: 9999 !important;
+  font-size: 11px;
+  font-weight: 800;
+  pointer-events: none;
+}
+
+@keyframes pillPop {
+  0% {
+    transform: scale(0.8);
+    opacity: 0;
+  }
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+.notes-close-footer {
+  width: 100%;
+  padding: 16px;
+  margin-top: 20px; /* Space between textarea and button */
+  border: none;
+  border-radius: 12px;
+  font-size: 18px;
+  font-weight: 700;
+  color: white;
+  cursor: pointer;
+
+  /* Layout */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  /* Ensure it doesn't get squished */
+  flex-shrink: 0;
+
+  /* Smooth feedback */
+  transition: all 0.3s ease;
+}
+
+/* Add a hover/active effect */
+.notes-close-footer:active {
+  transform: scale(0.98);
+}
+
+.saving-indicator {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  font-size: 11px;
+  font-weight: 600;
+  color: #94a3b8; /* Subtle slate grey */
+  font-style: italic;
+  pointer-events: none;
+  animation: pulse-saving 1.5s infinite;
+  z-index: 999;
+}
+
+@keyframes pulse-saving {
+  0% {
+    opacity: 0.4;
+  }
+  50% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0.4;
+  }
+}
+
+/* ================================================================
+   14. EMPTY GALLERY STYLING
+   ================================================================ */
+.empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 60vh; /* Centers it vertically in the main area */
+  text-align: center;
+  color: #64748b;
+  padding: 20px;
+}
+
+.empty-icon {
+  font-size: 64px;
+  margin-bottom: 16px;
+  opacity: 0.6;
+}
+
+.empty-state h2 {
+  font-size: 24px;
+  font-weight: 600;
+  margin-bottom: 8px;
+  color: #334155;
+}
+
+.empty-state p {
+  font-size: 18px;
+  max-width: 250px;
+  line-height: 1.5;
+}
+
+/* ================================================================
+   15. Privacy Modal
+   ================================================================ */
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.6); /* Dims the background */
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1000; /* Stays above the splash/landing page */
+}
+
+.modal-content {
+  background: white;
+  width: 90%;
+  max-width: 500px;
+  max-height: 80vh; /* Prevents it from going off-screen */
+  border-radius: 16px;
+  display: flex;
+  flex-direction: column;
+  padding: 20px;
+}
+
+.modal-body {
+  overflow-y: auto; /* Makes the policy text scrollable */
+  padding: 10px 0;
+  font-size: 14px;
+  line-height: 1.5;
+  color: #333;
+}
+
+.close-btn {
+  background: none;
+  border: none;
+  font-size: 24px;
+  cursor: pointer;
+}
+
+.confirm-btn {
+  width: 100%;
+  padding: 12px;
+  background-color: #4f46e5; /* Your Indigo color */
+  color: white;
+  border: none;
+  border-radius: 8px;
+  font-weight: bold;
+}
+
+.footer-link-btn {
+  background: none;
+  border: none;
+  padding: 0;
+  color: #4f46e5; /* Or your preferred link color */
+  font: inherit;
+  text-decoration: underline;
+  cursor: pointer;
+}

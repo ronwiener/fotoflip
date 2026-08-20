@@ -1,4 +1,5 @@
 import React from "react";
+import heroImage from "../assets/hero-lake.jpg";
 
 export default function LandingPage({ onEnter }) {
   return (
@@ -33,10 +34,7 @@ export default function LandingPage({ onEnter }) {
               <div className="flip-card-inner">
                 Front
                 <div className="flip-card-front">
-                  <img
-                    src="https://images.unsplash.com/photo-1501785888041-af3ef285b470?auto=format&fit=crop&w=500&q=80"
-                    alt="Front"
-                  />
+                  <img src={heroImage} alt="Front" />
                   <div className="hover-hint">Hover or tap here to Flip 🔄</div>
                 </div>
                 Back
