@@ -785,38 +785,30 @@ export default function App() {
       const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
       const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
 
-      // Safely get user access token
-      const { data: sessionData } = await supabase.auth.getSession();
-      const accessToken = sessionData?.session?.access_token || supabaseAnonKey;
-
       // REST Query Endpoint
       const url = `${supabaseUrl}/rest/v1/items?user_id=eq.${userId}&select=*&order=id.desc`;
 
-      console.log("📡 [fetchItems] Requesting URL:", url);
+      console.log("📡 [fetchItems] Fetching from endpoint:", url);
 
       const response = await fetch(url, {
         method: "GET",
         headers: {
-          Authorization: `Bearer ${accessToken}`,
+          Authorization: `Bearer ${supabaseAnonKey}`,
           apikey: supabaseAnonKey,
           "Content-Type": "application/json",
         },
       });
 
-      console.log("📡 [fetchItems] HTTP Status Code:", response.status);
+      console.log("📡 [fetchItems] Response HTTP status:", response.status);
 
       if (!response.ok) {
         const errText = await response.text();
-        console.error("❌ [fetchItems FAILED]:", response.status, errText);
+        console.error("❌ [fetchItems HTTP ERROR]:", response.status, errText);
         return;
       }
 
       const data = await response.json();
-      console.log(
-        "📦 [fetchItems SUCCESS] Raw DB items count:",
-        data.length,
-        data,
-      );
+      console.log("📦 [fetchItems SUCCESS] Rows fetched:", data.length, data);
 
       const formattedItems = data.map((item) => ({
         id: item.id,
@@ -828,7 +820,7 @@ export default function App() {
       }));
 
       console.log(
-        "🚀 [fetchItems] Setting state with items:",
+        "🚀 [fetchItems] Updating state with items:",
         formattedItems.length,
       );
       setItems(formattedItems);
