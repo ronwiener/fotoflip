@@ -997,10 +997,12 @@ export default function App() {
       // B. Verify User ID
       console.log("🔍 [STEP 3] Checking active user session...");
       let userId = session?.user?.id;
+      let accessToken = session?.access_token;
 
-      if (!userId) {
-        const { data: authData } = await supabase.auth.getUser();
-        userId = authData?.user?.id;
+      if (!userId || !accessToken) {
+        const { data: authData } = await supabase.auth.getSession();
+        userId = authData?.session?.user?.id;
+        accessToken = authData?.session?.access_token;
       }
 
       if (!userId) {
@@ -1019,43 +1021,54 @@ export default function App() {
 
       console.log("📂 [STEP 5] Storage Target Path:", filePath);
 
-      // D. Upload Native File Stream with 15s Abort Controller
+      // D. Upload via Direct Native Fetch to Force Network Request
       console.log(
-        "⏳ [STEP 6] Sending file to Supabase Storage bucket 'gallery'...",
+        "⏳ [STEP 6] Sending file via direct fetch to Supabase Storage bucket 'gallery'...",
       );
 
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), 15000);
 
+      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+      const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+      const uploadUrl = `${supabaseUrl}/storage/v1/object/gallery/${filePath}`;
+
       try {
-        const { data: storageData, error: uploadError } = await supabase.storage
-          .from("gallery")
-          .upload(filePath, file, {
-            contentType: file.type || "image/jpeg",
-            upsert: true,
-            signal: controller.signal,
-          });
+        const response = await fetch(uploadUrl, {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${accessToken || supabaseAnonKey}`,
+            apikey: supabaseAnonKey,
+            "Content-Type": file.type || "image/jpeg",
+            "x-upsert": "true",
+          },
+          body: file,
+          signal: controller.signal,
+        });
 
         clearTimeout(timeoutId);
 
-        if (uploadError) {
+        if (!response.ok) {
+          const errText = await response.text();
           console.error(
-            "❌ [STEP 6 FAILED] Storage Upload Error:",
-            uploadError.message,
+            "❌ [STEP 6 FAILED] Fetch Error:",
+            response.status,
+            errText,
           );
-          alert(`Storage Error: ${uploadError.message}`);
+          alert(`Storage Error (${response.status}): ${errText}`);
           return;
         }
 
+        const storageData = await response.json();
         console.log(
-          "✅ [STEP 6 SUCCESS] File uploaded to storage:",
+          "✅ [STEP 6 SUCCESS] File uploaded via direct fetch:",
           storageData,
         );
       } catch (uploadErr) {
         clearTimeout(timeoutId);
         if (uploadErr.name === "AbortError") {
           console.error(
-            "❌ [STEP 6 FAILED] Storage request timed out after 15 seconds.",
+            "❌ [STEP 6 FAILED] Direct fetch request timed out after 15 seconds.",
           );
           alert(
             "Storage upload timed out. Please check your network connection.",
