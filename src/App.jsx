@@ -785,11 +785,10 @@ export default function App() {
       const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
       const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
 
-      // 🔑 Get active user JWT session token for RLS authorization
+      // Get user session JWT token for Row Level Security (RLS)
       const { data: sessionData } = await supabase.auth.getSession();
       const accessToken = sessionData?.session?.access_token || supabaseAnonKey;
 
-      // REST Query Endpoint
       const url = `${supabaseUrl}/rest/v1/items?user_id=eq.${userId}&select=*&order=id.desc`;
 
       console.log(
@@ -800,7 +799,7 @@ export default function App() {
       const response = await fetch(url, {
         method: "GET",
         headers: {
-          Authorization: `Bearer ${accessToken}`, // 👈 Pass JWT session token here
+          Authorization: `Bearer ${accessToken}`,
           apikey: supabaseAnonKey,
           "Content-Type": "application/json",
         },
