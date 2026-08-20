@@ -985,6 +985,67 @@ export default function App() {
     }
   };
 
+  // --- Updated fetchItems Helper ---
+  const fetchItems = useCallback(async (userId, sessionToken) => {
+    if (!userId) {
+      console.warn("⚠️ [fetchItems] No userId provided. Aborting fetch.");
+      return;
+    }
+
+    console.log("🔍 [DEBUG] fetchItems called for userId:", userId);
+
+    try {
+      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+      const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+
+      const token = sessionToken || supabaseAnonKey;
+      const url = `${supabaseUrl}/rest/v1/items?user_id=eq.${userId}&select=*&order=id.desc`;
+
+      console.log(
+        "📡 [fetchItems] Fetching from endpoint with auth token:",
+        url,
+      );
+
+      const response = await fetch(url, {
+        method: "GET",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          apikey: supabaseAnonKey,
+          "Content-Type": "application/json",
+        },
+      });
+
+      console.log("📡 [fetchItems] Response HTTP status:", response.status);
+
+      if (!response.ok) {
+        const errText = await response.text();
+        console.error("❌ [fetchItems HTTP ERROR]:", response.status, errText);
+        return;
+      }
+
+      const data = await response.json();
+      console.log("📦 [fetchItems SUCCESS] Rows fetched:", data.length, data);
+
+      const formattedItems = data.map((item) => ({
+        id: item.id,
+        image_path: item.image_path,
+        notes: item.notes || "",
+        folder: item.folder || "",
+        flipped: item.flipped || false,
+        location_description: item.location_description || "",
+      }));
+
+      console.log(
+        "🚀 [fetchItems] Updating state with items:",
+        formattedItems.length,
+      );
+      setItems(formattedItems);
+    } catch (err) {
+      console.error("❌ [fetchItems CRASHED]:", err.message || err);
+    }
+  }, []);
+
+  // --- Complete Rewritten uploadToGallery ---
   const uploadToGallery = async (file) => {
     console.log("🚀 [STEP 1] uploadToGallery called for file:", file.name);
 
@@ -1083,7 +1144,7 @@ export default function App() {
           Authorization: `Bearer ${authToken}`,
           apikey: supabaseAnonKey,
           "Content-Type": "application/json",
-          Prefer: "return=representation", // Asks Supabase REST to return inserted row
+          Prefer: "return=representation",
         },
         body: JSON.stringify({
           image_path: filePath,
@@ -1111,9 +1172,9 @@ export default function App() {
         dbData,
       );
 
-      // F. Refresh Gallery State
+      // F. Step 8: Refresh Gallery State (Fixed variable reference)
       console.log("🔄 [STEP 8] Refreshing gallery items...");
-      await fetchItems(user.id, session?.access_token);
+      await fetchItems(userId, accessToken);
       console.log("✨ [COMPLETE] Upload flow finished successfully!");
     } catch (err) {
       console.error(
