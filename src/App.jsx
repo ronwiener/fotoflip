@@ -1003,7 +1003,7 @@ export default function App() {
 
       console.log("👤 [STEP 4] Uploading under User ID:", userId);
 
-      // C. Prepare Path & Payload (Converted to ArrayBuffer for desktop compatibility)
+      // C. Prepare Target Path
       const cleanFileName = file.name
         ? file.name.replace(/[^a-zA-Z0-9.-]/g, "_")
         : "photo.jpg";
@@ -1011,32 +1011,17 @@ export default function App() {
 
       console.log("📂 [STEP 5] Storage Target Path:", filePath);
 
-      // Convert payload to ArrayBuffer to prevent web stream freezes on desktop
-      const fileBuffer = await file.arrayBuffer();
-
-      // D. Upload to Supabase Storage with 10s Timeout
+      // D. Upload Native File Stream directly to Supabase Storage
       console.log(
         "⏳ [STEP 6] Sending file to Supabase Storage bucket 'gallery'...",
       );
 
-      const storageCall = supabase.storage
+      const { data: storageData, error: uploadError } = await supabase.storage
         .from("gallery")
-        .upload(filePath, fileBuffer, {
+        .upload(filePath, file, {
           contentType: file.type || "image/jpeg",
           upsert: true,
         });
-
-      const timeout = new Promise((_, reject) =>
-        setTimeout(
-          () => reject(new Error("Storage request timed out after 10 seconds")),
-          10000,
-        ),
-      );
-
-      const { data: storageData, error: uploadError } = await Promise.race([
-        storageCall,
-        timeout,
-      ]);
 
       if (uploadError) {
         console.error(
