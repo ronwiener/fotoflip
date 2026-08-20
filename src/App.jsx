@@ -770,36 +770,26 @@ export default function App() {
     hideSplash();
   }, []);
 
-  const fetchItems = useCallback(async (userId) => {
-    if (!userId) {
-      console.warn("⚠️ [fetchItems] No userId provided. Aborting fetch.");
-      return;
-    }
+  const fetchItems = useCallback(async (userId, sessionToken) => {
+    if (!userId) return;
 
-    console.log(
-      "🔍 [DEBUG] fetchItems called via direct fetch for userId:",
-      userId,
-    );
+    console.log("🔍 [DEBUG] fetchItems called for userId:", userId);
 
     try {
       const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
       const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
 
-      // Get user session JWT token for Row Level Security (RLS)
-      const { data: sessionData } = await supabase.auth.getSession();
-      const accessToken = sessionData?.session?.access_token || supabaseAnonKey;
+      // Fallback token check
+      const token = sessionToken || supabaseAnonKey;
 
       const url = `${supabaseUrl}/rest/v1/items?user_id=eq.${userId}&select=*&order=id.desc`;
 
-      console.log(
-        "📡 [fetchItems] Fetching from endpoint with auth token: ",
-        url,
-      );
+      console.log("📡 [fetchItems] Fetching from endpoint:", url);
 
       const response = await fetch(url, {
         method: "GET",
         headers: {
-          Authorization: `Bearer ${accessToken}`,
+          Authorization: `Bearer ${token}`,
           apikey: supabaseAnonKey,
           "Content-Type": "application/json",
         },
@@ -825,13 +815,9 @@ export default function App() {
         location_description: item.location_description || "",
       }));
 
-      console.log(
-        "🚀 [fetchItems] Updating state with items:",
-        formattedItems.length,
-      );
       setItems(formattedItems);
     } catch (err) {
-      console.error("❌ [fetchItems CRASHED]:", err.message || err);
+      console.error("❌ [fetchItems CRASHED]:", err);
     }
   }, []);
 
@@ -1127,7 +1113,7 @@ export default function App() {
 
       // F. Refresh Gallery State
       console.log("🔄 [STEP 8] Refreshing gallery items...");
-      await fetchItems(userId);
+      await fetchItems(user.id, session?.access_token);
       console.log("✨ [COMPLETE] Upload flow finished successfully!");
     } catch (err) {
       console.error(
