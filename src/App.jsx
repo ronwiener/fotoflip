@@ -770,57 +770,6 @@ export default function App() {
     hideSplash();
   }, []);
 
-  const fetchItems = useCallback(async (userId, sessionToken) => {
-    if (!userId) return;
-
-    console.log("🔍 [DEBUG] fetchItems called for userId:", userId);
-
-    try {
-      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-      const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
-
-      // Fallback token check
-      const token = sessionToken || supabaseAnonKey;
-
-      const url = `${supabaseUrl}/rest/v1/items?user_id=eq.${userId}&select=*&order=id.desc`;
-
-      console.log("📡 [fetchItems] Fetching from endpoint:", url);
-
-      const response = await fetch(url, {
-        method: "GET",
-        headers: {
-          Authorization: `Bearer ${token}`,
-          apikey: supabaseAnonKey,
-          "Content-Type": "application/json",
-        },
-      });
-
-      console.log("📡 [fetchItems] Response HTTP status:", response.status);
-
-      if (!response.ok) {
-        const errText = await response.text();
-        console.error("❌ [fetchItems HTTP ERROR]:", response.status, errText);
-        return;
-      }
-
-      const data = await response.json();
-      console.log("📦 [fetchItems SUCCESS] Rows fetched:", data.length, data);
-
-      const formattedItems = data.map((item) => ({
-        id: item.id,
-        image_path: item.image_path,
-        notes: item.notes || "",
-        folder: item.folder || "",
-        flipped: item.flipped || false,
-        location_description: item.location_description || "",
-      }));
-
-      setItems(formattedItems);
-    } catch (err) {
-      console.error("❌ [fetchItems CRASHED]:", err);
-    }
-  }, []);
-
   const loadFolders = useCallback(async (userId) => {
     if (!userId) return [];
     const { data, error } = await supabase
@@ -985,7 +934,7 @@ export default function App() {
     }
   };
 
-  // --- Updated fetchItems Helper ---
+  // --- Single fetchItems Definition ---
   const fetchItems = useCallback(async (userId, sessionToken) => {
     if (!userId) {
       console.warn("⚠️ [fetchItems] No userId provided. Aborting fetch.");
@@ -1045,7 +994,7 @@ export default function App() {
     }
   }, []);
 
-  // --- Complete Rewritten uploadToGallery ---
+  // --- Complete uploadToGallery ---
   const uploadToGallery = async (file) => {
     console.log("🚀 [STEP 1] uploadToGallery called for file:", file.name);
 
@@ -1172,7 +1121,7 @@ export default function App() {
         dbData,
       );
 
-      // F. Step 8: Refresh Gallery State (Fixed variable reference)
+      // F. Step 8: Refresh Gallery State
       console.log("🔄 [STEP 8] Refreshing gallery items...");
       await fetchItems(userId, accessToken);
       console.log("✨ [COMPLETE] Upload flow finished successfully!");
