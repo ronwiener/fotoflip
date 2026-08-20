@@ -977,10 +977,18 @@ export default function App() {
     console.log("🚀 [STEP 1] uploadToGallery called for file:", file.name);
 
     try {
-      // A. Safe Metadata Processing
+      // A. Safe Metadata Processing with 2s Circuit Breaker
       let metadataString = "Taken on Unknown Date in Unknown Location.";
       try {
-        metadataString = await processPhotoMetadata(file);
+        const metadataPromise = processPhotoMetadata(file);
+        const metadataTimeout = new Promise((resolve) =>
+          setTimeout(
+            () => resolve("Taken on Unknown Date in Unknown Location."),
+            2000,
+          ),
+        );
+
+        metadataString = await Promise.race([metadataPromise, metadataTimeout]);
         console.log("✅ [STEP 2] Metadata result:", metadataString);
       } catch (metaErr) {
         console.warn("⚠️ Metadata extraction failed, continuing:", metaErr);
@@ -1011,28 +1019,51 @@ export default function App() {
 
       console.log("📂 [STEP 5] Storage Target Path:", filePath);
 
-      // D. Upload Native File Stream directly to Supabase Storage
+      // D. Upload Native File Stream with 15s Abort Controller
       console.log(
         "⏳ [STEP 6] Sending file to Supabase Storage bucket 'gallery'...",
       );
 
-      const { data: storageData, error: uploadError } = await supabase.storage
-        .from("gallery")
-        .upload(filePath, file, {
-          contentType: file.type || "image/jpeg",
-          upsert: true,
-        });
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 15000);
 
-      if (uploadError) {
-        console.error(
-          "❌ [STEP 6 FAILED] Storage Upload Error:",
-          uploadError.message,
+      try {
+        const { data: storageData, error: uploadError } = await supabase.storage
+          .from("gallery")
+          .upload(filePath, file, {
+            contentType: file.type || "image/jpeg",
+            upsert: true,
+            signal: controller.signal,
+          });
+
+        clearTimeout(timeoutId);
+
+        if (uploadError) {
+          console.error(
+            "❌ [STEP 6 FAILED] Storage Upload Error:",
+            uploadError.message,
+          );
+          alert(`Storage Error: ${uploadError.message}`);
+          return;
+        }
+
+        console.log(
+          "✅ [STEP 6 SUCCESS] File uploaded to storage:",
+          storageData,
         );
-        alert(`Storage Error: ${uploadError.message}`);
-        return;
+      } catch (uploadErr) {
+        clearTimeout(timeoutId);
+        if (uploadErr.name === "AbortError") {
+          console.error(
+            "❌ [STEP 6 FAILED] Storage request timed out after 15 seconds.",
+          );
+          alert(
+            "Storage upload timed out. Please check your network connection.",
+          );
+          return;
+        }
+        throw uploadErr;
       }
-
-      console.log("✅ [STEP 6 SUCCESS] File uploaded to storage:", storageData);
 
       // E. Database Insert
       console.log("📝 [STEP 7] Inserting metadata row into 'items' table...");
