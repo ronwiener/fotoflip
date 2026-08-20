@@ -785,15 +785,22 @@ export default function App() {
       const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
       const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
 
+      // 🔑 Get active user JWT session token for RLS authorization
+      const { data: sessionData } = await supabase.auth.getSession();
+      const accessToken = sessionData?.session?.access_token || supabaseAnonKey;
+
       // REST Query Endpoint
       const url = `${supabaseUrl}/rest/v1/items?user_id=eq.${userId}&select=*&order=id.desc`;
 
-      console.log("📡 [fetchItems] Fetching from endpoint:", url);
+      console.log(
+        "📡 [fetchItems] Fetching from endpoint with auth token:",
+        url,
+      );
 
       const response = await fetch(url, {
         method: "GET",
         headers: {
-          Authorization: `Bearer ${supabaseAnonKey}`,
+          Authorization: `Bearer ${accessToken}`, // 👈 Pass JWT session token here
           apikey: supabaseAnonKey,
           "Content-Type": "application/json",
         },
