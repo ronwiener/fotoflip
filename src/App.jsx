@@ -1118,22 +1118,142 @@ export default function App() {
     }
   };
 
-  const updateNotes = async (id, newNotes) => {
+  const uploadToGallery = async (file) => {
+    console.log("🚀 [STEP 1] uploadToGallery called for file:", file.name);
+
     try {
-      const { error } = await supabase
-        .from("items")
-        .update({ notes: newNotes })
-        .eq("id", id);
+      // A. Safe Metadata Processing with 2s Circuit Breaker
+      let metadataString = "Taken on Unknown Date in Unknown Location.";
+      try {
+        const metadataPromise = processPhotoMetadata(file);
+        const metadataTimeout = new Promise((resolve) =>
+          setTimeout(
+            () => resolve("Taken on Unknown Date in Unknown Location."),
+            2000,
+          ),
+        );
 
-      if (error) throw error;
+        metadataString = await Promise.race([metadataPromise, metadataTimeout]);
+        console.log("✅ [STEP 2] Metadata result:", metadataString);
+      } catch (metaErr) {
+        console.warn("⚠️ Metadata extraction failed, continuing:", metaErr);
+      }
 
-      setItems((prevItems) =>
-        prevItems.map((item) =>
-          item.id === id ? { ...item, notes: newNotes } : item,
-        ),
+      // B. Verify User ID & Auth Token
+      console.log("🔍 [STEP 3] Checking active user session...");
+      let userId = session?.user?.id;
+      let accessToken = session?.access_token;
+
+      if (!userId || !accessToken) {
+        const { data: authData } = await supabase.auth.getSession();
+        userId = authData?.session?.user?.id;
+        accessToken = authData?.session?.access_token;
+      }
+
+      if (!userId) {
+        console.error("❌ [ERROR] No valid user ID found. Aborting upload.");
+        alert("Upload failed: User session not found. Please log in again.");
+        return;
+      }
+
+      console.log("👤 [STEP 4] Uploading under User ID:", userId);
+
+      // C. Prepare Target Path
+      const cleanFileName = file.name
+        ? file.name.replace(/[^a-zA-Z0-9.-]/g, "_")
+        : "photo.jpg";
+      const filePath = `${userId}/${Date.now()}-${cleanFileName}`;
+
+      console.log("📂 [STEP 5] Storage Target Path:", filePath);
+
+      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+      const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+      const authToken = accessToken || supabaseAnonKey;
+
+      // D. Step 6: Native Fetch Storage Upload
+      console.log(
+        "⏳ [STEP 6] Sending file via direct fetch to Supabase Storage bucket 'gallery'...",
       );
+
+      const uploadUrl = `${supabaseUrl}/storage/v1/object/gallery/${filePath}`;
+      const uploadResponse = await fetch(uploadUrl, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${authToken}`,
+          apikey: supabaseAnonKey,
+          "Content-Type": file.type || "image/jpeg",
+          "x-upsert": "true",
+        },
+        body: file,
+      });
+
+      if (!uploadResponse.ok) {
+        const errText = await uploadResponse.text();
+        console.error(
+          "❌ [STEP 6 FAILED] Storage Fetch Error:",
+          uploadResponse.status,
+          errText,
+        );
+        alert(`Storage Error (${uploadResponse.status}): ${errText}`);
+        return;
+      }
+
+      const storageData = await uploadResponse.json();
+      console.log(
+        "✅ [STEP 6 SUCCESS] File uploaded via direct fetch:",
+        storageData,
+      );
+
+      // E. Step 7: Native Fetch Database Row Insert
+      console.log(
+        "📝 [STEP 7] Inserting metadata row into 'items' table via direct fetch...",
+      );
+
+      const dbUrl = `${supabaseUrl}/rest/v1/items`;
+      const dbResponse = await fetch(dbUrl, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${authToken}`,
+          apikey: supabaseAnonKey,
+          "Content-Type": "application/json",
+          Prefer: "return=representation", // Asks Supabase REST to return inserted row
+        },
+        body: JSON.stringify({
+          image_path: filePath,
+          user_id: userId,
+          folder: activeFolder === "Select Folder" ? "" : activeFolder,
+          location_description: metadataString,
+          notes: "",
+        }),
+      });
+
+      if (!dbResponse.ok) {
+        const dbErrText = await dbResponse.text();
+        console.error(
+          "❌ [STEP 7 FAILED] Database Fetch Error:",
+          dbResponse.status,
+          dbErrText,
+        );
+        alert(`Database Error (${dbResponse.status}): ${dbErrText}`);
+        return;
+      }
+
+      const dbData = await dbResponse.json();
+      console.log(
+        "🎉 [STEP 7 SUCCESS] Database row created via fetch:",
+        dbData,
+      );
+
+      // F. Refresh Gallery State
+      console.log("🔄 [STEP 8] Refreshing gallery items...");
+      await fetchItems(userId);
+      console.log("✨ [COMPLETE] Upload flow finished successfully!");
     } catch (err) {
-      console.error("Error updating notes:", err);
+      console.error(
+        "💥 [CRITICAL ERROR] uploadToGallery crashed:",
+        err.message || err,
+      );
+      alert(`Upload crashed: ${err.message || err}`);
     }
   };
 
