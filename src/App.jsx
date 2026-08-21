@@ -343,7 +343,8 @@ function MainGalleryDropZone({ activeFolder, setActiveFolder }) {
 }
 
 function FolderButton({ f, activeFolder, setActiveFolder, onDelete, count }) {
-  const { isOver, setNodeRef } = useDroppable({ id: f });
+  // Added "FOLDER_" prefix so handleDragEnd can identify folder drop targets
+  const { isOver, setNodeRef } = useDroppable({ id: `FOLDER_${f}` });
 
   const className = [
     "folder-item",
@@ -377,6 +378,7 @@ function FolderButton({ f, activeFolder, setActiveFolder, onDelete, count }) {
 
 function TrashDropZone({ selectedCount, isDropping }) {
   const { isOver, setNodeRef } = useDroppable({ id: "TRASH_BIN" });
+
   const className = [
     "trash-zone",
     isOver ? "trash-over" : "",
@@ -749,13 +751,13 @@ export default function App() {
   const sensors = useSensors(
     useSensor(TouchSensor, {
       activationConstraint: {
-        delay: 300,
-        tolerance: 15,
+        delay: 100,
+        tolerance: 8,
       },
     }),
     useSensor(PointerSensor, {
       activationConstraint: {
-        distance: 20,
+        distance: 8,
       },
     }),
   );
@@ -1212,9 +1214,11 @@ export default function App() {
       ? "DELETE"
       : over.id === "Select Folder"
       ? ""
+      : over.id.startsWith("FOLDER_")
+      ? over.id.replace("FOLDER_", "")
       : over.id;
 
-    // 2. Perform Optimistic Update (Update local state immediately so UI remains snappy)
+    // 2. Perform Optimistic Update
     setItems((prev) =>
       isTrash
         ? prev.filter((i) => !draggedIds.includes(i.id))
@@ -1229,12 +1233,10 @@ export default function App() {
       if (isTrash) {
         setIsDropping(true);
 
-        // Find the matching storage paths for all dragged items
         const pathsToDelete = items
           .filter((i) => draggedIds.includes(i.id))
           .map((i) => i.image_path);
 
-        // A. Delete physical files from your actual storage bucket
         if (pathsToDelete.length > 0) {
           const { error: storageError } = await supabase.storage
             .from("gallery")
@@ -1245,7 +1247,6 @@ export default function App() {
           }
         }
 
-        // B. Delete the tracking row from your database table
         const { error: dbError } = await supabase
           .from("items")
           .delete()
@@ -1253,7 +1254,6 @@ export default function App() {
 
         if (dbError) throw dbError;
 
-        // Trigger a noticeable tactile rumble on mobile to confirm deletion
         try {
           await Haptics.impact({ style: ImpactStyle.Heavy });
         } catch (e) {
@@ -1262,7 +1262,6 @@ export default function App() {
 
         setTimeout(() => setIsDropping(false), 500);
       } else {
-        // Move file to a folder configuration path
         const { error } = await supabase
           .from("items")
           .update({ folder: targetFolder })
@@ -1273,7 +1272,6 @@ export default function App() {
       console.error("Database or storage sync failed:", err);
       alert("Changes could not be saved to the server: " + err.message);
 
-      // Safety Rollback: Refresh original state if server rejects delete action
       if (session?.user?.id) {
         await fetchItems(session.user.id);
       }
