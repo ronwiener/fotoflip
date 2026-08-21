@@ -853,10 +853,48 @@ export default function App() {
   useEffect(() => {
     let isMounted = true;
 
+    // Helper to fetch both items & folders concurrently
+    const loadUserData = async (userId, accessToken) => {
+      try {
+        await Promise.all([
+          fetchItems(userId, accessToken),
+          loadFolders(userId),
+        ]);
+      } catch (err) {
+        console.error("❌ Error fetching user data:", err);
+      }
+    };
+
+    // 1. Immediate cold-start check for existing session
+    const checkInitialSession = async () => {
+      try {
+        const {
+          data: { session },
+          error,
+        } = await supabase.auth.getSession();
+        if (error) throw error;
+
+        if (session?.user && isMounted) {
+          console.log(
+            "🟢 [COLD START] Active session found for:",
+            session.user.email,
+          );
+          setSession(session);
+          setView("gallery");
+          await loadUserData(session.user.id, session.access_token);
+        }
+      } catch (err) {
+        console.error("❌ Initial session check error:", err);
+      }
+    };
+
+    checkInitialSession();
+
+    // 2. Auth state change listener (TOKEN_REFRESHED, SIGNED_IN, SIGNED_OUT)
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange(async (event, session) => {
-      console.log("Auth Event:", event, "Session:", session?.user?.email);
+      console.log("📡 Auth Event:", event, "Session:", session?.user?.email);
 
       if (!isMounted) return;
 
@@ -866,18 +904,10 @@ export default function App() {
         setFolders([]);
         setView("landing");
       } else if (session?.user) {
-        // Handles SIGNED_IN, INITIAL_SESSION (when session exists), and TOKEN_REFRESHED
         setSession(session);
         setView("gallery");
 
-        try {
-          await Promise.all([
-            fetchItems(session.user.id),
-            loadFolders(session.user.id),
-          ]);
-        } catch (err) {
-          console.error("Error fetching user data:", err);
-        }
+        await loadUserData(session.user.id, session.access_token);
 
         // Clean up ?code= parameter safely without breaking the session
         if (
