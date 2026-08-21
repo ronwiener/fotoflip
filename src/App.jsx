@@ -802,7 +802,11 @@ export default function App() {
   }, []);
 
   const fetchItems = useCallback(async (userId, sessionToken) => {
-    if (!userId) return;
+    if (!userId) {
+      console.warn("⚠️ [fetchItems] No userId provided. Aborting fetch.");
+      return;
+    }
+
     try {
       const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
       const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
@@ -818,11 +822,31 @@ export default function App() {
         },
       });
 
-      if (!response.ok) return;
+      if (!response.ok) {
+        const errText = await response.text();
+        console.error("❌ [fetchItems HTTP ERROR]:", response.status, errText);
+        return;
+      }
+
       const data = await response.json();
-      setItems(data);
+
+      // Format data and construct full public imageURL for DraggableCard
+      const formattedItems = data.map((item) => ({
+        id: item.id,
+        image_path: item.image_path,
+        imageURL: item.image_path?.startsWith("http")
+          ? item.image_path
+          : `${supabaseUrl}/storage/v1/object/public/gallery/${item.image_path}`,
+        notes: item.notes || "",
+        folder: item.folder || "",
+        flipped: item.flipped || false,
+        location_description: item.location_description || "",
+        created_at: item.created_at,
+      }));
+
+      setItems(formattedItems);
     } catch (err) {
-      console.error("fetchItems error:", err);
+      console.error("❌ [fetchItems CRASHED]:", err.message || err);
     }
   }, []);
 
@@ -959,7 +983,6 @@ export default function App() {
     }
   };
 
-  // --- Complete uploadToGallery ---
   const uploadToGallery = async (file) => {
     console.log("🚀 [STEP 1] uploadToGallery called for file:", file.name);
 
@@ -1086,9 +1109,10 @@ export default function App() {
         dbData,
       );
 
-      // F. Step 8: Refresh Gallery State
+      // F. Step 8: Refresh Gallery State & Verify Image URL
       console.log("🔄 [STEP 8] Refreshing gallery items...");
       await fetchItems(userId, accessToken);
+
       console.log("✨ [COMPLETE] Upload flow finished successfully!");
     } catch (err) {
       console.error(
