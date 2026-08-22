@@ -18,7 +18,6 @@ import FilerobotImageEditor, {
 import {
   DndContext,
   closestCenter,
-  PointerSensor,
   TouchSensor,
   MouseSensor,
   useSensor,
@@ -1184,6 +1183,25 @@ export default function App() {
     );
   }, []);
 
+  const updateNotes = useCallback(async (id, newNotes) => {
+    // 1. Optimistic state update in local React state
+    setItems((prev) =>
+      prev.map((i) => (i.id === id ? { ...i, notes: newNotes } : i)),
+    );
+
+    // 2. Persist to Supabase database
+    const { error } = await supabase
+      .from("items")
+      .update({ notes: newNotes })
+      .eq("id", id);
+
+    if (error) {
+      console.error("❌ Failed to update notes in Supabase:", error.message);
+    } else {
+      console.log("✅ Note saved successfully for ID:", id);
+    }
+  }, []);
+
   const handleToggleSelect = useCallback((id) => {
     setSelectedIds((prev) => {
       const next = new Set(prev);
@@ -1760,6 +1778,7 @@ export default function App() {
                         onToggleSelect={handleToggleSelect}
                         onFlip={handleFlip}
                         onZoom={setZoomData}
+                        updateNotes={updateNotes}
                         onEditRequest={handleEditRequest}
                         onSelectEdit={handleSelectEditFromMenu}
                         editingId={editingId}
