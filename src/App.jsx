@@ -1220,12 +1220,28 @@ export default function App() {
       ),
     );
 
-    // 2. Direct non-blocking REST Call to Persist in Supabase
-    try {
+    // Helper function for sending the REST PATCH request
+    const sendPatchRequest = async (authToken) => {
       const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
       const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
 
-      // Grab JWT directly from localStorage to bypass Supabase lock deadlocks
+      return await fetch(`${supabaseUrl}/rest/v1/items?id=eq.${id}`, {
+        method: "PATCH",
+        headers: {
+          Authorization: `Bearer ${authToken}`,
+          apikey: supabaseAnonKey,
+          "Content-Type": "application/json",
+          Prefer: "return=representation",
+        },
+        body: JSON.stringify({ notes: newNotes }),
+      });
+    };
+
+    // 2. Direct non-blocking REST Call to Persist in Supabase
+    try {
+      const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+
+      // Fast path: Grab active token synchronously from localStorage
       let token = supabaseAnonKey;
       try {
         const storageKey = Object.keys(localStorage).find(
@@ -1243,16 +1259,21 @@ export default function App() {
         );
       }
 
-      const response = await fetch(`${supabaseUrl}/rest/v1/items?id=eq.${id}`, {
-        method: "PATCH",
-        headers: {
-          Authorization: `Bearer ${token}`,
-          apikey: supabaseAnonKey,
-          "Content-Type": "application/json",
-          Prefer: "return=representation", // 👈 Ensures Supabase returns updated rows
-        },
-        body: JSON.stringify({ notes: newNotes }),
-      });
+      let response = await sendPatchRequest(token);
+
+      // Bulletproof Fallback: If 401 (expired token), refresh session safely and retry once
+      if (response.status === 401) {
+        console.warn(
+          "⚠️ [updateNotes] Token expired (401). Attempting session refresh...",
+        );
+        const { data: sessionData } = await supabase.auth.getSession();
+        const refreshedToken = sessionData?.session?.access_token;
+
+        if (refreshedToken) {
+          console.log("🔄 [updateNotes] Token refreshed. Retrying request...");
+          response = await sendPatchRequest(refreshedToken);
+        }
+      }
 
       if (!response.ok) {
         const errText = await response.text();
