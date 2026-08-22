@@ -45,7 +45,7 @@ import {
 import LandingPage from "./LandingPage";
 import TipsModal from "./TipsModal";
 import { Haptics, ImpactStyle } from "@capacitor/haptics";
-
+import debouncePkg from "lodash.debounce";
 /* ---------- AUTH COMPONENT ---------- */
 
 // Add this helper function outside your Auth component to generate a safe nonce string
@@ -58,6 +58,8 @@ const generateNonce = (length = 32) => {
   }
   return result;
 };
+
+const debounce = debouncePkg.default || debouncePkg;
 
 function Auth({ setSession, setView, supabase }) {
   const [email, setEmail] = useState("");
@@ -431,7 +433,7 @@ function ZoomOverlay({ data, item, updateNotes, onClose }) {
     updateNotesRef.current = updateNotes;
   }, [updateNotes]);
 
-  // 2. Safely initialize debounced save using useMemo (prevents render errors)
+  // 2. Safely initialize debounced save using useMemo
   const debouncedSave = useMemo(
     () =>
       debounce(async (id, val) => {
@@ -468,7 +470,9 @@ function ZoomOverlay({ data, item, updateNotes, onClose }) {
   // Clean up debouncer on unmount
   useEffect(() => {
     return () => {
-      debouncedSave.cancel();
+      if (typeof debouncedSave?.cancel === "function") {
+        debouncedSave.cancel();
+      }
     };
   }, [debouncedSave]);
 
@@ -479,8 +483,10 @@ function ZoomOverlay({ data, item, updateNotes, onClose }) {
 
     console.log("🔍 [ZoomOverlay] Done button clicked!");
 
-    // 1. Cancel pending background debounced save
-    debouncedSave.cancel();
+    // 1. Cancel pending background debounced save safely
+    if (typeof debouncedSave?.cancel === "function") {
+      debouncedSave.cancel();
+    }
 
     // 2. Perform save directly so the latest keystroke is never missed
     try {
