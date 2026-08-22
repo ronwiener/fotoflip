@@ -469,33 +469,18 @@ function ZoomOverlay({ data, item, updateNotes, onClose }) {
 
   if (!data) return null;
 
-  const executeSaveAndClose = async (e) => {
-    if (e) {
-      e.stopPropagation();
-      e.preventDefault();
-    }
-
+  const executeSaveAndClose = async () => {
     console.log("🔍 [ZoomOverlay] Done/Close triggered!");
-
-    // 1. Cancel pending background debounced save
-    if (typeof debouncedSave?.cancel === "function") {
-      debouncedSave.cancel();
-    }
-
-    // 2. Perform final save directly with current local state
     try {
       setIsSaving(true);
       const targetId = data?.id || item?.id;
       if (typeof updateNotes === "function" && targetId) {
-        await updateNotes(targetId, localNotes);
+        await updateNotes(targetId, localNotes); // 👈 MUST BE AWAITED
       }
     } catch (err) {
       console.error("❌ [ZoomOverlay] Error during final save:", err);
     } finally {
       setIsSaving(false);
-      setIsSuccessClosing(true);
-
-      // 3. Immediately invoke onClose so parent card resets flip state
       console.log("🟢 [ZoomOverlay] Executing onClose()");
       if (typeof onClose === "function") {
         onClose();
@@ -1235,24 +1220,54 @@ export default function App() {
       ),
     );
 
-    // 2. Persist in Supabase using the SDK client
+    // 2. Direct non-blocking REST Call to Persist in Supabase
     try {
-      const { data, error } = await supabase
-        .from("items")
-        .update({ notes: newNotes })
-        .eq("id", id)
-        .select(); // returns updated rows
+      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+      const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
 
-      if (error) {
-        console.error("❌ [updateNotes Supabase SDK Error]:", error);
-        throw error;
+      // Grab JWT directly from localStorage to bypass Supabase lock deadlocks
+      let token = supabaseAnonKey;
+      try {
+        const storageKey = Object.keys(localStorage).find(
+          (key) => key.startsWith("sb-") && key.endsWith("-auth-token"),
+        );
+        if (storageKey) {
+          const parsed = JSON.parse(localStorage.getItem(storageKey));
+          if (parsed?.access_token) {
+            token = parsed.access_token;
+          }
+        }
+      } catch (e) {
+        console.warn(
+          "⚠️ Could not read session token from localStorage, using anon key.",
+        );
       }
 
+      const response = await fetch(`${supabaseUrl}/rest/v1/items?id=eq.${id}`, {
+        method: "PATCH",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          apikey: supabaseAnonKey,
+          "Content-Type": "application/json",
+          Prefer: "return=representation", // 👈 Ensures Supabase returns updated rows
+        },
+        body: JSON.stringify({ notes: newNotes }),
+      });
+
+      if (!response.ok) {
+        const errText = await response.text();
+        console.error("❌ [updateNotes REST ERROR]:", response.status, errText);
+        throw new Error(
+          `Supabase PATCH failed status ${response.status}: ${errText}`,
+        );
+      }
+
+      const data = await response.json();
       console.log("✅ [updateNotes REST SUCCESS]:", data);
 
       if (!data || data.length === 0) {
         console.warn(
-          "⚠️ [updateNotes Warning]: 0 rows updated! Check Supabase RLS policies for table 'items'.",
+          "⚠️ [RLS Warning]: 0 rows updated in Supabase! If notes reset on refresh, verify RLS UPDATE policy on 'items' table.",
         );
       }
 
@@ -1957,21 +1972,23 @@ export default function App() {
       {zoomData && (
         <ZoomOverlay
           data={zoomData}
-          item={visibleItems.find((i) => i.id === zoomData.id)}
+          item={items.find((i) => i.id === zoomData.id)}
           updateNotes={updateNotes}
           onClose={() => {
-            isClosingZoomRef.current = true;
-            const targetId = zoomData.id;
+            console.log(
+              "🟢 [App] Closing Zoom & Unflipping Card:",
+              zoomData.id,
+            );
 
-            // 1. Unflip card state explicitly
-            handleFlip(targetId); // or setItems toggling flipped to false
+            // 1. Unflip card state back to front
+            setItems((prevItems) =>
+              prevItems.map((item) =>
+                item.id === zoomData.id ? { ...item, flipped: false } : item,
+              ),
+            );
 
-            // 2. Clear modal overlay
+            // 2. Clear overlay
             setZoomData(null);
-
-            setTimeout(() => {
-              isClosingZoomRef.current = false;
-            }, 300);
           }}
         />
       )}
