@@ -1225,10 +1225,10 @@ export default function App() {
 
     if (!id) {
       console.error("❌ [updateNotes] Aborting: Missing ID!");
-      return;
+      return null;
     }
 
-    // 1. Force Local React State Update
+    // 1. Optimistic Local React State Update
     setItems((prevItems) =>
       prevItems.map((item) =>
         item.id === id ? { ...item, notes: newNotes } : item,
@@ -1239,8 +1239,11 @@ export default function App() {
     try {
       const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
       const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
-      const session = (await supabase.auth.getSession()).data.session;
-      const token = session?.access_token || supabaseAnonKey;
+
+      // Safely fetch session token
+      const sessionResult = await supabase.auth.getSession();
+      const token =
+        sessionResult?.data?.session?.access_token || supabaseAnonKey;
 
       const response = await fetch(`${supabaseUrl}/rest/v1/items?id=eq.${id}`, {
         method: "PATCH",
@@ -1256,12 +1259,17 @@ export default function App() {
       if (!response.ok) {
         const errText = await response.text();
         console.error("❌ [updateNotes REST ERROR]:", response.status, errText);
-      } else {
-        const data = await response.json();
-        console.log("✅ [updateNotes REST SUCCESS]:", data);
+        throw new Error(
+          `Supabase PATCH failed status ${response.status}: ${errText}`,
+        );
       }
+
+      const data = await response.json();
+      console.log("✅ [updateNotes REST SUCCESS]:", data);
+      return data;
     } catch (err) {
       console.error("❌ [updateNotes Exception]:", err);
+      throw err; // Re-throw so caller (ZoomOverlay) catches network errors
     }
   }, []);
 
@@ -1963,16 +1971,12 @@ export default function App() {
           updateNotes={updateNotes}
           onClose={() => {
             isClosingZoomRef.current = true;
-
-            // 1. Un-flip the card back to the front side
             const targetId = zoomData.id;
-            setItems((prevItems) =>
-              prevItems.map((item) =>
-                item.id === targetId ? { ...item, flipped: false } : item,
-              ),
-            );
 
-            // 2. Close the zoom modal
+            // 1. Unflip card state explicitly
+            handleFlip(targetId); // or setItems toggling flipped to false
+
+            // 2. Clear modal overlay
             setZoomData(null);
 
             setTimeout(() => {
