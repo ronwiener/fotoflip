@@ -413,14 +413,6 @@ function TrashDropZone({ selectedCount, isDropping }) {
   );
 }
 
-function debounce(func, wait) {
-  let timeout;
-  return function (...args) {
-    clearTimeout(timeout);
-    timeout = setTimeout(() => func.apply(this, args), wait);
-  };
-}
-
 function ZoomOverlay({ data, item, updateNotes, onClose }) {
   const textareaRef = useRef(null);
   const [localNotes, setLocalNotes] = useState(item?.notes || "");
