@@ -20,6 +20,7 @@ import {
   closestCenter,
   PointerSensor,
   TouchSensor,
+  MouseSensor,
   useSensor,
   useSensors,
   DragOverlay,
@@ -754,15 +755,18 @@ export default function App() {
   const isClosingZoomRef = useRef(false);
 
   const sensors = useSensors(
-    useSensor(TouchSensor, {
+    useSensor(MouseSensor, {
+      // Requires the mouse to move at least 5px before starting a drag.
+      // This allows normal clicks/flips to work while instantly initiating a drag on movement.
       activationConstraint: {
-        delay: 100,
-        tolerance: 5,
+        distance: 5,
       },
     }),
-    useSensor(PointerSensor, {
+    useSensor(TouchSensor, {
+      // Requires 100ms hold on mobile screens so page scrolling isn't hijacked
       activationConstraint: {
-        distance: 8,
+        delay: 100,
+        tolerance: 8,
       },
     }),
   );
