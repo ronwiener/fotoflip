@@ -1235,47 +1235,27 @@ export default function App() {
       ),
     );
 
-    // 2. Direct REST Call to Persist in Supabase
+    // 2. Persist in Supabase using the SDK client
     try {
-      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-      const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+      const { data, error } = await supabase
+        .from("items")
+        .update({ notes: newNotes })
+        .eq("id", id)
+        .select(); // returns updated rows
 
-      // Get access token synchronously from supabase client instance if available,
-      // fallback directly to anon key to prevent lock deadlocks on getSession()
-      let token = supabaseAnonKey;
-      try {
-        // Access current session from memory without blocking lock
-        const currentSession = supabase.auth.session
-          ? supabase.auth.session()
-          : null;
-        if (currentSession?.access_token) {
-          token = currentSession.access_token;
-        }
-      } catch {
-        // Fallback stays supabaseAnonKey
+      if (error) {
+        console.error("❌ [updateNotes Supabase SDK Error]:", error);
+        throw error;
       }
 
-      const response = await fetch(`${supabaseUrl}/rest/v1/items?id=eq.${id}`, {
-        method: "PATCH",
-        headers: {
-          Authorization: `Bearer ${token}`,
-          apikey: supabaseAnonKey,
-          "Content-Type": "application/json",
-          Prefer: "return=representation",
-        },
-        body: JSON.stringify({ notes: newNotes }),
-      });
+      console.log("✅ [updateNotes REST SUCCESS]:", data);
 
-      if (!response.ok) {
-        const errText = await response.text();
-        console.error("❌ [updateNotes REST ERROR]:", response.status, errText);
-        throw new Error(
-          `Supabase PATCH failed status ${response.status}: ${errText}`,
+      if (!data || data.length === 0) {
+        console.warn(
+          "⚠️ [updateNotes Warning]: 0 rows updated! Check Supabase RLS policies for table 'items'.",
         );
       }
 
-      const data = await response.json();
-      console.log("✅ [updateNotes REST SUCCESS]:", data);
       return data;
     } catch (err) {
       console.error("❌ [updateNotes Exception]:", err);
