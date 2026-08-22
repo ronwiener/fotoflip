@@ -425,49 +425,75 @@ function ZoomOverlay({ data, item, updateNotes, onClose }) {
   const [isSuccessClosing, setIsSuccessClosing] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
 
-  const debouncedUpdate = useMemo(
-    () =>
-      debounce(async (id, val) => {
-        setIsSaving(true);
-        await updateNotes(id, val);
-        setIsSaving(false);
-      }, 500),
-    [updateNotes],
+  // Keep a stable ref to updateNotes so the debounce never re-creates
+  const updateNotesRef = useRef(updateNotes);
+  useEffect(() => {
+    updateNotesRef.current = updateNotes;
+  }, [updateNotes]);
+
+  // Create a persistent debounced function using useRef
+  const debouncedSaveRef = useRef(
+    debounce(async (id, val) => {
+      setIsSaving(true);
+      if (updateNotesRef.current) {
+        await updateNotesRef.current(id, val);
+      }
+      setIsSaving(false);
+    }, 500),
   );
 
+  // Sync initial notes if item changes
+  useEffect(() => {
+    if (item?.notes !== undefined) {
+      setLocalNotes(item.notes);
+    }
+  }, [item?.notes]);
+
+  // Auto-focus textarea on open
   useEffect(() => {
     if (data && textareaRef.current) {
       const timer = setTimeout(() => {
-        textareaRef.current.focus();
-        const len = textareaRef.current.value.length;
-        textareaRef.current.setSelectionRange(len, len);
+        if (textareaRef.current) {
+          textareaRef.current.focus();
+          const len = textareaRef.current.value.length;
+          textareaRef.current.setSelectionRange(len, len);
+        }
       }, 150);
       return () => clearTimeout(timer);
     }
   }, [data]);
 
-  // 2. CLEAN UP DEBOUNCE
+  // Clean up debouncer on unmount
   useEffect(() => {
-    return () => debouncedUpdate.cancel?.();
-  }, [debouncedUpdate]);
+    return () => {
+      debouncedSaveRef.current?.cancel?.();
+    };
+  }, []);
 
   if (!data) return null;
 
-  const handleCloseClick = async (e) => {
+  const handleDoneOrClose = async (e) => {
     if (e) e.stopPropagation();
-    // Save one last time before exiting
-    await updateNotes(item.id, localNotes);
+
+    // Cancel any pending debounced calls and save immediately
+    debouncedSaveRef.current.cancel?.();
+
+    setIsSaving(true);
+    if (updateNotes && data.id) {
+      await updateNotes(data.id, localNotes);
+    }
+    setIsSaving(false);
+
     setIsSuccessClosing(true);
     setTimeout(() => {
       setIsSuccessClosing(false);
       onClose();
-    }, 1000);
+    }, 400); // Quick transition back
   };
 
   return (
-    <div className="zoom-overlay">
-      {/* BACKGROUND BACKDROP */}
-      <div className="overlay-backdrop" onClick={handleCloseClick} />
+    <div className="zoom-overlay" onClick={handleDoneOrClose}>
+      <div className="overlay-backdrop" />
 
       {data.type === "img" ? (
         <div
@@ -477,40 +503,38 @@ function ZoomOverlay({ data, item, updateNotes, onClose }) {
           <img src={data.url} alt="" className="zoomed-image" />
         </div>
       ) : (
-        <div
-          className="zoomed-notes-box"
-          /* Stop clicks from reaching the gallery behind */
-          onClick={(e) => e.stopPropagation()}
-        >
+        <div className="zoomed-notes-box" onClick={(e) => e.stopPropagation()}>
           <div className="zoomed-notes-header">
             <h3>Notes</h3>
-            {isSuccessClosing && <div className="save-pill">✓ Saved</div>}
+            {isSaving && <div className="save-pill">Saving...</div>}
+            {isSuccessClosing && (
+              <div className="save-pill success">✓ Saved</div>
+            )}
           </div>
 
           <textarea
             ref={textareaRef}
-            value={localNotes || ""}
+            value={localNotes}
             onPointerDown={(e) => e.stopPropagation()}
             onChange={(e) => {
               const val = e.target.value;
               setLocalNotes(val);
-              debouncedUpdate(data.id, val);
+              setIsSaving(true);
+              debouncedSaveRef.current(data.id, val);
             }}
             placeholder="Write notes here..."
           />
 
           <button
+            type="button"
             className="notes-close-footer"
-            onClick={handleCloseClick}
+            onClick={handleDoneOrClose}
             style={{
               backgroundColor: isSuccessClosing ? "#22c55e" : "#64748b",
+              cursor: "pointer",
             }}
           >
-            {isSuccessClosing
-              ? "✓ Saved"
-              : isSaving
-              ? "Auto-saving..."
-              : "Done"}
+            {isSuccessClosing ? "✓ Saved" : "Done"}
           </button>
         </div>
       )}
