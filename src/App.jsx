@@ -475,20 +475,31 @@ function ZoomOverlay({ data, item, updateNotes, onClose }) {
   const handleDoneOrClose = async (e) => {
     if (e) e.stopPropagation();
 
-    // Cancel any pending debounced calls and save immediately
-    debouncedSaveRef.current.cancel?.();
-
-    setIsSaving(true);
-    if (updateNotes && data.id) {
-      await updateNotes(data.id, localNotes);
+    // 1. Cancel any pending background debounced saves
+    if (debouncedSaveRef.current?.cancel) {
+      debouncedSaveRef.current.cancel();
     }
-    setIsSaving(false);
 
-    setIsSuccessClosing(true);
-    setTimeout(() => {
-      setIsSuccessClosing(false);
-      onClose();
-    }, 400); // Quick transition back
+    // 2. Perform save and ensure onClose ALWAYS fires
+    try {
+      setIsSaving(true);
+      if (typeof updateNotes === "function" && data?.id) {
+        await updateNotes(data.id, localNotes);
+      }
+    } catch (err) {
+      console.error("❌ Note save caught error:", err);
+    } finally {
+      setIsSaving(false);
+      setIsSuccessClosing(true);
+
+      // 3. Close the modal after a quick 150ms visual indicator
+      setTimeout(() => {
+        setIsSuccessClosing(false);
+        if (typeof onClose === "function") {
+          onClose();
+        }
+      }, 150);
+    }
   };
 
   return (
