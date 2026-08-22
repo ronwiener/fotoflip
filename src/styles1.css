@@ -806,6 +806,17 @@ img {
 /* ================================================================
    7. DRAGGABLE CARDS & FLIP LOGIC
    ================================================================ */
+/* Prevent native desktop image dragging from hijacking dnd-kit */
+
+.gallery img,
+.card-wrapper img,
+.card-face img {
+  -webkit-user-drag: none;
+  user-select: none;
+  -webkit-user-select: none;
+  pointer-events: none; /* Passes mouse clicks straight to dnd-kit's wrapper */
+}
+
 .card-wrapper {
   width: 85%;
   max-width: 300px;

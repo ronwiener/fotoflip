@@ -606,7 +606,12 @@ const DraggableCard = memo(function DraggableCard({
           onClick={handleFrontClick}
         >
           {isSelected && <div className="select-indicator active">✓</div>}
-          <img src={item.imageURL} alt="" draggable="false" />
+          <img
+            src={item.imageURL}
+            alt=""
+            draggable="false"
+            style={{ pointerEvents: "none", userSelect: "none" }}
+          />
         </div>
 
         {/* BACK SIDE */}
@@ -752,7 +757,7 @@ export default function App() {
     useSensor(TouchSensor, {
       activationConstraint: {
         delay: 100,
-        tolerance: 8,
+        tolerance: 5,
       },
     }),
     useSensor(PointerSensor, {
