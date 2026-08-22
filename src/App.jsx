@@ -1211,46 +1211,63 @@ export default function App() {
   }, []);
 
   const updateNotes = useCallback(async (id, newNotes) => {
-    console.log("📥 [updateNotes] Triggered for Item ID:", id);
-    console.log("📥 [updateNotes] New Content:", newNotes);
+    console.log(
+      "📥 [updateNotes] Triggered for Item ID:",
+      id,
+      "Content:",
+      newNotes,
+    );
 
     if (!id) {
       console.error("❌ [updateNotes] Aborting: Missing ID!");
-      return false;
+      return;
     }
 
-    // 1. Optimistic Local React State Update
+    // 1. Optimistic React State Update
     setItems((prev) =>
       prev.map((item) =>
         item.id === id ? { ...item, notes: newNotes } : item,
       ),
     );
 
-    // 2. Database Persist to Supabase
+    // 2. Direct REST PATCH Call matching fetchItems auth
     try {
-      const { data, error } = await supabase
-        .from("items")
-        .update({ notes: newNotes })
-        .eq("id", id)
-        .select();
+      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+      const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
 
-      if (error) {
-        console.error("❌ [updateNotes] Supabase DB Error:", error);
-        return false;
+      // Get current active session token if available
+      const session = (await supabase.auth.getSession()).data.session;
+      const token = session?.access_token || supabaseAnonKey;
+
+      const url = `${supabaseUrl}/rest/v1/items?id=eq.${id}`;
+
+      const response = await fetch(url, {
+        method: "PATCH",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          apikey: supabaseAnonKey,
+          "Content-Type": "application/json",
+          Prefer: "return=representation",
+        },
+        body: JSON.stringify({ notes: newNotes }),
+      });
+
+      if (!response.ok) {
+        const errText = await response.text();
+        console.error("❌ [updateNotes REST ERROR]:", response.status, errText);
+        return;
       }
 
-      console.log("✅ [updateNotes] Supabase DB Success Result:", data);
+      const updatedRows = await response.json();
+      console.log("✅ [updateNotes REST SUCCESS]:", updatedRows);
 
-      if (!data || data.length === 0) {
+      if (!updatedRows || updatedRows.length === 0) {
         console.warn(
-          "⚠️ [updateNotes] DB query returned 0 updated rows! The ID may not exist in Supabase or RLS is blocking updates.",
+          "⚠️ [updateNotes] 0 rows updated! Check if item ID exists in DB or if RLS is blocking updates.",
         );
       }
-
-      return true;
     } catch (err) {
-      console.error("❌ [updateNotes] Exception during update:", err);
-      return false;
+      console.error("❌ [updateNotes CRASHED]:", err.message || err);
     }
   }, []);
 
