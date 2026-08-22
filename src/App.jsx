@@ -1217,7 +1217,7 @@ export default function App() {
 
   const updateNotes = useCallback(async (id, newNotes) => {
     console.log(
-      "📥 [updateNotes] Triggered for Item ID:",
+      "📥 [updateNotes Execution] Item ID:",
       id,
       "Content:",
       newNotes,
@@ -1228,25 +1228,21 @@ export default function App() {
       return;
     }
 
-    // 1. Optimistic React State Update
-    setItems((prev) =>
-      prev.map((item) =>
+    // 1. Force Local React State Update
+    setItems((prevItems) =>
+      prevItems.map((item) =>
         item.id === id ? { ...item, notes: newNotes } : item,
       ),
     );
 
-    // 2. Direct REST PATCH Call matching fetchItems auth
+    // 2. Direct REST Call to Persist in Supabase
     try {
       const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
       const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
-
-      // Get current active session token if available
       const session = (await supabase.auth.getSession()).data.session;
       const token = session?.access_token || supabaseAnonKey;
 
-      const url = `${supabaseUrl}/rest/v1/items?id=eq.${id}`;
-
-      const response = await fetch(url, {
+      const response = await fetch(`${supabaseUrl}/rest/v1/items?id=eq.${id}`, {
         method: "PATCH",
         headers: {
           Authorization: `Bearer ${token}`,
@@ -1260,19 +1256,12 @@ export default function App() {
       if (!response.ok) {
         const errText = await response.text();
         console.error("❌ [updateNotes REST ERROR]:", response.status, errText);
-        return;
-      }
-
-      const updatedRows = await response.json();
-      console.log("✅ [updateNotes REST SUCCESS]:", updatedRows);
-
-      if (!updatedRows || updatedRows.length === 0) {
-        console.warn(
-          "⚠️ [updateNotes] 0 rows updated! Check if item ID exists in DB or if RLS is blocking updates.",
-        );
+      } else {
+        const data = await response.json();
+        console.log("✅ [updateNotes REST SUCCESS]:", data);
       }
     } catch (err) {
-      console.error("❌ [updateNotes CRASHED]:", err.message || err);
+      console.error("❌ [updateNotes Exception]:", err);
     }
   }, []);
 
@@ -1974,7 +1963,18 @@ export default function App() {
           updateNotes={updateNotes}
           onClose={() => {
             isClosingZoomRef.current = true;
+
+            // 1. Un-flip the card back to the front side
+            const targetId = zoomData.id;
+            setItems((prevItems) =>
+              prevItems.map((item) =>
+                item.id === targetId ? { ...item, flipped: false } : item,
+              ),
+            );
+
+            // 2. Close the zoom modal
             setZoomData(null);
+
             setTimeout(() => {
               isClosingZoomRef.current = false;
             }, 300);
