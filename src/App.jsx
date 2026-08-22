@@ -1211,21 +1211,22 @@ export default function App() {
   }, []);
 
   const updateNotes = useCallback(async (id, newNotes) => {
-    console.log(
-      "📥 [App.jsx updateNotes CALLED] ID:",
-      id,
-      "New Notes:",
-      newNotes,
-    );
+    console.log("📥 [updateNotes] Triggered for Item ID:", id);
+    console.log("📥 [updateNotes] New Content:", newNotes);
 
-    if (!id) return false;
+    if (!id) {
+      console.error("❌ [updateNotes] Aborting: Missing ID!");
+      return false;
+    }
 
-    // 1. Optimistic state update in local React state
+    // 1. Optimistic Local React State Update
     setItems((prev) =>
-      prev.map((i) => (i.id === id ? { ...i, notes: newNotes } : i)),
+      prev.map((item) =>
+        item.id === id ? { ...item, notes: newNotes } : item,
+      ),
     );
 
-    // 2. Persist to Supabase database
+    // 2. Database Persist to Supabase
     try {
       const { data, error } = await supabase
         .from("items")
@@ -1234,16 +1235,21 @@ export default function App() {
         .select();
 
       if (error) {
-        console.error(
-          "❌ [App.jsx updateNotes] Supabase error:",
-          error.message,
-        );
+        console.error("❌ [updateNotes] Supabase DB Error:", error);
         return false;
       }
-      console.log("✅ [App.jsx updateNotes] Saved successfully in DB:", data);
+
+      console.log("✅ [updateNotes] Supabase DB Success Result:", data);
+
+      if (!data || data.length === 0) {
+        console.warn(
+          "⚠️ [updateNotes] DB query returned 0 updated rows! The ID may not exist in Supabase or RLS is blocking updates.",
+        );
+      }
+
       return true;
     } catch (err) {
-      console.error("❌ [App.jsx updateNotes] Crash during save:", err);
+      console.error("❌ [updateNotes] Exception during update:", err);
       return false;
     }
   }, []);
