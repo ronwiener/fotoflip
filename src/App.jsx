@@ -45,7 +45,6 @@ import {
 import LandingPage from "./LandingPage";
 import TipsModal from "./TipsModal";
 import { Haptics, ImpactStyle } from "@capacitor/haptics";
-import debounce from "lodash.debounce";
 
 /* ---------- AUTH COMPONENT ---------- */
 
