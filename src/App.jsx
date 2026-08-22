@@ -472,36 +472,31 @@ function ZoomOverlay({ data, item, updateNotes, onClose }) {
 
   if (!data) return null;
 
-  const handleDoneOrClose = async (e) => {
+  const handleDoneOrClose = (e) => {
     if (e) e.stopPropagation();
+
     console.log("🔍 [ZoomOverlay] Done button clicked!");
-    console.log("🔍 [ZoomOverlay] Current data state:", data);
-    console.log("🔍 [ZoomOverlay] Current localNotes:", localNotes);
-    // 1. Cancel any pending background debounced saves
+
+    // Cancel pending debounced save
     if (debouncedSaveRef.current?.cancel) {
       debouncedSaveRef.current.cancel();
     }
 
-    // 2. Perform save and ensure onClose ALWAYS fires
-    try {
-      setIsSaving(true);
-      if (typeof updateNotes === "function" && data?.id) {
-        await updateNotes(data.id, localNotes);
-      }
-    } catch (err) {
-      console.error("❌ Note save caught error:", err);
-    } finally {
-      setIsSaving(false);
-      setIsSuccessClosing(true);
-
-      // 3. Close the modal after a quick 150ms visual indicator
-      setTimeout(() => {
-        setIsSuccessClosing(false);
-        if (typeof onClose === "function") {
-          onClose();
-        }
-      }, 150);
+    // Trigger save non-blockingly
+    if (typeof updateNotes === "function" && data?.id) {
+      updateNotes(data.id, localNotes);
     }
+
+    setIsSuccessClosing(true);
+
+    // Close the overlay instantly
+    setTimeout(() => {
+      setIsSuccessClosing(false);
+      if (typeof onClose === "function") {
+        console.log("🟢 [ZoomOverlay] Triggering onClose()");
+        onClose();
+      }
+    }, 150);
   };
 
   return (
@@ -1221,7 +1216,6 @@ export default function App() {
   }, []);
 
   const updateNotes = useCallback(async (id, newNotes) => {
-    // 1. Optimistic state update in local React state
     console.log(
       "📥 [App.jsx updateNotes CALLED] ID:",
       id,
@@ -1229,24 +1223,33 @@ export default function App() {
       newNotes,
     );
 
-    if (!id) {
-      console.error("❌ [App.jsx updateNotes] No ID provided!");
-      return;
-    }
+    if (!id) return false;
+
+    // 1. Optimistic state update in local React state
     setItems((prev) =>
       prev.map((i) => (i.id === id ? { ...i, notes: newNotes } : i)),
     );
 
     // 2. Persist to Supabase database
-    const { error } = await supabase
-      .from("items")
-      .update({ notes: newNotes })
-      .eq("id", id);
+    try {
+      const { data, error } = await supabase
+        .from("items")
+        .update({ notes: newNotes })
+        .eq("id", id)
+        .select();
 
-    if (error) {
-      console.error("❌ Failed to update notes in Supabase:", error.message);
-    } else {
-      console.log("✅ Note saved successfully for ID:", id);
+      if (error) {
+        console.error(
+          "❌ [App.jsx updateNotes] Supabase error:",
+          error.message,
+        );
+        return false;
+      }
+      console.log("✅ [App.jsx updateNotes] Saved successfully in DB:", data);
+      return true;
+    } catch (err) {
+      console.error("❌ [App.jsx updateNotes] Crash during save:", err);
+      return false;
     }
   }, []);
 
