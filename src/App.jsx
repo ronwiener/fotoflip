@@ -567,14 +567,23 @@ const DraggableCard = memo(function DraggableCard({
     isDragging,
   } = useSortable({
     id: item.id,
-    disabled: item.flipped, // Correct: Disable dragging when flipped
+    disabled: item.flipped, // Disable dragging when flipped
   });
 
   const longPressTimer = useRef(null);
   const isLongPressActive = useRef(false);
+  const tapStartRef = useRef({ x: 0, y: 0 });
 
-  const handlePointerDown = () => {
+  const clearTimer = () => {
+    if (longPressTimer.current) {
+      clearTimeout(longPressTimer.current);
+      longPressTimer.current = null;
+    }
+  };
+
+  const handlePointerDown = (e) => {
     isLongPressActive.current = false;
+    tapStartRef.current = { x: e.clientX, y: e.clientY };
 
     if (selectedIds.size === 0 && !item.flipped) {
       longPressTimer.current = setTimeout(() => {
@@ -589,35 +598,36 @@ const DraggableCard = memo(function DraggableCard({
           }
         }
 
-        console.log("DEBUG: Triggering selection for ID:", item.id);
         onToggleSelect(item.id);
         isLongPressActive.current = true;
       }, 350);
     }
   };
 
-  const clearTimer = () => {
-    if (longPressTimer.current) {
-      clearTimeout(longPressTimer.current);
-      longPressTimer.current = null;
-    }
-  };
+  const handlePointerUp = (e) => {
+    clearTimer();
 
-  const handleFrontClick = (e) => {
-    e.stopPropagation();
-    if (isLongPressActive.current) return;
-    if (selectedIds.size > 0) {
-      onToggleSelect(item.id);
-    } else {
-      onFlip(item.id);
+    // If long press didn't trigger, measure movement distance
+    if (!isLongPressActive.current) {
+      const deltaX = Math.abs(e.clientX - tapStartRef.current.x);
+      const deltaY = Math.abs(e.clientY - tapStartRef.current.y);
+
+      // If finger moved less than 8px, treat it as an explicit tap to flip!
+      if (deltaX < 8 && deltaY < 8) {
+        if (selectedIds.size > 0) {
+          onToggleSelect(item.id);
+        } else {
+          onFlip(item.id);
+        }
+      }
     }
   };
 
   const style = {
     transform: CSS.Transform.toString(transform),
     transition,
-    zIndex: isDragging ? 1000 : item.flipped ? 10 : 1, // Lift flipped cards slightly
-    touchAction: item.flipped ? "auto" : "none", // Allow scrolling on the back side
+    zIndex: isDragging ? 1000 : item.flipped ? 10 : 1,
+    touchAction: item.flipped ? "auto" : "none",
   };
 
   return (
@@ -632,10 +642,10 @@ const DraggableCard = memo(function DraggableCard({
           className="card-face card-front"
           {...(!item.flipped ? { ...attributes, ...listeners } : {})}
           onPointerDown={handlePointerDown}
-          onPointerUp={clearTimer}
+          onPointerUp={handlePointerUp} // 👈 Attached actual handlePointerUp function here!
           onPointerLeave={clearTimer}
           onPointerMove={clearTimer}
-          onClick={handleFrontClick}
+          onClick={(e) => e.stopPropagation()}
         >
           {isSelected && <div className="select-indicator active">✓</div>}
           <img
@@ -652,7 +662,6 @@ const DraggableCard = memo(function DraggableCard({
           onPointerDown={(e) => e.stopPropagation()}
           onClick={(e) => {
             e.stopPropagation();
-            // This is where we trigger the Zoom!
             onZoom({ id: item.id, type: "notes", url: item.imageURL });
           }}
           style={{
@@ -676,31 +685,17 @@ const DraggableCard = memo(function DraggableCard({
           </div>
           <div className="notes-content" style={{ flex: 1 }}>
             <div className="notes-display">
-              {item.notes ? (
-                <p
-                  style={{
-                    fontFamily: "Georgia, serif",
-                    fontStyle: "italic",
-                    fontSize: "1.2rem",
-                    color: "#1e293b",
-                    lineHeight: "1.5",
-                  }}
-                >
-                  {item.notes}
-                </p>
-              ) : (
-                <p
-                  style={{
-                    fontFamily: "Georgia, serif",
-                    fontStyle: "italic",
-                    fontSize: "1.2rem",
-                    color: "#1e293b",
-                    lineHeight: "1.5",
-                  }}
-                >
-                  Tap here to write notes...
-                </p>
-              )}
+              <p
+                style={{
+                  fontFamily: "Georgia, serif",
+                  fontStyle: "italic",
+                  fontSize: "1.2rem",
+                  color: "#1e293b",
+                  lineHeight: "1.5",
+                }}
+              >
+                {item.notes || "Tap here to write notes..."}
+              </p>
             </div>
           </div>
 
