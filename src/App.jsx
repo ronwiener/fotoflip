@@ -1240,10 +1240,20 @@ export default function App() {
       const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
       const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
 
-      // Safely fetch session token
-      const sessionResult = await supabase.auth.getSession();
-      const token =
-        sessionResult?.data?.session?.access_token || supabaseAnonKey;
+      // Get access token synchronously from supabase client instance if available,
+      // fallback directly to anon key to prevent lock deadlocks on getSession()
+      let token = supabaseAnonKey;
+      try {
+        // Access current session from memory without blocking lock
+        const currentSession = supabase.auth.session
+          ? supabase.auth.session()
+          : null;
+        if (currentSession?.access_token) {
+          token = currentSession.access_token;
+        }
+      } catch {
+        // Fallback stays supabaseAnonKey
+      }
 
       const response = await fetch(`${supabaseUrl}/rest/v1/items?id=eq.${id}`, {
         method: "PATCH",
@@ -1269,7 +1279,7 @@ export default function App() {
       return data;
     } catch (err) {
       console.error("❌ [updateNotes Exception]:", err);
-      throw err; // Re-throw so caller (ZoomOverlay) catches network errors
+      throw err;
     }
   }, []);
 
