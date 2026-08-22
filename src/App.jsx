@@ -474,7 +474,9 @@ function ZoomOverlay({ data, item, updateNotes, onClose }) {
 
   const handleDoneOrClose = async (e) => {
     if (e) e.stopPropagation();
-
+    console.log("🔍 [ZoomOverlay] Done button clicked!");
+    console.log("🔍 [ZoomOverlay] Current data state:", data);
+    console.log("🔍 [ZoomOverlay] Current localNotes:", localNotes);
     // 1. Cancel any pending background debounced saves
     if (debouncedSaveRef.current?.cancel) {
       debouncedSaveRef.current.cancel();
@@ -1220,6 +1222,17 @@ export default function App() {
 
   const updateNotes = useCallback(async (id, newNotes) => {
     // 1. Optimistic state update in local React state
+    console.log(
+      "📥 [App.jsx updateNotes CALLED] ID:",
+      id,
+      "New Notes:",
+      newNotes,
+    );
+
+    if (!id) {
+      console.error("❌ [App.jsx updateNotes] No ID provided!");
+      return;
+    }
     setItems((prev) =>
       prev.map((i) => (i.id === id ? { ...i, notes: newNotes } : i)),
     );
