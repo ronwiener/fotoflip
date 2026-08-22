@@ -45,6 +45,7 @@ import {
 import LandingPage from "./LandingPage";
 import TipsModal from "./TipsModal";
 import { Haptics, ImpactStyle } from "@capacitor/haptics";
+import debounce from "lodash.debounce";
 
 /* ---------- AUTH COMPONENT ---------- */
 
@@ -425,21 +426,23 @@ function ZoomOverlay({ data, item, updateNotes, onClose }) {
   const [isSuccessClosing, setIsSuccessClosing] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
 
-  // Keep a stable ref to updateNotes so the debounce never re-creates
+  // 1. Keep a stable ref to updateNotes
   const updateNotesRef = useRef(updateNotes);
   useEffect(() => {
     updateNotesRef.current = updateNotes;
   }, [updateNotes]);
 
-  // Create a persistent debounced function using useRef
-  const debouncedSaveRef = useRef(
-    debounce(async (id, val) => {
-      setIsSaving(true);
-      if (updateNotesRef.current) {
-        await updateNotesRef.current(id, val);
-      }
-      setIsSaving(false);
-    }, 500),
+  // 2. Safely initialize debounced save using useMemo (prevents render errors)
+  const debouncedSave = useMemo(
+    () =>
+      debounce(async (id, val) => {
+        setIsSaving(true);
+        if (updateNotesRef.current) {
+          await updateNotesRef.current(id, val);
+        }
+        setIsSaving(false);
+      }, 500),
+    [],
   );
 
   // Sync initial notes if item changes
@@ -466,37 +469,41 @@ function ZoomOverlay({ data, item, updateNotes, onClose }) {
   // Clean up debouncer on unmount
   useEffect(() => {
     return () => {
-      debouncedSaveRef.current?.cancel?.();
+      debouncedSave.cancel();
     };
-  }, []);
+  }, [debouncedSave]);
 
   if (!data) return null;
 
-  const handleDoneOrClose = (e) => {
+  const handleDoneOrClose = async (e) => {
     if (e) e.stopPropagation();
 
     console.log("🔍 [ZoomOverlay] Done button clicked!");
 
-    // Cancel pending debounced save
-    if (debouncedSaveRef.current?.cancel) {
-      debouncedSaveRef.current.cancel();
-    }
+    // 1. Cancel pending background debounced save
+    debouncedSave.cancel();
 
-    // Trigger save non-blockingly
-    if (typeof updateNotes === "function" && data?.id) {
-      updateNotes(data.id, localNotes);
-    }
-
-    setIsSuccessClosing(true);
-
-    // Close the overlay instantly
-    setTimeout(() => {
-      setIsSuccessClosing(false);
-      if (typeof onClose === "function") {
-        console.log("🟢 [ZoomOverlay] Triggering onClose()");
-        onClose();
+    // 2. Perform save directly so the latest keystroke is never missed
+    try {
+      setIsSaving(true);
+      if (typeof updateNotes === "function" && data?.id) {
+        await updateNotes(data.id, localNotes);
       }
-    }, 150);
+    } catch (err) {
+      console.error("❌ [ZoomOverlay] Error during final save:", err);
+    } finally {
+      setIsSaving(false);
+      setIsSuccessClosing(true);
+
+      // 3. Trigger onClose cleanly
+      setTimeout(() => {
+        setIsSuccessClosing(false);
+        if (typeof onClose === "function") {
+          console.log("🟢 [ZoomOverlay] Triggering onClose()");
+          onClose();
+        }
+      }, 150);
+    }
   };
 
   return (
@@ -528,7 +535,7 @@ function ZoomOverlay({ data, item, updateNotes, onClose }) {
               const val = e.target.value;
               setLocalNotes(val);
               setIsSaving(true);
-              debouncedSaveRef.current(data.id, val);
+              debouncedSave(data.id, val);
             }}
             placeholder="Write notes here..."
           />
