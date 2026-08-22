@@ -419,13 +419,12 @@ function ZoomOverlay({ data, item, updateNotes, onClose }) {
   const [isSuccessClosing, setIsSuccessClosing] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
 
-  // 1. Keep a stable ref to updateNotes
   const updateNotesRef = useRef(updateNotes);
   useEffect(() => {
     updateNotesRef.current = updateNotes;
   }, [updateNotes]);
 
-  // 2. Safely initialize debounced save using useMemo
+  // Debounced save for background auto-saving while typing
   const debouncedSave = useMemo(
     () =>
       debounce(async (id, val) => {
@@ -459,7 +458,7 @@ function ZoomOverlay({ data, item, updateNotes, onClose }) {
     }
   }, [data]);
 
-  // Clean up debouncer on unmount
+  // Cleanup debouncer on unmount
   useEffect(() => {
     return () => {
       if (typeof debouncedSave?.cancel === "function") {
@@ -470,21 +469,25 @@ function ZoomOverlay({ data, item, updateNotes, onClose }) {
 
   if (!data) return null;
 
-  const handleDoneOrClose = async (e) => {
-    if (e) e.stopPropagation();
+  const executeSaveAndClose = async (e) => {
+    if (e) {
+      e.stopPropagation();
+      e.preventDefault();
+    }
 
-    console.log("🔍 [ZoomOverlay] Done button clicked!");
+    console.log("🔍 [ZoomOverlay] Done/Close triggered!");
 
-    // 1. Cancel pending background debounced save safely
+    // 1. Cancel pending background debounced save
     if (typeof debouncedSave?.cancel === "function") {
       debouncedSave.cancel();
     }
 
-    // 2. Perform save directly so the latest keystroke is never missed
+    // 2. Perform final save directly with current local state
     try {
       setIsSaving(true);
-      if (typeof updateNotes === "function" && data?.id) {
-        await updateNotes(data.id, localNotes);
+      const targetId = data?.id || item?.id;
+      if (typeof updateNotes === "function" && targetId) {
+        await updateNotes(targetId, localNotes);
       }
     } catch (err) {
       console.error("❌ [ZoomOverlay] Error during final save:", err);
@@ -492,19 +495,16 @@ function ZoomOverlay({ data, item, updateNotes, onClose }) {
       setIsSaving(false);
       setIsSuccessClosing(true);
 
-      // 3. Trigger onClose cleanly
-      setTimeout(() => {
-        setIsSuccessClosing(false);
-        if (typeof onClose === "function") {
-          console.log("🟢 [ZoomOverlay] Triggering onClose()");
-          onClose();
-        }
-      }, 150);
+      // 3. Immediately invoke onClose so parent card resets flip state
+      console.log("🟢 [ZoomOverlay] Executing onClose()");
+      if (typeof onClose === "function") {
+        onClose();
+      }
     }
   };
 
   return (
-    <div className="zoom-overlay" onClick={handleDoneOrClose}>
+    <div className="zoom-overlay" onClick={executeSaveAndClose}>
       <div className="overlay-backdrop" />
 
       {data.type === "img" ? (
@@ -527,12 +527,13 @@ function ZoomOverlay({ data, item, updateNotes, onClose }) {
           <textarea
             ref={textareaRef}
             value={localNotes}
+            onClick={(e) => e.stopPropagation()}
             onPointerDown={(e) => e.stopPropagation()}
             onChange={(e) => {
               const val = e.target.value;
               setLocalNotes(val);
               setIsSaving(true);
-              debouncedSave(data.id, val);
+              debouncedSave(data.id || item?.id, val);
             }}
             placeholder="Write notes here..."
           />
@@ -540,7 +541,7 @@ function ZoomOverlay({ data, item, updateNotes, onClose }) {
           <button
             type="button"
             className="notes-close-footer"
-            onClick={handleDoneOrClose}
+            onClick={executeSaveAndClose}
             style={{
               backgroundColor: isSuccessClosing ? "#22c55e" : "#64748b",
               cursor: "pointer",
