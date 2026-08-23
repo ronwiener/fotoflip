@@ -797,6 +797,40 @@ export default function App() {
     hideSplash();
   }, []);
 
+  const saveFolders = async (userId, folderName, isDelete = false) => {
+    if (!userId || !folderName) return;
+
+    try {
+      if (isDelete) {
+        const { error } = await supabase
+          .from("folders")
+          .delete()
+          .eq("user_id", userId)
+          .eq("name", folderName);
+
+        if (error) {
+          console.error("❌ [deleteFolder DB Error]:", error.message);
+          throw error;
+        }
+      } else {
+        const { error } = await supabase
+          .from("folders")
+          .upsert(
+            { user_id: userId, name: folderName },
+            { onConflict: "user_id, name" },
+          );
+
+        if (error) {
+          console.error("❌ [saveFolders DB Error]:", error.message);
+          throw error;
+        }
+      }
+    } catch (err) {
+      console.error("❌ [saveFolders Exception]:", err);
+      throw err;
+    }
+  };
+
   const loadFolders = useCallback(async (userId) => {
     if (!userId) return [];
     const { data, error } = await supabase
