@@ -1511,7 +1511,7 @@ export default function App() {
   const saveNewFolderInline = async () => {
     const trimmed = newFolderName.trim();
 
-    // If empty, close and reset input state cleanly
+    // If empty, close and reset silently
     if (!trimmed) {
       setNewFolderName("");
       setIsCreatingFolder(false);
@@ -1524,7 +1524,7 @@ export default function App() {
 
     if (isDuplicate) {
       setToastMessage("Folder already exists! 📂");
-      setTimeout(() => setToastMessage(""), 2000);
+      setTimeout(() => setToastMessage(""), 2500);
       return;
     }
 
@@ -1535,20 +1535,22 @@ export default function App() {
     }
 
     try {
-      // 1. Immediately update UI so it feels fast
+      // 1. Instantly update UI and clear input
       setFolders((prev) => [...prev, trimmed]);
-      setIsCreatingFolder(false); // Close overlay
+      setIsCreatingFolder(false);
       setNewFolderName("");
 
-      // 2. Save to database in background
-      await saveFolders(session.user.id, trimmed);
+      // 2. Trigger feedback toast immediately
+      setToastMessage(`Folder "${trimmed}" created! 📂`);
+      setTimeout(() => setToastMessage(""), 2500);
 
-      setToastMessage("Folder Created! 📂");
-      setTimeout(() => setToastMessage(""), 2000);
+      // 3. Persist to database in background
+      await saveFolders(session.user.id, trimmed);
     } catch (error) {
       console.error("Failed to save folder:", error);
-      setToastMessage("Save failed");
-      // Rollback local state if DB save fails
+      setToastMessage("Could not save folder to server ❌");
+      setTimeout(() => setToastMessage(""), 2500);
+      // Optional rollback on error
       setFolders((prev) => prev.filter((f) => f !== trimmed));
     }
   };
