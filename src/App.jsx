@@ -1950,31 +1950,45 @@ export default function App() {
           )}
 
           {isCreatingFolder && (
-            <div className="folder-input-overlay">
-              <input
-                className="large-inline-input"
-                autoFocus
-                type="text"
-                maxLength={20}
-                enterKeyHint="done"
-                placeholder="Folder Name..."
-                value={newFolderName}
-                onChange={(e) => setNewFolderName(e.target.value)}
-                onBlur={() => {
-                  // 👈 Triggers save/close when user clicks anywhere outside the input
+            <div
+              className="folder-input-overlay"
+              onClick={() => {
+                // Clicking the dark background overlay submits or closes
+                saveNewFolderInline();
+              }}
+            >
+              <form
+                onSubmit={(e) => {
+                  e.preventDefault();
                   saveNewFolderInline();
                 }}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter") {
-                    e.preventDefault();
-                    e.currentTarget.blur(); // Triggers onBlur above cleanly
-                  }
-                  if (e.key === "Escape") {
-                    setNewFolderName("");
-                    setIsCreatingFolder(false);
-                  }
-                }}
-              />
+                onClick={(e) => e.stopPropagation()} // Keeps input clicks from closing overlay
+              >
+                <input
+                  className="large-inline-input"
+                  autoFocus
+                  type="text"
+                  maxLength={20}
+                  enterKeyHint="done"
+                  placeholder="Folder Name..."
+                  value={newFolderName}
+                  onChange={(e) => setNewFolderName(e.target.value)}
+                  onBlur={() => {
+                    // Triggers when tapping outside
+                    saveNewFolderInline();
+                  }}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") {
+                      e.preventDefault();
+                      saveNewFolderInline();
+                    }
+                    if (e.key === "Escape") {
+                      setNewFolderName("");
+                      setIsCreatingFolder(false);
+                    }
+                  }}
+                />
+              </form>
             </div>
           )}
 
