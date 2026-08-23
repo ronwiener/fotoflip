@@ -39,12 +39,15 @@ export const filterItems = (items, activeFolder, search) => {
   const query = search.trim().toLowerCase();
 
   return items.filter((item) => {
-    // 1. Folder Check ("Select Folder" or empty string = show ALL items)
-    const isRootFolder = !activeFolder || activeFolder === "Select Folder";
+    // 1. Folder Check (Option A: "Select Folder" or empty = show UNASSIGNED items only)
+    const isRootFolder =
+      !activeFolder ||
+      activeFolder === "Select Folder" ||
+      activeFolder === "Gallery";
     const itemFolder = item.folder || "";
 
     const matchesFolder = isRootFolder
-      ? true // Show all items when no specific folder filter is chosen
+      ? itemFolder === "" // 👈 Only show photos NOT assigned to a folder
       : itemFolder.toLowerCase() === activeFolder.toLowerCase();
 
     // 2. Search Override: If user typed in search bar, search globally across notes & locations
@@ -53,13 +56,13 @@ export const filterItems = (items, activeFolder, search) => {
       const matchesLocation =
         item.location_description?.toLowerCase().includes(query) || false;
 
+      // Allow searching across all items regardless of folder status, or require folder match
       return matchesNotes || matchesLocation;
     }
 
     return matchesFolder;
   });
 };
-
 /* ---------- ZIP EXPORT (Supabase Version) ---------- */
 export async function exportGalleryZip(items, selectedIds) {
   const zip = new JSZip();
