@@ -797,57 +797,117 @@ export default function App() {
     hideSplash();
   }, []);
 
+  // 1. DIRECT REST LOAD FOLDERS
+  const loadFolders = useCallback(async (userId) => {
+    if (!userId) return [];
+
+    try {
+      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+      const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+
+      let token = supabaseAnonKey;
+      try {
+        const storageKey = Object.keys(localStorage).find(
+          (key) => key.startsWith("sb-") && key.endsWith("-auth-token"),
+        );
+        if (storageKey) {
+          const parsed = JSON.parse(localStorage.getItem(storageKey));
+          if (parsed?.access_token) token = parsed.access_token;
+        }
+      } catch (e) {
+        console.warn("⚠️ Could not read token for loadFolders");
+      }
+
+      const response = await fetch(
+        `${supabaseUrl}/rest/v1/folders?user_id=eq.${userId}&select=name&order=name.asc`,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+            apikey: supabaseAnonKey,
+          },
+        },
+      );
+
+      if (!response.ok) {
+        throw new Error(`loadFolders failed status ${response.status}`);
+      }
+
+      const data = await response.json();
+      const folderNames = data.map((f) => f.name);
+      console.log("📂 [loadFolders SUCCESS]:", folderNames);
+      setFolders(folderNames);
+      return folderNames;
+    } catch (error) {
+      console.error("❌ Error loading folders:", error);
+      return [];
+    }
+  }, []);
+
+  // 2. DIRECT REST SAVE/DELETE FOLDERS
   const saveFolders = async (userId, folderName, isDelete = false) => {
     if (!userId || !folderName) return;
 
+    const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+    const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+
+    let token = supabaseAnonKey;
+    try {
+      const storageKey = Object.keys(localStorage).find(
+        (key) => key.startsWith("sb-") && key.endsWith("-auth-token"),
+      );
+      if (storageKey) {
+        const parsed = JSON.parse(localStorage.getItem(storageKey));
+        if (parsed?.access_token) token = parsed.access_token;
+      }
+    } catch (e) {
+      console.warn("⚠️ Could not read token for saveFolders");
+    }
+
     try {
       if (isDelete) {
-        const { error } = await supabase
-          .from("folders")
-          .delete()
-          .eq("user_id", userId)
-          .eq("name", folderName);
+        // DELETE folder via REST
+        const response = await fetch(
+          `${supabaseUrl}/rest/v1/folders?user_id=eq.${userId}&name=eq.${encodeURIComponent(
+            folderName,
+          )}`,
+          {
+            method: "DELETE",
+            headers: {
+              Authorization: `Bearer ${token}`,
+              apikey: supabaseAnonKey,
+            },
+          },
+        );
 
-        if (error) {
-          console.error("❌ [deleteFolder DB Error]:", error.message);
-          throw error;
-        }
+        if (!response.ok)
+          throw new Error(`Delete folder failed: ${response.status}`);
+        console.log("🗑️ [saveFolders DELETE SUCCESS]:", folderName);
       } else {
-        const { error } = await supabase
-          .from("folders")
-          .upsert(
-            { user_id: userId, name: folderName },
-            { onConflict: "user_id, name" },
-          );
+        // UPSERT folder via REST
+        const response = await fetch(`${supabaseUrl}/rest/v1/folders`, {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${token}`,
+            apikey: supabaseAnonKey,
+            "Content-Type": "application/json",
+            Prefer: "resolution=merge-duplicates,return=representation", // 👈 UPSERT configuration
+          },
+          body: JSON.stringify({ user_id: userId, name: folderName }),
+        });
 
-        if (error) {
-          console.error("❌ [saveFolders DB Error]:", error.message);
-          throw error;
+        if (!response.ok) {
+          const errText = await response.text();
+          throw new Error(`Save folder failed ${response.status}: ${errText}`);
         }
+
+        const data = await response.json();
+        console.log("✅ [saveFolders SUCCESS]:", data);
       }
     } catch (err) {
       console.error("❌ [saveFolders Exception]:", err);
       throw err;
     }
   };
-
-  const loadFolders = useCallback(async (userId) => {
-    if (!userId) return [];
-    const { data, error } = await supabase
-      .from("folders")
-      .select("name")
-      .eq("user_id", userId)
-      .order("name", { ascending: true });
-
-    if (error) {
-      console.error("Error loading folders:", error.message);
-      return [];
-    }
-
-    const folderNames = data.map((f) => f.name);
-    setFolders(folderNames);
-    return folderNames;
-  }, []);
 
   useEffect(() => {
     const initApp = async () => {
