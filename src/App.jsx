@@ -1417,8 +1417,9 @@ export default function App() {
   const saveNewFolderInline = async () => {
     const trimmed = newFolderName.trim();
 
-    // If empty, just close and reset
+    // If empty, close and reset input state cleanly
     if (!trimmed) {
+      setNewFolderName("");
       setIsCreatingFolder(false);
       return;
     }
@@ -1430,27 +1431,31 @@ export default function App() {
     if (isDuplicate) {
       setToastMessage("Folder already exists! 📂");
       setTimeout(() => setToastMessage(""), 2000);
-      // Don't close the UI yet, let them fix the name
       return;
     }
 
-    // Success path
-    if (session?.user) {
-      try {
-        // 1. Immediately update UI so it feels fast
-        setFolders((prev) => [...prev, trimmed]);
-        setIsCreatingFolder(false); // CLOSE THE BOX NOW
-        setNewFolderName("");
+    if (!session?.user) {
+      setNewFolderName("");
+      setIsCreatingFolder(false);
+      return;
+    }
 
-        // 2. Save to database in background
-        await saveFolders(session.user.id, trimmed);
+    try {
+      // 1. Immediately update UI so it feels fast
+      setFolders((prev) => [...prev, trimmed]);
+      setIsCreatingFolder(false); // Close overlay
+      setNewFolderName("");
 
-        setToastMessage("Folder Created! 📂");
-        setTimeout(() => setToastMessage(""), 2000);
-      } catch (error) {
-        console.error("Failed to save folder:", error);
-        setToastMessage("Save failed");
-      }
+      // 2. Save to database in background
+      await saveFolders(session.user.id, trimmed);
+
+      setToastMessage("Folder Created! 📂");
+      setTimeout(() => setToastMessage(""), 2000);
+    } catch (error) {
+      console.error("Failed to save folder:", error);
+      setToastMessage("Save failed");
+      // Rollback local state if DB save fails
+      setFolders((prev) => prev.filter((f) => f !== trimmed));
     }
   };
 
@@ -1955,13 +1960,19 @@ export default function App() {
                 placeholder="Folder Name..."
                 value={newFolderName}
                 onChange={(e) => setNewFolderName(e.target.value)}
+                onBlur={() => {
+                  // 👈 Triggers save/close when user clicks anywhere outside the input
+                  saveNewFolderInline();
+                }}
                 onKeyDown={(e) => {
                   if (e.key === "Enter") {
                     e.preventDefault();
-                    e.currentTarget.blur();
-                    saveNewFolderInline();
+                    e.currentTarget.blur(); // Triggers onBlur above cleanly
                   }
-                  if (e.key === "Escape") setIsCreatingFolder(false);
+                  if (e.key === "Escape") {
+                    setNewFolderName("");
+                    setIsCreatingFolder(false);
+                  }
                 }}
               />
             </div>
