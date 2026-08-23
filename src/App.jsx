@@ -1145,7 +1145,7 @@ export default function App() {
         const metadataTimeout = new Promise((resolve) =>
           setTimeout(
             () => resolve("Taken on Unknown Date in Unknown Location."),
-            2000,
+            5000,
           ),
         );
 
