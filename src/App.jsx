@@ -46,6 +46,7 @@ import LandingPage from "./LandingPage";
 import TipsModal from "./TipsModal";
 import { Haptics, ImpactStyle } from "@capacitor/haptics";
 import debouncePkg from "lodash.debounce";
+import heic2any from "heic2any";
 /* ---------- AUTH COMPONENT ---------- */
 
 // Add this helper function outside your Auth component to generate a safe nonce string
@@ -1138,10 +1139,52 @@ export default function App() {
     console.log("🚀 [STEP 1] uploadToGallery called for file:", file.name);
 
     try {
-      // A. Safe Metadata Processing with 2s Circuit Breaker
+      // 0. HEIC Conversion Step (Browsers cannot display HEIC natively & exifr bundle needs JPEG)
+      let targetFile = file;
+      const isHeic =
+        file.name.toLowerCase().endsWith(".heic") ||
+        file.name.toLowerCase().endsWith(".heif") ||
+        file.type === "image/heic" ||
+        file.type === "image/heif";
+
+      if (isHeic) {
+        try {
+          console.log(
+            "🔄 [STEP 0] Converting HEIC to JPEG for browser rendering & EXIF parsing...",
+          );
+          const convertedBlob = await heic2any({
+            blob: file,
+            toType: "image/jpeg",
+            quality: 0.9,
+          });
+
+          const blobResult = Array.isArray(convertedBlob)
+            ? convertedBlob[0]
+            : convertedBlob;
+          const newFileName = file.name.replace(
+            /\.(heic|HEIC|heif|HEIF)$/,
+            ".jpg",
+          );
+
+          targetFile = new File([blobResult], newFileName, {
+            type: "image/jpeg",
+          });
+          console.log(
+            "✅ [STEP 0 SUCCESS] Converted to JPEG:",
+            targetFile.name,
+          );
+        } catch (convErr) {
+          console.warn(
+            "⚠️ HEIC conversion failed, proceeding with original file:",
+            convErr,
+          );
+        }
+      }
+
+      // A. Safe Metadata Processing with 5s Circuit Breaker (using targetFile)
       let metadataString = "Taken on Unknown Date in Unknown Location.";
       try {
-        const metadataPromise = processPhotoMetadata(file);
+        const metadataPromise = processPhotoMetadata(targetFile);
         const metadataTimeout = new Promise((resolve) =>
           setTimeout(
             () => resolve("Taken on Unknown Date in Unknown Location."),
@@ -1174,9 +1217,9 @@ export default function App() {
 
       console.log("👤 [STEP 4] Uploading under User ID:", userId);
 
-      // C. Prepare Target Path
-      const cleanFileName = file.name
-        ? file.name.replace(/[^a-zA-Z0-9.-]/g, "_")
+      // C. Prepare Target Path (using targetFile)
+      const cleanFileName = targetFile.name
+        ? targetFile.name.replace(/[^a-zA-Z0-9.-]/g, "_")
         : "photo.jpg";
       const filePath = `${userId}/${Date.now()}-${cleanFileName}`;
 
@@ -1186,7 +1229,7 @@ export default function App() {
       const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
       const authToken = accessToken || supabaseAnonKey;
 
-      // D. Step 6: Native Fetch Storage Upload
+      // D. Step 6: Native Fetch Storage Upload (using targetFile)
       console.log(
         "⏳ [STEP 6] Sending file via direct fetch to Supabase Storage bucket 'gallery'...",
       );
@@ -1197,10 +1240,10 @@ export default function App() {
         headers: {
           Authorization: `Bearer ${authToken}`,
           apikey: supabaseAnonKey,
-          "Content-Type": file.type || "image/jpeg",
+          "Content-Type": targetFile.type || "image/jpeg",
           "x-upsert": "true",
         },
-        body: file,
+        body: targetFile,
       });
 
       if (!uploadResponse.ok) {
