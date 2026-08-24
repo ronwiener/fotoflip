@@ -41,8 +41,6 @@ export const getCityFromCoords = async (lat, lon) => {
   }
 };
 
-// Import the full UMD bundle to ensure HEIC/ISOBMFF parser modules are bundled
-
 export const processPhotoMetadata = async (file) => {
   try {
     if (!file) return "Taken on Unknown Date in Unknown Location.";
