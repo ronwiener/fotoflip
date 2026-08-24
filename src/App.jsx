@@ -1166,12 +1166,13 @@ export default function App() {
         quality = 0.92,
       ) => {
         return new Promise((resolve) => {
-          // Skip compression if file is already under 4.5 MB (safely under Supabase's 5MB free limit)
+          // If file is already safely under 4.5 MB, skip canvas compression completely
+          // This keeps the original file untouched and crystal clear!
           if (fileToCompress.size < 4.5 * 1024 * 1024)
             return resolve(fileToCompress);
 
           console.log(
-            "🗜️ [COMPRESSION] File exceeds 4.5MB, applying high-quality compression...",
+            "🗜️ [COMPRESSION] File exceeds 4.5MB, processing via canvas...",
           );
           const img = new Image();
           const url = URL.createObjectURL(fileToCompress);
@@ -1180,7 +1181,7 @@ export default function App() {
             URL.revokeObjectURL(url);
             let { width, height } = img;
 
-            // Downscale only if image exceeds 4K dimensions (3840px)
+            // Only downscale if dimensions exceed 4K
             if (width > maxDimension || height > maxDimension) {
               if (width > height) {
                 height = Math.round((height * maxDimension) / width);
@@ -1196,24 +1197,27 @@ export default function App() {
             canvas.height = height;
             const ctx = canvas.getContext("2d");
 
-            // Enable high-quality image smoothing for canvas resizing
+            // Fill canvas with white background before drawing (prevents black background bug on transparent PNGs)
+            ctx.fillStyle = "#FFFFFF";
+            ctx.fillRect(0, 0, width, height);
+
             ctx.imageSmoothingEnabled = true;
             ctx.imageSmoothingQuality = "high";
             ctx.drawImage(img, 0, 0, width, height);
 
+            // Maintain exact mime-type (PNGs stay PNGs, JPEGs stay JPEGs)
+            const outputType =
+              fileToCompress.type === "image/png" ? "image/png" : "image/jpeg";
+
             canvas.toBlob(
               (blob) => {
                 if (!blob) return resolve(fileToCompress);
-                const newFileName = fileToCompress.name.replace(
-                  /\.[^/.]+$/,
-                  ".jpg",
-                );
-                const compressedFile = new File([blob], newFileName, {
-                  type: "image/jpeg",
+                const compressedFile = new File([blob], fileToCompress.name, {
+                  type: outputType,
                   lastModified: Date.now(),
                 });
                 console.log(
-                  `✅ [COMPRESSION SUCCESS] Resized to ${width}x${height} at ${(
+                  `✅ [COMPRESSION SUCCESS] Resized (${outputType}) to ${width}x${height} at ${(
                     compressedFile.size /
                     1024 /
                     1024
@@ -1221,7 +1225,7 @@ export default function App() {
                 );
                 resolve(compressedFile);
               },
-              "image/jpeg",
+              outputType,
               quality,
             );
           };
