@@ -46,7 +46,7 @@ import LandingPage from "./LandingPage";
 import TipsModal from "./TipsModal";
 import { Haptics, ImpactStyle } from "@capacitor/haptics";
 import debouncePkg from "lodash.debounce";
-import heic2any from "heic2any";
+import decodeHeic from "heic-decode";
 /* ---------- AUTH COMPONENT ---------- */
 
 // Add this helper function outside your Auth component to generate a safe nonce string
@@ -1139,7 +1139,26 @@ export default function App() {
     console.log("🚀 [STEP 1] uploadToGallery called for file:", file.name);
 
     try {
-      // 0. HEIC Conversion Step (Browsers cannot display HEIC natively & exifr bundle needs JPEG)
+      // A. Extract metadata directly from the raw original file FIRST
+      // (Running metadata extraction before canvas decoding prevents losing EXIF tags)
+      let metadataString = "Taken on Unknown Date in Unknown Location.";
+      try {
+        console.log("📸 [STEP 2] Extracting metadata from original file...");
+        const metadataPromise = processPhotoMetadata(file);
+        const metadataTimeout = new Promise((resolve) =>
+          setTimeout(
+            () => resolve("Taken on Unknown Date in Unknown Location."),
+            5000,
+          ),
+        );
+
+        metadataString = await Promise.race([metadataPromise, metadataTimeout]);
+        console.log("✅ [STEP 2 SUCCESS] Metadata result:", metadataString);
+      } catch (metaErr) {
+        console.warn("⚠️ Metadata extraction failed, continuing:", metaErr);
+      }
+
+      // B. HEIC Conversion Step (Decodes HEIC pixels using heic-decode & exports JPEG)
       let targetFile = file;
       const isHeic =
         file.name.toLowerCase().endsWith(".heic") ||
@@ -1150,29 +1169,40 @@ export default function App() {
       if (isHeic) {
         try {
           console.log(
-            "🔄 [STEP 0] Converting HEIC to JPEG for browser rendering & EXIF parsing...",
+            "🔄 [STEP 0] Decoding HEIC array buffer for browser compatibility...",
           );
-          const convertedBlob = await heic2any({
-            blob: file,
-            toType: "image/jpeg",
-            quality: 0.9,
-          });
+          const buffer = await file.arrayBuffer();
 
-          const blobResult = Array.isArray(convertedBlob)
-            ? convertedBlob[0]
-            : convertedBlob;
-          const newFileName = file.name.replace(
-            /\.(heic|HEIC|heif|HEIF)$/,
-            ".jpg",
+          // Decode raw pixel data
+          const { width, height, data } = await decodeHeic({ buffer });
+
+          // Render pixel buffer to Offscreen Canvas
+          const canvas = document.createElement("canvas");
+          canvas.width = width;
+          canvas.height = height;
+          const ctx = canvas.getContext("2d");
+          const imageData = ctx.createImageData(width, height);
+          imageData.data.set(new Uint8Array(data));
+          ctx.putImageData(imageData, 0, 0);
+
+          // Convert canvas buffer to JPEG Blob
+          const jpegBlob = await new Promise((resolve) =>
+            canvas.toBlob(resolve, "image/jpeg", 0.9),
           );
 
-          targetFile = new File([blobResult], newFileName, {
-            type: "image/jpeg",
-          });
-          console.log(
-            "✅ [STEP 0 SUCCESS] Converted to JPEG:",
-            targetFile.name,
-          );
+          if (jpegBlob) {
+            const newFileName = file.name.replace(
+              /\.(heic|HEIC|heif|HEIF)$/,
+              ".jpg",
+            );
+            targetFile = new File([jpegBlob], newFileName, {
+              type: "image/jpeg",
+            });
+            console.log(
+              "✅ [STEP 0 SUCCESS] Converted HEIC to JPEG:",
+              targetFile.name,
+            );
+          }
         } catch (convErr) {
           console.warn(
             "⚠️ HEIC conversion failed, proceeding with original file:",
@@ -1181,24 +1211,7 @@ export default function App() {
         }
       }
 
-      // A. Safe Metadata Processing with 5s Circuit Breaker (using targetFile)
-      let metadataString = "Taken on Unknown Date in Unknown Location.";
-      try {
-        const metadataPromise = processPhotoMetadata(targetFile);
-        const metadataTimeout = new Promise((resolve) =>
-          setTimeout(
-            () => resolve("Taken on Unknown Date in Unknown Location."),
-            5000,
-          ),
-        );
-
-        metadataString = await Promise.race([metadataPromise, metadataTimeout]);
-        console.log("✅ [STEP 2] Metadata result:", metadataString);
-      } catch (metaErr) {
-        console.warn("⚠️ Metadata extraction failed, continuing:", metaErr);
-      }
-
-      // B. Verify User ID & Auth Token
+      // C. Verify User ID & Auth Token
       console.log("🔍 [STEP 3] Checking active user session...");
       let userId = session?.user?.id;
       let accessToken = session?.access_token;
@@ -1217,7 +1230,7 @@ export default function App() {
 
       console.log("👤 [STEP 4] Uploading under User ID:", userId);
 
-      // C. Prepare Target Path (using targetFile)
+      // D. Prepare Target Path (using targetFile)
       const cleanFileName = targetFile.name
         ? targetFile.name.replace(/[^a-zA-Z0-9.-]/g, "_")
         : "photo.jpg";
@@ -1229,7 +1242,7 @@ export default function App() {
       const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
       const authToken = accessToken || supabaseAnonKey;
 
-      // D. Step 6: Native Fetch Storage Upload (using targetFile)
+      // E. Step 6: Native Fetch Storage Upload
       console.log(
         "⏳ [STEP 6] Sending file via direct fetch to Supabase Storage bucket 'gallery'...",
       );
@@ -1263,7 +1276,7 @@ export default function App() {
         storageData,
       );
 
-      // E. Step 7: Native Fetch Database Row Insert
+      // F. Step 7: Native Fetch Database Row Insert
       console.log(
         "📝 [STEP 7] Inserting metadata row into 'items' table via direct fetch...",
       );
@@ -1303,7 +1316,7 @@ export default function App() {
         dbData,
       );
 
-      // F. Step 8: Refresh Gallery State & Verify Image URL
+      // G. Step 8: Refresh Gallery State
       console.log("🔄 [STEP 8] Refreshing gallery items...");
       await fetchItems(userId, accessToken);
 
