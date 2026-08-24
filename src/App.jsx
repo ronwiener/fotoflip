@@ -1139,7 +1139,7 @@ export default function App() {
     console.log("🚀 [STEP 1] uploadToGallery called for file:", file.name);
 
     try {
-      // A. Extract metadata directly from the raw original file FIRST
+      // A. Extract EXIF Metadata First from Original File
       let metadataString = "Taken on Unknown Date in Unknown Location.";
       try {
         console.log("📸 [STEP 2] Extracting metadata from original file...");
@@ -1157,7 +1157,7 @@ export default function App() {
         console.warn("⚠️ Metadata extraction failed, continuing:", metaErr);
       }
 
-      // B. HEIC Conversion Step (Bulletproof Canvas Decoding)
+      // B. HEIC to JPEG Client-Side Conversion via CDN Script
       let targetFile = file;
       const isHeic =
         file.name.toLowerCase().endsWith(".heic") ||
@@ -1166,58 +1166,46 @@ export default function App() {
         file.type === "image/heif";
 
       if (isHeic) {
-        try {
-          console.log(
-            "🔄 [STEP 0] Decoding HEIC array buffer for browser compatibility...",
-          );
-          const buffer = await file.arrayBuffer();
+        if (window.heic2any) {
+          try {
+            console.log(
+              "🔄 [STEP 0] Converting HEIC to JPEG via window.heic2any...",
+            );
+            const convertedBlob = await window.heic2any({
+              blob: file,
+              toType: "image/jpeg",
+              quality: 0.85,
+            });
 
-          // 1. Decode raw pixel data from HEIC
-          const decoded = await decodeHeic({ buffer });
-          const { width, height, data } = decoded;
-
-          // 2. Create offscreen canvas & format byte array safely for bundlers
-          const canvas = document.createElement("canvas");
-          canvas.width = width;
-          canvas.height = height;
-          const ctx = canvas.getContext("2d");
-
-          // Safe Uint8ClampedArray conversion (fixes Vite/Webpack spread error)
-          const pixelArray =
-            data instanceof Uint8ClampedArray
-              ? data
-              : new Uint8ClampedArray(data.buffer ? data.buffer : data);
-
-          const imageData = new ImageData(pixelArray, width, height);
-          ctx.putImageData(imageData, 0, 0);
-
-          // 3. Export clean JPEG Blob
-          const jpegBlob = await new Promise((resolve) =>
-            canvas.toBlob(resolve, "image/jpeg", 0.9),
-          );
-
-          if (jpegBlob) {
+            const blobResult = Array.isArray(convertedBlob)
+              ? convertedBlob[0]
+              : convertedBlob;
             const newFileName = file.name.replace(
               /\.(heic|HEIC|heif|HEIF)$/,
               ".jpg",
             );
-            targetFile = new File([jpegBlob], newFileName, {
+
+            targetFile = new File([blobResult], newFileName, {
               type: "image/jpeg",
             });
             console.log(
               "✅ [STEP 0 SUCCESS] Converted HEIC to JPEG:",
               targetFile.name,
             );
+          } catch (convErr) {
+            console.warn(
+              "⚠️ HEIC conversion failed, proceeding with original file:",
+              convErr,
+            );
           }
-        } catch (convErr) {
+        } else {
           console.warn(
-            "⚠️ HEIC conversion failed, proceeding with original file:",
-            convErr,
+            "⚠️ window.heic2any is unavailable. Check script tag in index.html.",
           );
         }
       }
 
-      // C. Verify User ID & Auth Token
+      // C. Check Auth Session
       console.log("🔍 [STEP 3] Checking active user session...");
       let userId = session?.user?.id;
       let accessToken = session?.access_token;
@@ -1236,7 +1224,7 @@ export default function App() {
 
       console.log("👤 [STEP 4] Uploading under User ID:", userId);
 
-      // D. Prepare Target Path (using targetFile)
+      // D. Target Path & Direct Fetch Upload
       const cleanFileName = targetFile.name
         ? targetFile.name.replace(/[^a-zA-Z0-9.-]/g, "_")
         : "photo.jpg";
@@ -1248,7 +1236,6 @@ export default function App() {
       const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
       const authToken = accessToken || supabaseAnonKey;
 
-      // E. Step 6: Native Fetch Storage Upload
       console.log(
         "⏳ [STEP 6] Sending file via direct fetch to Supabase Storage bucket 'gallery'...",
       );
@@ -1282,7 +1269,7 @@ export default function App() {
         storageData,
       );
 
-      // F. Step 7: Native Fetch Database Row Insert
+      // E. Database Row Insert
       console.log(
         "📝 [STEP 7] Inserting metadata row into 'items' table via direct fetch...",
       );
@@ -1322,7 +1309,7 @@ export default function App() {
         dbData,
       );
 
-      // G. Step 8: Refresh Gallery State
+      // F. Refresh UI State
       console.log("🔄 [STEP 8] Refreshing gallery items...");
       await fetchItems(userId, accessToken);
 
