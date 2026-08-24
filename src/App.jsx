@@ -1157,8 +1157,78 @@ export default function App() {
         console.warn("⚠️ Metadata extraction failed, continuing:", metaErr);
       }
 
-      // B. HEIC to JPEG Client-Side Conversion via CDN Script
+      // B. Client-Side HEIC/JPEG Compression Helper to Prevent 413 Payload Too Large
       let targetFile = file;
+
+      const compressImage = async (
+        fileToCompress,
+        maxDimension = 2048,
+        quality = 0.8,
+      ) => {
+        return new Promise((resolve) => {
+          // Skip compression if file is under 2.5 MB
+          if (fileToCompress.size < 2.5 * 1024 * 1024)
+            return resolve(fileToCompress);
+
+          console.log(
+            "🗜️ [COMPRESSION] File exceeds 2.5MB, compressing via canvas...",
+          );
+          const img = new Image();
+          const url = URL.createObjectURL(fileToCompress);
+          img.src = url;
+          img.onload = () => {
+            URL.revokeObjectURL(url);
+            let { width, height } = img;
+
+            if (width > maxDimension || height > maxDimension) {
+              if (width > height) {
+                height = Math.round((height * maxDimension) / width);
+                width = maxDimension;
+              } else {
+                width = Math.round((width * maxDimension) / height);
+                height = maxDimension;
+              }
+            }
+
+            const canvas = document.createElement("canvas");
+            canvas.width = width;
+            canvas.height = height;
+            const ctx = canvas.getContext("2d");
+            ctx.drawImage(img, 0, 0, width, height);
+
+            canvas.toBlob(
+              (blob) => {
+                if (!blob) return resolve(fileToCompress);
+                const newFileName = fileToCompress.name.replace(
+                  /\.[^/.]+$/,
+                  ".jpg",
+                );
+                const compressedFile = new File([blob], newFileName, {
+                  type: "image/jpeg",
+                  lastModified: Date.now(),
+                });
+                console.log(
+                  `✅ [COMPRESSION SUCCESS] Reduced from ${(
+                    fileToCompress.size /
+                    1024 /
+                    1024
+                  ).toFixed(2)}MB to ${(
+                    compressedFile.size /
+                    1024 /
+                    1024
+                  ).toFixed(2)}MB`,
+                );
+                resolve(compressedFile);
+              },
+              "image/jpeg",
+              quality,
+            );
+          };
+          img.onerror = () => resolve(fileToCompress);
+        });
+      };
+
+      // Handle HEIC conversion if present, otherwise compress large JPEGs/PNGs
       const isHeic =
         file.name.toLowerCase().endsWith(".heic") ||
         file.name.toLowerCase().endsWith(".heif") ||
@@ -1204,6 +1274,9 @@ export default function App() {
           );
         }
       }
+
+      // Run compression step on final image target
+      targetFile = await compressImage(targetFile);
 
       // C. Check Auth Session
       console.log("🔍 [STEP 3] Checking active user session...");
