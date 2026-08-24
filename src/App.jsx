@@ -1162,16 +1162,16 @@ export default function App() {
 
       const compressImage = async (
         fileToCompress,
-        maxDimension = 2048,
-        quality = 0.8,
+        maxDimension = 3840,
+        quality = 0.92,
       ) => {
         return new Promise((resolve) => {
-          // Skip compression if file is under 2.5 MB
-          if (fileToCompress.size < 2.5 * 1024 * 1024)
+          // Skip compression if file is already under 4.5 MB (safely under Supabase's 5MB free limit)
+          if (fileToCompress.size < 4.5 * 1024 * 1024)
             return resolve(fileToCompress);
 
           console.log(
-            "🗜️ [COMPRESSION] File exceeds 2.5MB, compressing via canvas...",
+            "🗜️ [COMPRESSION] File exceeds 4.5MB, applying high-quality compression...",
           );
           const img = new Image();
           const url = URL.createObjectURL(fileToCompress);
@@ -1180,6 +1180,7 @@ export default function App() {
             URL.revokeObjectURL(url);
             let { width, height } = img;
 
+            // Downscale only if image exceeds 4K dimensions (3840px)
             if (width > maxDimension || height > maxDimension) {
               if (width > height) {
                 height = Math.round((height * maxDimension) / width);
@@ -1194,6 +1195,10 @@ export default function App() {
             canvas.width = width;
             canvas.height = height;
             const ctx = canvas.getContext("2d");
+
+            // Enable high-quality image smoothing for canvas resizing
+            ctx.imageSmoothingEnabled = true;
+            ctx.imageSmoothingQuality = "high";
             ctx.drawImage(img, 0, 0, width, height);
 
             canvas.toBlob(
@@ -1208,11 +1213,7 @@ export default function App() {
                   lastModified: Date.now(),
                 });
                 console.log(
-                  `✅ [COMPRESSION SUCCESS] Reduced from ${(
-                    fileToCompress.size /
-                    1024 /
-                    1024
-                  ).toFixed(2)}MB to ${(
+                  `✅ [COMPRESSION SUCCESS] Resized to ${width}x${height} at ${(
                     compressedFile.size /
                     1024 /
                     1024
