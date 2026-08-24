@@ -1140,7 +1140,6 @@ export default function App() {
 
     try {
       // A. Extract metadata directly from the raw original file FIRST
-      // (Running metadata extraction before canvas decoding prevents losing EXIF tags)
       let metadataString = "Taken on Unknown Date in Unknown Location.";
       try {
         console.log("📸 [STEP 2] Extracting metadata from original file...");
@@ -1158,7 +1157,7 @@ export default function App() {
         console.warn("⚠️ Metadata extraction failed, continuing:", metaErr);
       }
 
-      // B. HEIC Conversion Step (Decodes HEIC pixels using heic-decode & exports JPEG)
+      // B. HEIC Conversion Step (Bulletproof Canvas Decoding)
       let targetFile = file;
       const isHeic =
         file.name.toLowerCase().endsWith(".heic") ||
@@ -1173,19 +1172,26 @@ export default function App() {
           );
           const buffer = await file.arrayBuffer();
 
-          // Decode raw pixel data
-          const { width, height, data } = await decodeHeic({ buffer });
+          // 1. Decode raw pixel data from HEIC
+          const decoded = await decodeHeic({ buffer });
+          const { width, height, data } = decoded;
 
-          // Render pixel buffer to Offscreen Canvas
+          // 2. Create offscreen canvas & format byte array safely for bundlers
           const canvas = document.createElement("canvas");
           canvas.width = width;
           canvas.height = height;
           const ctx = canvas.getContext("2d");
-          const imageData = ctx.createImageData(width, height);
-          imageData.data.set(new Uint8Array(data));
+
+          // Safe Uint8ClampedArray conversion (fixes Vite/Webpack spread error)
+          const pixelArray =
+            data instanceof Uint8ClampedArray
+              ? data
+              : new Uint8ClampedArray(data.buffer ? data.buffer : data);
+
+          const imageData = new ImageData(pixelArray, width, height);
           ctx.putImageData(imageData, 0, 0);
 
-          // Convert canvas buffer to JPEG Blob
+          // 3. Export clean JPEG Blob
           const jpegBlob = await new Promise((resolve) =>
             canvas.toBlob(resolve, "image/jpeg", 0.9),
           );
