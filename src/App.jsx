@@ -1744,6 +1744,7 @@ export default function App() {
                 </svg>
                 <input
                   type="file"
+                  accept="image/jpeg, image/png, image/jpg"
                   multiple
                   hidden
                   onChange={(e) => handlePrimaryUpload(e)}
