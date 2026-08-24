@@ -1,4 +1,4 @@
-import exifr from "exifr";
+import exifr from "exifr/dist/full.umd.js";
 
 export const getCityFromCoords = async (lat, lon) => {
   try {
@@ -41,23 +41,16 @@ export const getCityFromCoords = async (lat, lon) => {
   }
 };
 
+// Import the full UMD bundle to ensure HEIC/ISOBMFF parser modules are bundled
+
 export const processPhotoMetadata = async (file) => {
   try {
     if (!file) return "Taken on Unknown Date in Unknown Location.";
 
-    // Skip formats exifr can't process
-    const unsupportedTypes = ["image/svg+xml", "image/gif"];
-    if (unsupportedTypes.includes(file.type)) {
-      console.warn(
-        "⚠️ Skipping EXIF extraction for unsupported file type:",
-        file.type,
-      );
-      return "Taken on Unknown Date in Unknown Location.";
-    }
-
-    // Convert file to ArrayBuffer for maximum exifr compatibility
+    // 1. Convert File to ArrayBuffer
     const arrayBuffer = await file.arrayBuffer();
 
+    // 2. Parse EXIF with explicit parsing parameters
     const exifData = await exifr.parse(arrayBuffer, {
       tiff: true,
       xmp: true,
@@ -68,7 +61,7 @@ export const processPhotoMetadata = async (file) => {
     });
 
     if (!exifData) {
-      console.warn("⚠️ No EXIF data payload found in file.");
+      console.warn("⚠️ No EXIF data payload found in HEIC file.");
       return "Taken on Unknown Date in Unknown Location.";
     }
 
