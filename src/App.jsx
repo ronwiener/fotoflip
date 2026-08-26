@@ -62,6 +62,15 @@ const generateNonce = (length = 32) => {
 
 const debounce = debouncePkg.default || debouncePkg;
 
+function getSafeImageSrc(src) {
+  if (!src) return "";
+  if (src.startsWith("data:") || src.startsWith("blob:")) {
+    return src;
+  }
+  const separator = src.includes("?") ? "&" : "?";
+  return `${src}${separator}t=${Date.now()}`;
+}
+
 function Auth({ setSession, setView, supabase }) {
   const [email, setEmail] = useState("");
   const [token, setToken] = useState("");
@@ -578,9 +587,11 @@ const DraggableCard = memo(function DraggableCard({
 
     if (selectedIds.size === 0 && !item.flipped) {
       longPressTimer.current = setTimeout(() => {
+        // Safe haptic trigger
         if (
           typeof navigator !== "undefined" &&
-          typeof navigator.vibrate === "function"
+          navigator.vibrate &&
+          navigator.userActivation?.hasBeenActive
         ) {
           try {
             navigator.vibrate(50);
@@ -640,7 +651,7 @@ const DraggableCard = memo(function DraggableCard({
         >
           {isSelected && <div className="select-indicator active">✓</div>}
           <img
-            src={item.imageURL}
+            src={getSafeImageSrc(item.displayURL || item.imageURL)}
             alt=""
             draggable="false"
             style={{ pointerEvents: "none", userSelect: "none" }}
@@ -773,17 +784,16 @@ export default function App() {
 
   const sensors = useSensors(
     useSensor(MouseSensor, {
-      // Requires the mouse to move at least 5px before starting a drag.
-      // This allows normal clicks/flips to work while instantly initiating a drag on movement.
+      // Requires mouse movement of 5px before starting drag
       activationConstraint: {
         distance: 5,
       },
     }),
     useSensor(TouchSensor, {
-      // Requires 100ms hold on mobile screens so page scrolling isn't hijacked
+      // Uses distance constraint for touch to prevent navigator.vibrate interventions
+      // and allow normal scrolling/clicking without hijacking taps
       activationConstraint: {
-        delay: 100,
-        tolerance: 8,
+        distance: 8,
       },
     }),
   );
@@ -956,9 +966,11 @@ export default function App() {
       const formattedItems = data.map((item) => ({
         id: item.id,
         image_path: item.image_path,
-        imageURL: item.image_path?.startsWith("http")
-          ? item.image_path
-          : `${supabaseUrl}/storage/v1/object/public/gallery/${item.image_path}`,
+        imageURL:
+          item.image_path?.startsWith("http") ||
+          item.image_path?.startsWith("data:")
+            ? item.image_path
+            : `${supabaseUrl}/storage/v1/object/public/gallery/${item.image_path}`,
         notes: item.notes || "",
         folder: item.folder || "",
         flipped: item.flipped || false,
@@ -1781,6 +1793,65 @@ export default function App() {
     );
   }
 
+  const handleFilerobotSave = async (savedImageData) => {
+    console.log("💾 [v4.8.1 onSave] Data emitted:", savedImageData);
+
+    try {
+      const imageBase64 =
+        savedImageData?.imageBase64 ||
+        savedImageData?.imageCanvas?.toDataURL("image/jpeg", 0.9);
+
+      if (!imageBase64) {
+        throw new Error("No base64 image data generated from editor.");
+      }
+
+      console.log("📦 Uploading new image to Supabase storage...");
+
+      const response = await fetch(imageBase64);
+      const blob = await response.blob();
+
+      const { error: uploadError } = await supabase.storage
+        .from("gallery")
+        .upload(editingItem.image_path, blob, {
+          upsert: true,
+          contentType: "image/jpeg",
+        });
+
+      if (uploadError) throw uploadError;
+
+      console.log("✅ Upload successful! Updating UI...");
+
+      // Construct fresh HTTP URL with cache buster for future loads
+      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+      const cleanPath = editingItem.image_path?.startsWith("http")
+        ? editingItem.image_path.split("?")[0]
+        : `${supabaseUrl}/storage/v1/object/public/gallery/${editingItem.image_path}`;
+      const freshUrl = `${cleanPath}?t=${Date.now()}`;
+
+      setItems((prev) =>
+        prev.map((item) =>
+          item.id === editingItem.id
+            ? {
+                ...item,
+                displayURL: imageBase64, // ⚡ Instant base64 preview (no CDN delay)
+                imageURL: freshUrl, // 💾 Updated storage URL for page reloads
+              }
+            : item,
+        ),
+      );
+
+      setEditingItem(null);
+      setEditingId(null);
+      setSelectedIds(new Set());
+
+      setToastMessage("Image updated! ✨");
+      setTimeout(() => setToastMessage(""), 2000);
+    } catch (err) {
+      console.error("❌ Save failed:", err.message || err);
+      alert(`Failed to save image changes: ${err.message || err}`);
+    }
+  };
+
   // Debug logs right before rendering the gallery view
   console.log("Current items state in render:", items);
   console.log("Current activeFolder filter:", activeFolder);
@@ -2270,7 +2341,12 @@ export default function App() {
       )}
 
       {editingItem && (
-        <div className="editor-overlay">
+        <div
+          className="editor-overlay"
+          onPointerDown={(e) => e.stopPropagation()}
+          onMouseDown={(e) => e.stopPropagation()}
+          onTouchStart={(e) => e.stopPropagation()}
+        >
           <div className="editor-wrapper-container">
             <button
               onClick={() => {
@@ -2303,68 +2379,48 @@ export default function App() {
             <FilerobotImageEditor
               key={editingItem.image_path}
               source={editingItem.displayURL || editingItem.imageURL}
-              onSave={async (savedImageData) => {
-                try {
-                  console.log("💾 Saving edited image...", savedImageData);
-
-                  const imageBase64 =
-                    savedImageData.imageBase64 ||
-                    savedImageData.imageCanvas?.toDataURL("image/jpeg", 0.9);
-
-                  if (!imageBase64)
-                    throw new Error("No image data generated from editor.");
-
-                  const response = await fetch(imageBase64);
-                  const blob = await response.blob();
-
-                  const { error: uploadError } = await supabase.storage
-                    .from("gallery")
-                    .upload(editingItem.image_path, blob, {
-                      upsert: true,
-                      contentType: "image/jpeg",
-                    });
-
-                  if (uploadError) throw uploadError;
-
-                  const cacheBustedUrl = `${
-                    (editingItem.displayURL || editingItem.imageURL).split(
-                      "?",
-                    )[0]
-                  }?t=${Date.now()}`;
-
-                  setItems((prev) =>
-                    prev.map((item) =>
-                      item.id === editingItem.id
-                        ? {
-                            ...item,
-                            displayURL: cacheBustedUrl,
-                            imageURL: cacheBustedUrl,
-                          }
-                        : item,
-                    ),
-                  );
-
-                  setEditingItem(null);
-                  setEditingId(null);
-                  setSelectedIds(new Set());
-
-                  setToastMessage("Image updated! ✨");
-                  setTimeout(() => setToastMessage(""), 2000);
-                } catch (err) {
-                  console.error("❌ Save failed:", err.message || err);
-                  alert(`Failed to save image changes: ${err.message || err}`);
-                }
+              onBeforeSave={(imageFileInfo) => {
+                console.log(
+                  "🟡 [Filerobot] onBeforeSave triggered:",
+                  imageFileInfo,
+                );
+                return false;
               }}
-              onClose={() => {
+              onSave={handleFilerobotSave}
+              onClose={(reason) => {
+                console.log(
+                  "🚪 [v4.8.1 onClose] Triggered with reason:",
+                  reason,
+                );
                 setEditingItem(null);
                 setEditingId(null);
               }}
-              tabsIds={["ADJUST", "FILTERS", "ANNOTATE"]}
-              defaultTabId={"ADJUST"}
-              defaultToolId={"CROP"}
+              annotationsCommon={{
+                fill: "#ff0000",
+              }}
+              Text={{ text: "Text..." }}
+              Rotate={{ angle: 90, componentType: "slider" }}
+              Crop={{
+                presetsItems: [
+                  {
+                    titleKey: "classicTv",
+                    descriptionKey: "4:3",
+                    ratio: 4 / 3,
+                  },
+                  {
+                    titleKey: "cinematic",
+                    descriptionKey: "16:9",
+                    ratio: 16 / 9,
+                  },
+                ],
+              }}
+              tabsIds={["Adjust", "Annotate", "Filters"]}
+              defaultTabId="Adjust"
+              defaultToolId="Crop"
+              useBackendTranslations={false}
+              savingPixelRatio={1}
+              previewPixelRatio={1}
               config={{
-                layout: "compact",
-                observePluginContainerSize: true,
                 loadableImages: true,
                 crossOrigin: "anonymous",
               }}
