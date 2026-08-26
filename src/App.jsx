@@ -2271,112 +2271,119 @@ export default function App() {
 
       {editingItem && (
         <div className="editor-overlay">
-          <div className="editor-wrapper-container">
-            <button
-              onClick={() => {
-                setEditingItem(null);
-                setEditingId(null);
-              }}
+          <div
+            className="editor-wrapper-container"
+            style={{ position: "relative" }}
+          >
+            {/* Top Floating Action Header */}
+            <div
               style={{
                 position: "absolute",
-                top: "16px",
-                right: "16px",
+                top: "12px",
+                left: "12px",
+                right: "12px",
                 zIndex: 100000,
-                background: "#333",
-                color: "#fff",
-                border: "none",
-                borderRadius: "50%",
-                width: "36px",
-                height: "36px",
-                fontSize: "18px",
-                cursor: "pointer",
                 display: "flex",
+                justifyContent: "space-between",
                 alignItems: "center",
-                justifyContent: "center",
-                boxShadow: "0 2px 8px rgba(0,0,0,0.5)",
+                pointerEvents: "auto",
               }}
-              aria-label="Close Editor"
             >
-              ✕
-            </button>
+              <button
+                onClick={() => {
+                  setEditingItem(null);
+                  setEditingId(null);
+                }}
+                style={{
+                  background: "rgba(0,0,0,0.7)",
+                  color: "#fff",
+                  border: "1px solid rgba(255,255,255,0.2)",
+                  borderRadius: "20px",
+                  padding: "8px 16px",
+                  fontSize: "14px",
+                  cursor: "pointer",
+                  backdropFilter: "blur(4px)",
+                }}
+              >
+                ✕ Cancel
+              </button>
 
+              <button
+                onClick={async () => {
+                  try {
+                    console.log("💾 Manual Save Triggered...");
+
+                    // Target Filerobot's rendered canvas directly from the DOM
+                    const canvas = document.querySelector(
+                      ".editor-wrapper-container canvas",
+                    );
+                    if (!canvas)
+                      throw new Error("Canvas element not found in DOM.");
+
+                    const imageBase64 = canvas.toDataURL("image/jpeg", 0.92);
+                    const res = await fetch(imageBase64);
+                    const blob = await res.blob();
+
+                    const { error: uploadError } = await supabase.storage
+                      .from("gallery")
+                      .upload(editingItem.image_path, blob, {
+                        upsert: true,
+                        contentType: "image/jpeg",
+                      });
+
+                    if (uploadError) throw uploadError;
+
+                    const cacheBustedUrl = `${
+                      (editingItem.displayURL || editingItem.imageURL).split(
+                        "?",
+                      )[0]
+                    }?t=${Date.now()}`;
+
+                    setItems((prev) =>
+                      prev.map((item) =>
+                        item.id === editingItem.id
+                          ? {
+                              ...item,
+                              displayURL: cacheBustedUrl,
+                              imageURL: cacheBustedUrl,
+                            }
+                          : item,
+                      ),
+                    );
+
+                    setEditingItem(null);
+                    setEditingId(null);
+                    setSelectedIds(new Set());
+
+                    setToastMessage("Image updated! ✨");
+                    setTimeout(() => setToastMessage(""), 2000);
+                  } catch (err) {
+                    console.error("❌ Save failed:", err);
+                    alert(`Save failed: ${err.message || err}`);
+                  }
+                }}
+                style={{
+                  background: "#007aff",
+                  color: "#fff",
+                  border: "none",
+                  borderRadius: "20px",
+                  padding: "8px 20px",
+                  fontSize: "14px",
+                  fontWeight: "bold",
+                  cursor: "pointer",
+                  boxShadow: "0 2px 10px rgba(0,122,255,0.4)",
+                }}
+              >
+                Save Changes ✓
+              </button>
+            </div>
+
+            {/* Editor Component */}
             <FilerobotImageEditor
               key={editingItem.image_path}
               source={editingItem.displayURL || editingItem.imageURL}
-              onBeforeSave={(imageFileInfo) => {
-                // Returning true tells Filerobot to proceed with standard saving
-                return true;
-              }}
-              onSave={async (savedImageData, imageDesignState) => {
-                try {
-                  console.log("💾 Saving edited image...", savedImageData);
-
-                  // Extract image data from returned object or canvas
-                  let imageBase64 =
-                    savedImageData.imageBase64 ||
-                    savedImageData.imageCanvas?.toDataURL("image/jpeg", 0.9) ||
-                    savedImageData.imageData?.imageCanvas?.toDataURL(
-                      "image/jpeg",
-                      0.9,
-                    );
-
-                  if (!imageBase64) {
-                    throw new Error(
-                      "Could not extract image data from editor.",
-                    );
-                  }
-
-                  // Convert Base64 to Blob safely
-                  const res = await fetch(imageBase64);
-                  const blob = await res.blob();
-
-                  // Upload directly back to Supabase
-                  const { error: uploadError } = await supabase.storage
-                    .from("gallery")
-                    .upload(editingItem.image_path, blob, {
-                      upsert: true,
-                      contentType: "image/jpeg",
-                    });
-
-                  if (uploadError) throw uploadError;
-
-                  // Force React & Browser Cache Refresh
-                  const cacheBustedUrl = `${
-                    (editingItem.displayURL || editingItem.imageURL).split(
-                      "?",
-                    )[0]
-                  }?t=${Date.now()}`;
-
-                  setItems((prev) =>
-                    prev.map((item) =>
-                      item.id === editingItem.id
-                        ? {
-                            ...item,
-                            displayURL: cacheBustedUrl,
-                            imageURL: cacheBustedUrl,
-                          }
-                        : item,
-                    ),
-                  );
-
-                  // Close editor state
-                  setEditingItem(null);
-                  setEditingId(null);
-                  setSelectedIds(new Set());
-
-                  setToastMessage("Image updated! ✨");
-                  setTimeout(() => setToastMessage(""), 2000);
-                } catch (err) {
-                  console.error("❌ Save error:", err);
-                  alert(`Save failed: ${err.message || err}`);
-                }
-              }}
-              onClose={(reason) => {
-                console.log(" Editor closed with reason:", reason);
-                // Only clear states if user actually clicked close/cancel
-                setEditingItem(null);
-                setEditingId(null);
-              }}
+              onSave={() => {}}
+              onClose={() => {}}
               tabsIds={["ADJUST", "FILTERS", "ANNOTATE"]}
               defaultTabId={"ADJUST"}
               defaultToolId={"CROP"}
@@ -2385,8 +2392,8 @@ export default function App() {
                 observePluginContainerSize: true,
                 loadableImages: true,
                 crossOrigin: "anonymous",
-                forceToPngInCanvas: false,
-                useBackendTranslations: false,
+                showCanvasOnly: false,
+                hideHeader: true, // Hides internal Filerobot save/close controls to rely on the overlay bar
               }}
             />
           </div>
