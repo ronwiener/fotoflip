@@ -1788,7 +1788,6 @@ export default function App() {
   // 3. MAIN GALLERY (HAVE SESSION)
   return (
     <>
-      {" "}
       <DndContext
         sensors={sensors}
         collisionDetection={closestCenter}
@@ -2188,7 +2187,6 @@ export default function App() {
             <div
               className="folder-input-overlay"
               onClick={() => {
-                // Clicking the dark background overlay submits or closes
                 saveNewFolderInline();
               }}
             >
@@ -2197,7 +2195,7 @@ export default function App() {
                   e.preventDefault();
                   saveNewFolderInline();
                 }}
-                onClick={(e) => e.stopPropagation()} // Keeps input clicks from closing overlay
+                onClick={(e) => e.stopPropagation()}
               >
                 <input
                   className="large-inline-input"
@@ -2209,7 +2207,6 @@ export default function App() {
                   value={newFolderName}
                   onChange={(e) => setNewFolderName(e.target.value)}
                   onBlur={() => {
-                    // Triggers when tapping outside
                     saveNewFolderInline();
                   }}
                   onKeyDown={(e) => {
@@ -2247,9 +2244,9 @@ export default function App() {
               />
             ) : null}
           </DragOverlay>
-        </div>{" "}
-        {/* This closes .app */}
+        </div>
       </DndContext>
+
       {zoomData && (
         <ZoomOverlay
           data={zoomData}
@@ -2261,21 +2258,48 @@ export default function App() {
               zoomData.id,
             );
 
-            // 1. Unflip card state back to front
             setItems((prevItems) =>
               prevItems.map((item) =>
                 item.id === zoomData.id ? { ...item, flipped: false } : item,
               ),
             );
 
-            // 2. Clear overlay
             setZoomData(null);
           }}
         />
       )}
+
       {editingItem && (
         <div className="editor-overlay">
           <div className="editor-wrapper-container">
+            <button
+              onClick={() => {
+                setEditingItem(null);
+                setEditingId(null);
+              }}
+              style={{
+                position: "absolute",
+                top: "16px",
+                right: "16px",
+                zIndex: 100000,
+                background: "#333",
+                color: "#fff",
+                border: "none",
+                borderRadius: "50%",
+                width: "36px",
+                height: "36px",
+                fontSize: "18px",
+                cursor: "pointer",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                boxShadow: "0 2px 8px rgba(0,0,0,0.5)",
+              }}
+              aria-label="Close Editor"
+            >
+              ✕
+            </button>
+
             <FilerobotImageEditor
               key={editingItem.image_path}
               source={editingItem.displayURL || editingItem.imageURL}
@@ -2283,7 +2307,6 @@ export default function App() {
                 try {
                   console.log("💾 Saving edited image...");
 
-                  // Extract base64/blob URL safely
                   const imageBase64 =
                     savedImageData.imageBase64 ||
                     savedImageData.imageCanvas?.toDataURL();
@@ -2293,7 +2316,6 @@ export default function App() {
                   const response = await fetch(imageBase64);
                   const blob = await response.blob();
 
-                  // Re-upload modified image blob back to Supabase Storage
                   const { error: uploadError } = await supabase.storage
                     .from("gallery")
                     .upload(editingItem.image_path, blob, {
@@ -2303,7 +2325,6 @@ export default function App() {
 
                   if (uploadError) throw uploadError;
 
-                  // Update local state with timestamp cache-buster so new image renders immediately
                   const cacheBustedUrl = `${
                     (editingItem.displayURL || editingItem.imageURL).split(
                       "?",
@@ -2322,7 +2343,6 @@ export default function App() {
                     ),
                   );
 
-                  // Close editor and clear selection
                   setEditingItem(null);
                   setEditingId(null);
                   setSelectedIds(new Set());
@@ -2345,12 +2365,13 @@ export default function App() {
                 layout: "compact",
                 observePluginContainerSize: true,
                 loadableImages: true,
-                crossOrigin: "anonymous", // Prevents canvas taints on Supabase URLs
+                crossOrigin: "anonymous",
               }}
             />
           </div>
         </div>
       )}
+
       {showTips && <TipsModal onClose={() => setShowTips(false)} />}
     </>
   );

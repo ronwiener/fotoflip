@@ -1605,10 +1605,11 @@ body:has(.folder-input-overlay) {
   position: fixed;
   inset: 0;
   background-color: rgba(0, 0, 0, 0.95);
-  z-index: 9999;
+  z-index: 99999;
   display: flex;
   align-items: center;
   justify-content: center;
+  pointer-events: auto;
 }
 
 .editor-wrapper-container {
@@ -1621,32 +1622,21 @@ body:has(.folder-input-overlay) {
   border-radius: 24px;
   display: flex;
   flex-direction: column;
-  box-sizing: border-box !important;
-  overflow: visible !important;
+  box-sizing: border-box;
+  overflow: hidden; /* Restores internal canvas clipping so controls register clicks */
 }
 
-.editor-wrapper-container > .filerobot-image-editor-root {
+/* Flexibly target any Filerobot wrapper element regardless of internal class name changes */
+.editor-wrapper-container > div {
   width: 100% !important;
   height: 100% !important;
-  margin: auto !important;
+  pointer-events: auto !important;
 }
 
-.filerobot-image-editor-root {
-  width: 100% !important;
-  height: 100% !important;
-  overflow: visible !important;
-}
-
-.filerobot-edit-config-canvas-container,
-.SfxCanvas-root {
-  overflow: visible !important;
-  background: visible !important;
-}
-
-canvas.filerobot-edit-config-canvas {
+/* Ensure Filerobot canvas scales correctly inside rounded wrapper */
+.editor-wrapper-container canvas {
   max-width: 100% !important;
   max-height: 100% !important;
-  transform: none !important;
 }
 
 /* ================================================================
