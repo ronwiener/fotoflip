@@ -1528,13 +1528,24 @@ export default function App() {
     });
   }, []);
 
-  const handleEditRequest = (item) => {
-    setEditingId(item.id);
+  const handleEditRequest = async (item) => {
+    // Generate buffer for direct inline edit request
+    const bufferedUrl = item.imageURL
+      ? await addImageBuffer(item.imageURL)
+      : item.displayURL;
+    setEditingItem({
+      ...item,
+      displayURL: bufferedUrl,
+    });
   };
 
   const handleSelectEditFromMenu = async (item) => {
     setEditingId(null);
-    const bufferedUrl = await addImageBuffer(item.imageURL);
+    setSelectedIds(new Set()); // Deselect card when opening editor
+
+    const bufferedUrl = item.imageURL
+      ? await addImageBuffer(item.imageURL)
+      : item.displayURL;
 
     setEditingItem({
       ...item,
@@ -2268,39 +2279,74 @@ export default function App() {
             <FilerobotImageEditor
               key={editingItem.image_path}
               source={editingItem.displayURL || editingItem.imageURL}
-              onSave={async (obj) => {
+              onSave={async (savedImageData) => {
                 try {
-                  const response = await fetch(obj.imageBase64);
+                  console.log("💾 Saving edited image...");
+
+                  // Extract base64/blob URL safely
+                  const imageBase64 =
+                    savedImageData.imageBase64 ||
+                    savedImageData.imageCanvas?.toDataURL();
+                  if (!imageBase64)
+                    throw new Error("No image data generated from editor.");
+
+                  const response = await fetch(imageBase64);
                   const blob = await response.blob();
-                  const { error } = await supabase.storage
+
+                  // Re-upload modified image blob back to Supabase Storage
+                  const { error: uploadError } = await supabase.storage
                     .from("gallery")
-                    .upload(editingItem.image_path, blob, { upsert: true });
-                  if (error) throw error;
+                    .upload(editingItem.image_path, blob, {
+                      upsert: true,
+                      contentType: "image/jpeg",
+                    });
+
+                  if (uploadError) throw uploadError;
+
+                  // Update local state with timestamp cache-buster so new image renders immediately
+                  const cacheBustedUrl = `${
+                    (editingItem.displayURL || editingItem.imageURL).split(
+                      "?",
+                    )[0]
+                  }?t=${Date.now()}`;
+
                   setItems((prev) =>
                     prev.map((item) =>
-                      item.image_path === editingItem.image_path
+                      item.id === editingItem.id
                         ? {
                             ...item,
-                            imageURL: `${
-                              item.imageURL.split("?")[0]
-                            }?t=${Date.now()}`,
+                            displayURL: cacheBustedUrl,
+                            imageURL: cacheBustedUrl,
                           }
                         : item,
                     ),
                   );
+
+                  // Close editor and clear selection
                   setEditingItem(null);
+                  setEditingId(null);
+                  setSelectedIds(new Set());
+
                   setToastMessage("Image updated! ✨");
                   setTimeout(() => setToastMessage(""), 2000);
                 } catch (err) {
-                  console.error("Save failed:", err);
-                  alert("Failed to save changes.");
+                  console.error("❌ Save failed:", err.message || err);
+                  alert(`Failed to save image changes: ${err.message || err}`);
                 }
               }}
-              onClose={() => setEditingItem(null)}
+              onClose={() => {
+                setEditingItem(null);
+                setEditingId(null);
+              }}
               tabsIds={["ADJUST", "FILTERS", "ANNOTATE"]}
               defaultTabId={"ADJUST"}
               defaultToolId={"CROP"}
-              config={{ layout: "compact", observePluginContainerSize: true }}
+              config={{
+                layout: "compact",
+                observePluginContainerSize: true,
+                loadableImages: true,
+                crossOrigin: "anonymous", // Prevents canvas taints on Supabase URLs
+              }}
             />
           </div>
         </div>
