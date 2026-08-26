@@ -2303,19 +2303,34 @@ export default function App() {
             <FilerobotImageEditor
               key={editingItem.image_path}
               source={editingItem.displayURL || editingItem.imageURL}
-              onSave={async (savedImageData) => {
+              onBeforeSave={(imageFileInfo) => {
+                // Returning true tells Filerobot to proceed with standard saving
+                return true;
+              }}
+              onSave={async (savedImageData, imageDesignState) => {
                 try {
-                  console.log("💾 Saving edited image...");
+                  console.log("💾 Saving edited image...", savedImageData);
 
-                  const imageBase64 =
+                  // Extract image data from returned object or canvas
+                  let imageBase64 =
                     savedImageData.imageBase64 ||
-                    savedImageData.imageCanvas?.toDataURL();
-                  if (!imageBase64)
-                    throw new Error("No image data generated from editor.");
+                    savedImageData.imageCanvas?.toDataURL("image/jpeg", 0.9) ||
+                    savedImageData.imageData?.imageCanvas?.toDataURL(
+                      "image/jpeg",
+                      0.9,
+                    );
 
-                  const response = await fetch(imageBase64);
-                  const blob = await response.blob();
+                  if (!imageBase64) {
+                    throw new Error(
+                      "Could not extract image data from editor.",
+                    );
+                  }
 
+                  // Convert Base64 to Blob safely
+                  const res = await fetch(imageBase64);
+                  const blob = await res.blob();
+
+                  // Upload directly back to Supabase
                   const { error: uploadError } = await supabase.storage
                     .from("gallery")
                     .upload(editingItem.image_path, blob, {
@@ -2325,6 +2340,7 @@ export default function App() {
 
                   if (uploadError) throw uploadError;
 
+                  // Force React & Browser Cache Refresh
                   const cacheBustedUrl = `${
                     (editingItem.displayURL || editingItem.imageURL).split(
                       "?",
@@ -2343,6 +2359,7 @@ export default function App() {
                     ),
                   );
 
+                  // Close editor state
                   setEditingItem(null);
                   setEditingId(null);
                   setSelectedIds(new Set());
@@ -2350,11 +2367,13 @@ export default function App() {
                   setToastMessage("Image updated! ✨");
                   setTimeout(() => setToastMessage(""), 2000);
                 } catch (err) {
-                  console.error("❌ Save failed:", err.message || err);
-                  alert(`Failed to save image changes: ${err.message || err}`);
+                  console.error("❌ Save error:", err);
+                  alert(`Save failed: ${err.message || err}`);
                 }
               }}
-              onClose={() => {
+              onClose={(reason) => {
+                console.log(" Editor closed with reason:", reason);
+                // Only clear states if user actually clicked close/cancel
                 setEditingItem(null);
                 setEditingId(null);
               }}
@@ -2366,6 +2385,8 @@ export default function App() {
                 observePluginContainerSize: true,
                 loadableImages: true,
                 crossOrigin: "anonymous",
+                forceToPngInCanvas: false,
+                useBackendTranslations: false,
               }}
             />
           </div>
