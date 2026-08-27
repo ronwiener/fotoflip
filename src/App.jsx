@@ -1747,11 +1747,27 @@ export default function App() {
     return items.filter((item) => item.folder === folderName).length;
   };
 
-  const handleSignOut = () => {
-    setSession(null);
-    setItems([]);
-    setFolders([]);
-    setView("landing");
+  const handleSignOut = async () => {
+    try {
+      // 1. Tell Supabase to invalidate the current session/token
+      const { error } = await supabase.auth.signOut();
+      if (error) {
+        console.warn("⚠️ [SignOut] Supabase sign out warning:", error.message);
+      }
+    } catch (err) {
+      console.error("❌ [SignOut Error]:", err.message || err);
+    } finally {
+      // 2. Clear all local React state & route back to landing page regardless
+      setSession(null);
+      setItems([]);
+      setFolders([]);
+      setSelectedIds(new Set());
+      setActiveFolder("Select Folder");
+      setEditingItem(null);
+      setView("landing");
+
+      console.log("🚪 [SignOut] User successfully logged out and state wiped.");
+    }
   };
 
   const handleDeleteAccount = async () => {
