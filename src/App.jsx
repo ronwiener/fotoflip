@@ -6,6 +6,7 @@ import React, {
   memo,
   useRef,
 } from "react";
+import { createPortal } from "react-dom";
 import { SignInWithApple } from "@capacitor-community/apple-sign-in";
 import { GoogleAuth } from "@codetrix-studio/capacitor-google-auth";
 import { SplashScreen } from "@capacitor/splash-screen";
@@ -46,7 +47,7 @@ import LandingPage from "./LandingPage";
 import TipsModal from "./TipsModal";
 import { Haptics, ImpactStyle } from "@capacitor/haptics";
 import debouncePkg from "lodash.debounce";
-import decodeHeic from "heic-decode";
+import QuickPinchZoom from "react-quick-pinch-zoom";
 /* ---------- AUTH COMPONENT ---------- */
 
 // Add this helper function outside your Auth component to generate a safe nonce string
@@ -61,6 +62,9 @@ const generateNonce = (length = 32) => {
 };
 
 const debounce = debouncePkg.default || debouncePkg;
+
+const makeTransform = ({ x, y, scale }) =>
+  `translate3d(${x}px, ${y}px, 0) scale(${scale})`;
 
 function getSafeImageSrc(src) {
   if (!src) return "";
@@ -422,19 +426,21 @@ function TrashDropZone({ selectedCount, isDropping }) {
     </div>
   );
 }
-
 function ZoomOverlay({ data, item, updateNotes, onClose }) {
   const textareaRef = useRef(null);
+  const imgRef = useRef(null);
+  const containerRef = useRef(null);
+
   const [localNotes, setLocalNotes] = useState(item?.notes || "");
   const [isSuccessClosing, setIsSuccessClosing] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
+  const [isImageLoaded, setIsImageLoaded] = useState(false);
 
   const updateNotesRef = useRef(updateNotes);
   useEffect(() => {
     updateNotesRef.current = updateNotes;
   }, [updateNotes]);
 
-  // Debounced save for background auto-saving while typing
   const debouncedSave = useMemo(
     () =>
       debounce(async (id, val) => {
@@ -447,16 +453,140 @@ function ZoomOverlay({ data, item, updateNotes, onClose }) {
     [],
   );
 
-  // Sync initial notes if item changes
+  // NATIVE PINCH & PAN GESTURE ENGINE
   useEffect(() => {
-    if (item?.notes !== undefined) {
-      setLocalNotes(item.notes);
-    }
+    const imgEl = imgRef.current;
+    const containerEl = containerRef.current;
+    if (
+      !imgEl ||
+      !containerEl ||
+      (data?.type !== "img" && data?.type !== "image")
+    )
+      return;
+
+    // Use a Map to safely track multi-touch pointers across frames
+    const activePointers = new Map();
+    let prevDiff = -1;
+    let scale = 1;
+    let pointX = 0;
+    let pointY = 0;
+    let startX = 0;
+    let startY = 0;
+
+    const getDistance = (p1, p2) => {
+      const dx = p1.x - p2.x;
+      const dy = p1.y - p2.y;
+      return Math.sqrt(dx * dx + dy * dy);
+    };
+
+    const applyTransform = () => {
+      imgEl.style.transform = `translate3d(${pointX}px, ${pointY}px, 0) scale(${scale})`;
+    };
+
+    const handlePointerDown = (e) => {
+      // Store current pointer coordinates
+      activePointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
+
+      if (activePointers.size === 1) {
+        startX = e.clientX - pointX;
+        startY = e.clientY - pointY;
+      }
+    };
+
+    const handlePointerMove = (e) => {
+      if (!activePointers.has(e.pointerId)) return;
+
+      // Update pointer location
+      activePointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
+
+      const pointerList = Array.from(activePointers.values());
+
+      // Two-finger PINCH
+      if (pointerList.length === 2) {
+        const curDiff = getDistance(pointerList[0], pointerList[1]);
+
+        if (prevDiff > 0) {
+          const delta = curDiff - prevDiff;
+          const zoomFactor = delta * 0.008;
+          scale = Math.min(Math.max(1, scale + zoomFactor), 5);
+          applyTransform();
+        }
+        prevDiff = curDiff;
+      }
+      // One-finger PAN (only when zoomed in)
+      else if (pointerList.length === 1 && scale > 1) {
+        pointX = e.clientX - startX;
+        pointY = e.clientY - startY;
+        applyTransform();
+      }
+    };
+
+    const handlePointerUp = (e) => {
+      activePointers.delete(e.pointerId);
+
+      if (activePointers.size < 2) {
+        prevDiff = -1;
+      }
+
+      // Reset single-finger pan anchor point if transitioning back to 1 finger
+      if (activePointers.size === 1) {
+        const remainingPointer = Array.from(activePointers.values())[0];
+        startX = remainingPointer.x - pointX;
+        startY = remainingPointer.y - pointY;
+      }
+
+      // Snap back if unzoomed
+      if (scale <= 1) {
+        scale = 1;
+        pointX = 0;
+        pointY = 0;
+        applyTransform();
+      }
+    };
+
+    // Double-tap to quick zoom / reset
+    let lastTap = 0;
+    const handleDoubleTap = (e) => {
+      const now = Date.now();
+      if (now - lastTap < 300) {
+        if (scale > 1) {
+          scale = 1;
+          pointX = 0;
+          pointY = 0;
+        } else {
+          scale = 2.5;
+        }
+        applyTransform();
+      }
+      lastTap = now;
+    };
+
+    containerEl.addEventListener("pointerdown", handlePointerDown);
+    containerEl.addEventListener("pointermove", handlePointerMove);
+    containerEl.addEventListener("pointerup", handlePointerUp);
+    containerEl.addEventListener("pointercancel", handlePointerUp);
+    containerEl.addEventListener("click", handleDoubleTap);
+
+    return () => {
+      containerEl.removeEventListener("pointerdown", handlePointerDown);
+      containerEl.removeEventListener("pointermove", handlePointerMove);
+      containerEl.removeEventListener("pointerup", handlePointerUp);
+      containerEl.removeEventListener("pointercancel", handlePointerUp);
+      containerEl.removeEventListener("click", handleDoubleTap);
+    };
+  }, [data]);
+
+  useEffect(() => {
+    if (item?.notes !== undefined) setLocalNotes(item.notes);
   }, [item?.notes]);
 
-  // Auto-focus textarea on open
   useEffect(() => {
-    if (data && textareaRef.current) {
+    if (
+      data &&
+      data.type !== "img" &&
+      data.type !== "image" &&
+      textareaRef.current
+    ) {
       const timer = setTimeout(() => {
         if (textareaRef.current) {
           textareaRef.current.focus();
@@ -468,7 +598,6 @@ function ZoomOverlay({ data, item, updateNotes, onClose }) {
     }
   }, [data]);
 
-  // Cleanup debouncer on unmount
   useEffect(() => {
     return () => {
       if (typeof debouncedSave?.cancel === "function") {
@@ -479,35 +608,113 @@ function ZoomOverlay({ data, item, updateNotes, onClose }) {
 
   if (!data) return null;
 
-  const executeSaveAndClose = async () => {
-    console.log("🔍 [ZoomOverlay] Done/Close triggered!");
+  const executeSaveAndClose = async (e) => {
+    if (e && typeof e.stopPropagation === "function") e.stopPropagation();
     try {
       setIsSaving(true);
       const targetId = data?.id || item?.id;
-      if (typeof updateNotes === "function" && targetId) {
-        await updateNotes(targetId, localNotes); // 👈 MUST BE AWAITED
+      if (
+        typeof updateNotes === "function" &&
+        targetId &&
+        data.type !== "img" &&
+        data.type !== "image"
+      ) {
+        await updateNotes(targetId, localNotes);
       }
     } catch (err) {
       console.error("❌ [ZoomOverlay] Error during final save:", err);
     } finally {
       setIsSaving(false);
-      console.log("🟢 [ZoomOverlay] Executing onClose()");
-      if (typeof onClose === "function") {
-        onClose();
-      }
+      if (typeof onClose === "function") onClose();
     }
   };
 
-  return (
-    <div className="zoom-overlay" onClick={executeSaveAndClose}>
+  const isImageView = data.type === "img" || data.type === "image";
+
+  return createPortal(
+    <div
+      className="zoom-overlay"
+      onClick={executeSaveAndClose}
+      style={{
+        position: "fixed",
+        top: 0,
+        left: 0,
+        right: 0,
+        bottom: 0,
+        zIndex: 99999,
+        backgroundColor: "rgba(0, 0, 0, 0.95)",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        touchAction: "none", // Prevent native browser scroll/zoom overlay interference
+      }}
+    >
       <div className="overlay-backdrop" />
 
-      {data.type === "img" ? (
+      {isImageView ? (
         <div
+          ref={containerRef}
           className="zoomed-image-container"
           onClick={(e) => e.stopPropagation()}
+          style={{
+            width: "100vw",
+            height: "100vh",
+            position: "relative",
+            overflow: "hidden",
+            touchAction: "none",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+          }}
         >
-          <img src={data.url} alt="" className="zoomed-image" />
+          {/* Close button */}
+          <button
+            type="button"
+            onClick={executeSaveAndClose}
+            style={{
+              position: "absolute",
+              top: 20,
+              right: 20,
+              zIndex: 100000,
+              background: "rgba(255, 255, 255, 0.2)",
+              color: "#fff",
+              border: "none",
+              borderRadius: "50%",
+              width: 40,
+              height: 40,
+              fontSize: 20,
+              cursor: "pointer",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              backdropFilter: "blur(6px)",
+            }}
+          >
+            ✕
+          </button>
+
+          <img
+            ref={imgRef}
+            src={data.url}
+            alt=""
+            onLoad={() => setIsImageLoaded(true)}
+            className="zoomed-image"
+            draggable="false"
+            style={{
+              maxWidth: "100%",
+              maxHeight: "100%",
+              objectFit: "contain",
+              display: "block",
+              userSelect: "none",
+              WebkitUserSelect: "none",
+              pointerEvents: "none", // Pass touch events directly to containerRef
+              willChange: "transform",
+              transformOrigin: "center center",
+              opacity: isImageLoaded ? 1 : 0,
+              transition: "opacity 0.15s ease-in",
+              touchAction: "none",
+            }}
+          />
         </div>
       ) : (
         <div className="zoomed-notes-box" onClick={(e) => e.stopPropagation()}>
@@ -546,7 +753,8 @@ function ZoomOverlay({ data, item, updateNotes, onClose }) {
           </button>
         </div>
       )}
-    </div>
+    </div>,
+    document.body,
   );
 }
 
@@ -574,10 +782,21 @@ const DraggableCard = memo(function DraggableCard({
   const isLongPressActive = useRef(false);
   const tapStartRef = useRef({ x: 0, y: 0 });
 
-  const clearTimer = () => {
+  const lastTapRef = useRef(0);
+  const flipTimeoutRef = useRef(null);
+
+  // Separate long-press cleanup from flip-timer cleanup
+  const clearLongPress = () => {
     if (longPressTimer.current) {
       clearTimeout(longPressTimer.current);
       longPressTimer.current = null;
+    }
+  };
+
+  const clearFlipTimer = () => {
+    if (flipTimeoutRef.current) {
+      clearTimeout(flipTimeoutRef.current);
+      flipTimeoutRef.current = null;
     }
   };
 
@@ -585,9 +804,10 @@ const DraggableCard = memo(function DraggableCard({
     isLongPressActive.current = false;
     tapStartRef.current = { x: e.clientX, y: e.clientY };
 
+    clearLongPress();
+
     if (selectedIds.size === 0 && !item.flipped) {
       longPressTimer.current = setTimeout(() => {
-        // Safe haptic trigger
         if (
           typeof navigator !== "undefined" &&
           navigator.vibrate &&
@@ -607,19 +827,41 @@ const DraggableCard = memo(function DraggableCard({
   };
 
   const handlePointerUp = (e) => {
-    clearTimer();
+    // Only cancel long-press here so single-tap flip timers can survive release!
+    clearLongPress();
 
-    // If long press didn't trigger, measure movement distance
     if (!isLongPressActive.current) {
       const deltaX = Math.abs(e.clientX - tapStartRef.current.x);
       const deltaY = Math.abs(e.clientY - tapStartRef.current.y);
 
-      // If finger moved less than 8px, treat it as an explicit tap to flip!
-      if (deltaX < 8 && deltaY < 8) {
+      // Verify tap wasn't a drag gesture
+      if (deltaX < 10 && deltaY < 10) {
         if (selectedIds.size > 0) {
           onToggleSelect(item.id);
         } else {
-          onFlip(item.id);
+          const now = Date.now();
+          const timeSinceLastTap = now - lastTapRef.current;
+
+          if (timeSinceLastTap < 300 && timeSinceLastTap > 0) {
+            // 🔍 DOUBLE TAP: Clear pending flip and open Zoom Overlay
+            clearFlipTimer();
+            lastTapRef.current = 0;
+
+            onZoom({
+              id: item.id,
+              type: "image",
+              url: item.displayURL || item.imageURL,
+            });
+          } else {
+            // 🔄 SINGLE TAP: Wait 250ms to verify it's not a double tap, then flip
+            lastTapRef.current = now;
+            clearFlipTimer();
+
+            flipTimeoutRef.current = setTimeout(() => {
+              onFlip(item.id);
+              flipTimeoutRef.current = null;
+            }, 250);
+          }
         }
       }
     }
@@ -644,9 +886,9 @@ const DraggableCard = memo(function DraggableCard({
           className="card-face card-front"
           {...(!item.flipped ? { ...attributes, ...listeners } : {})}
           onPointerDown={handlePointerDown}
-          onPointerUp={handlePointerUp} // 👈 Attached actual handlePointerUp function here!
-          onPointerLeave={clearTimer}
-          onPointerMove={clearTimer}
+          onPointerUp={handlePointerUp}
+          onPointerLeave={clearLongPress}
+          onPointerCancel={clearLongPress}
           onClick={(e) => e.stopPropagation()}
         >
           {isSelected && <div className="select-indicator active">✓</div>}
@@ -1771,29 +2013,44 @@ export default function App() {
   };
 
   const handleDeleteAccount = async () => {
-    setIsLoading(true);
-    try {
-      const { user } = session; // Ensure you have access to your session/user object
+    // 1. Confirm before executing irreversible action
+    const confirmed = window.confirm(
+      "⚠️ PERMANENT ACCOUNT DELETION\n\nAre you sure you want to delete your account? All your photos, folders, and metadata will be permanently erased. This cannot be undone.",
+    );
 
-      // This insert triggers the SQL function we just wrote
+    if (!confirmed) return;
+
+    setIsLoading(true);
+
+    try {
+      const user = session?.user;
+      if (!user?.id) throw new Error("No active user session found.");
+
+      // 2. Insert into delete_requests to trigger backend cascade
       const { error } = await supabase
         .from("delete_requests")
         .insert([{ id: user.id }]);
 
       if (error) throw error;
 
-      // The user is now deleted on the server.
-      // We sign out locally to clear the session and redirect.
+      // 3. Terminate Supabase auth session
       await supabase.auth.signOut();
 
       alert(
         "Your account and all associated data have been permanently deleted.",
       );
-      // Optionally: window.location.href = '/login'; or your routing logic
     } catch (err) {
-      console.error(err);
+      console.error("❌ Deletion error:", err);
       alert("Error: Could not complete deletion. Please contact support.");
     } finally {
+      // 4. Wipe local state & route back to landing screen regardless of outcome
+      setSession(null);
+      setItems([]);
+      setFolders([]);
+      setSelectedIds(new Set());
+      setActiveFolder("Select Folder");
+      setEditingItem(null);
+      setView("landing");
       setIsLoading(false);
     }
   };
