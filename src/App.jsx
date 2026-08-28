@@ -667,27 +667,30 @@ function ZoomOverlay({ data, item, updateNotes, onClose }) {
             justifyContent: "center",
           }}
         >
-          {/* Close button */}
+          {/* Close button - Fixed to viewport with Safe Area padding */}
           <button
             type="button"
             onClick={executeSaveAndClose}
+            aria-label="Close"
             style={{
-              position: "absolute",
-              top: 20,
-              right: 20,
-              zIndex: 100000,
-              background: "rgba(255, 255, 255, 0.2)",
+              position: "fixed", // Keep fixed to screen viewport, independent of image transforms
+              top: "calc(20px + env(safe-area-inset-top, 0px))", // Protect against iPhone notch/dynamic island
+              right: "calc(20px + env(safe-area-inset-right, 0px))",
+              zIndex: 100005,
+              background: "rgba(0, 0, 0, 0.5)",
               color: "#fff",
-              border: "none",
+              border: "1px solid rgba(255, 255, 255, 0.2)",
               borderRadius: "50%",
-              width: 40,
-              height: 40,
-              fontSize: 20,
+              width: 44, // Minimum 44px tap target size for Apple HIG
+              height: 44,
+              fontSize: 22,
               cursor: "pointer",
               display: "flex",
               alignItems: "center",
               justifyContent: "center",
-              backdropFilter: "blur(6px)",
+              backdropFilter: "blur(8px)",
+              WebkitBackdropFilter: "blur(8px)",
+              touchAction: "manipulation",
             }}
           >
             ✕
