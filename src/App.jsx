@@ -43,7 +43,7 @@ import {
   exportGalleryZip,
   importGalleryZip,
 } from "./helpers/galleryHelpers";
-import LandingPage from "./LandingPage";
+import LandingPage1 from "./LandingPage1";
 import TipsModal from "./TipsModal";
 import { Haptics, ImpactStyle } from "@capacitor/haptics";
 import debouncePkg from "lodash.debounce";
@@ -2066,7 +2066,7 @@ export default function App() {
     return view === "auth" ? (
       <Auth setSession={setSession} setView={setView} supabase={supabase} />
     ) : (
-      <LandingPage onEnter={() => setView("auth")} />
+      <LandingPage1 onEnter={() => setView("auth")} />
     );
   }
 
@@ -2409,100 +2409,102 @@ export default function App() {
               </div>
 
               {/* Account Deletion Confirmation Modal */}
-              {showDeleteModal && (
-                <div
-                  style={{
-                    position: "fixed",
-                    inset: 0,
-                    zIndex: 999999,
-                    backgroundColor: "rgba(0, 0, 0, 0.75)",
-                    backdropFilter: "blur(4px)",
-                    WebkitBackdropFilter: "blur(4px)",
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    padding: "20px",
-                  }}
-                >
+              {showDeleteModal &&
+                createPortal(
                   <div
                     style={{
-                      backgroundColor: "#1e293b",
-                      color: "#f8fafc",
-                      borderRadius: "16px",
-                      padding: "24px",
-                      maxWidth: "400px",
-                      width: "100%",
-                      boxShadow: "0 20px 25px -5px rgba(0, 0, 0, 0.5)",
-                      border: "1px solid rgba(255, 255, 255, 0.1)",
-                      textAlign: "center",
+                      position: "fixed",
+                      inset: 0,
+                      zIndex: 999999,
+                      backgroundColor: "rgba(0, 0, 0, 0.75)",
+                      backdropFilter: "blur(4px)",
+                      WebkitBackdropFilter: "blur(4px)",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      padding: "20px",
                     }}
                   >
-                    <div style={{ fontSize: "32px", marginBottom: "12px" }}>
-                      ⚠️
-                    </div>
-
-                    <h3
+                    <div
                       style={{
-                        fontSize: "18px",
-                        fontWeight: "700",
-                        marginBottom: "12px",
-                        color: "#ef4444",
+                        backgroundColor: "#1e293b",
+                        color: "#f8fafc",
+                        borderRadius: "16px",
+                        padding: "24px",
+                        maxWidth: "400px",
+                        width: "100%",
+                        boxShadow: "0 20px 25px -5px rgba(0, 0, 0, 0.5)",
+                        border: "1px solid rgba(255, 255, 255, 0.1)",
+                        textAlign: "center",
                       }}
                     >
-                      PERMANENT ACCOUNT DELETION
-                    </h3>
+                      <div style={{ fontSize: "32px", marginBottom: "12px" }}>
+                        ⚠️
+                      </div>
 
-                    <p
-                      style={{
-                        fontSize: "14px",
-                        lineHeight: "1.5",
-                        color: "#cbd5e1",
-                        marginBottom: "24px",
-                      }}
-                    >
-                      Are you sure you want to delete your account? All your
-                      photos, folders, and metadata will be permanently erased.
-                      This cannot be undone.
-                    </p>
-
-                    <div style={{ display: "flex", gap: "12px" }}>
-                      <button
-                        type="button"
-                        onClick={() => setShowDeleteModal(false)}
+                      <h3
                         style={{
-                          flex: 1,
-                          padding: "12px",
-                          borderRadius: "8px",
-                          border: "1px solid #475569",
-                          backgroundColor: "#334155",
-                          color: "#fff",
-                          fontWeight: "600",
-                          cursor: "pointer",
+                          fontSize: "18px",
+                          fontWeight: "700",
+                          marginBottom: "12px",
+                          color: "#ef4444",
                         }}
                       >
-                        Cancel
-                      </button>
+                        PERMANENT ACCOUNT DELETION
+                      </h3>
 
-                      <button
-                        type="button"
-                        onClick={confirmDeleteAccount}
+                      <p
                         style={{
-                          flex: 1,
-                          padding: "12px",
-                          borderRadius: "8px",
-                          border: "none",
-                          backgroundColor: "#dc2626",
-                          color: "#fff",
-                          fontWeight: "600",
-                          cursor: "pointer",
+                          fontSize: "14px",
+                          lineHeight: "1.5",
+                          color: "#cbd5e1",
+                          marginBottom: "24px",
                         }}
                       >
-                        Delete
-                      </button>
+                        Are you sure you want to delete your account? All your
+                        photos, folders, and metadata will be permanently
+                        erased. This cannot be undone.
+                      </p>
+
+                      <div style={{ display: "flex", gap: "12px" }}>
+                        <button
+                          type="button"
+                          onClick={() => setShowDeleteModal(false)}
+                          style={{
+                            flex: 1,
+                            padding: "12px",
+                            borderRadius: "8px",
+                            border: "1px solid #475569",
+                            backgroundColor: "#334155",
+                            color: "#fff",
+                            fontWeight: "600",
+                            cursor: "pointer",
+                          }}
+                        >
+                          Cancel
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={confirmDeleteAccount}
+                          style={{
+                            flex: 1,
+                            padding: "12px",
+                            borderRadius: "8px",
+                            border: "none",
+                            backgroundColor: "#dc2626",
+                            color: "#fff",
+                            fontWeight: "600",
+                            cursor: "pointer",
+                          }}
+                        >
+                          Delete
+                        </button>
+                      </div>
                     </div>
-                  </div>
-                </div>
-              )}
+                  </div>,
+                  document.body,
+                )}
             </div>
           </div>
 
