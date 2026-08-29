@@ -1022,6 +1022,7 @@ export default function App() {
   const [editingId, setEditingId] = useState(null);
   const [showTips, setShowTips] = useState(false);
   const [showManageAccount, setShowManageAccount] = useState(false);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
 
   const galleryRef = useRef(null);
 
@@ -2015,28 +2016,28 @@ export default function App() {
     }
   };
 
-  const handleDeleteAccount = async () => {
-    // 1. Confirm before executing irreversible action
-    const confirmed = window.confirm(
-      "⚠️ PERMANENT ACCOUNT DELETION\n\nAre you sure you want to delete your account? All your photos, folders, and metadata will be permanently erased. This cannot be undone.",
-    );
+  // 1. Trigger this from your "Delete Account" button in settings/profile
+  const handleDeleteAccount = () => {
+    setShowDeleteModal(true);
+  };
 
-    if (!confirmed) return;
-
+  // 2. Executed when the user clicks "Delete" inside your custom confirmation modal
+  const confirmDeleteAccount = async () => {
+    setShowDeleteModal(false);
     setIsLoading(true);
 
     try {
       const user = session?.user;
       if (!user?.id) throw new Error("No active user session found.");
 
-      // 2. Insert into delete_requests to trigger backend cascade
+      // Insert into delete_requests to trigger backend cascade
       const { error } = await supabase
         .from("delete_requests")
         .insert([{ id: user.id }]);
 
       if (error) throw error;
 
-      // 3. Terminate Supabase auth session
+      // Terminate Supabase auth session
       await supabase.auth.signOut();
 
       alert(
@@ -2046,7 +2047,7 @@ export default function App() {
       console.error("❌ Deletion error:", err);
       alert("Error: Could not complete deletion. Please contact support.");
     } finally {
-      // 4. Wipe local state & route back to landing screen regardless of outcome
+      // Wipe local state & route back to landing screen regardless of outcome
       setSession(null);
       setItems([]);
       setFolders([]);
@@ -2395,8 +2396,8 @@ export default function App() {
                           onClick={(e) => {
                             e.stopPropagation();
                             setIsMenuOpen(false);
-                            if (window.confirm("Permanent delete?"))
-                              handleDeleteAccount();
+                            setShowManageAccount(false);
+                            handleDeleteAccount(); // Triggers showDeleteModal(true)
                           }}
                         >
                           <span>🗑️</span> Delete Account
@@ -2406,6 +2407,102 @@ export default function App() {
                   </div>
                 )}
               </div>
+
+              {/* Account Deletion Confirmation Modal */}
+              {showDeleteModal && (
+                <div
+                  style={{
+                    position: "fixed",
+                    inset: 0,
+                    zIndex: 999999,
+                    backgroundColor: "rgba(0, 0, 0, 0.75)",
+                    backdropFilter: "blur(4px)",
+                    WebkitBackdropFilter: "blur(4px)",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    padding: "20px",
+                  }}
+                >
+                  <div
+                    style={{
+                      backgroundColor: "#1e293b",
+                      color: "#f8fafc",
+                      borderRadius: "16px",
+                      padding: "24px",
+                      maxWidth: "400px",
+                      width: "100%",
+                      boxShadow: "0 20px 25px -5px rgba(0, 0, 0, 0.5)",
+                      border: "1px solid rgba(255, 255, 255, 0.1)",
+                      textAlign: "center",
+                    }}
+                  >
+                    <div style={{ fontSize: "32px", marginBottom: "12px" }}>
+                      ⚠️
+                    </div>
+
+                    <h3
+                      style={{
+                        fontSize: "18px",
+                        fontWeight: "700",
+                        marginBottom: "12px",
+                        color: "#ef4444",
+                      }}
+                    >
+                      PERMANENT ACCOUNT DELETION
+                    </h3>
+
+                    <p
+                      style={{
+                        fontSize: "14px",
+                        lineHeight: "1.5",
+                        color: "#cbd5e1",
+                        marginBottom: "24px",
+                      }}
+                    >
+                      Are you sure you want to delete your account? All your
+                      photos, folders, and metadata will be permanently erased.
+                      This cannot be undone.
+                    </p>
+
+                    <div style={{ display: "flex", gap: "12px" }}>
+                      <button
+                        type="button"
+                        onClick={() => setShowDeleteModal(false)}
+                        style={{
+                          flex: 1,
+                          padding: "12px",
+                          borderRadius: "8px",
+                          border: "1px solid #475569",
+                          backgroundColor: "#334155",
+                          color: "#fff",
+                          fontWeight: "600",
+                          cursor: "pointer",
+                        }}
+                      >
+                        Cancel
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={confirmDeleteAccount}
+                        style={{
+                          flex: 1,
+                          padding: "12px",
+                          borderRadius: "8px",
+                          border: "none",
+                          backgroundColor: "#dc2626",
+                          color: "#fff",
+                          fontWeight: "600",
+                          cursor: "pointer",
+                        }}
+                      >
+                        Delete
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
           </div>
 
