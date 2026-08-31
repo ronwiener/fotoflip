@@ -925,11 +925,6 @@ const DraggableCard = memo(function DraggableCard({
           >
             <span>{item.location_description || "Unknown Location"}</span>
             <span style={{ margin: "0 5px" }}>•</span>
-            <span>
-              {item.created_at
-                ? new Date(item.created_at).toLocaleDateString()
-                : ""}
-            </span>
           </div>
           <div className="notes-content" style={{ flex: 1 }}>
             <div className="notes-display">
