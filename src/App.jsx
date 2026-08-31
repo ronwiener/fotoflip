@@ -10,7 +10,6 @@ import { createPortal } from "react-dom";
 import { SignInWithApple } from "@capacitor-community/apple-sign-in";
 import { GoogleAuth } from "@codetrix-studio/capacitor-google-auth";
 import { SplashScreen } from "@capacitor/splash-screen";
-import { ImageManipulator } from "@capacitor-community/image-manipulator";
 window.React = React;
 import FilerobotImageEditor, {
   TABS,
@@ -36,9 +35,8 @@ import { supabase } from "./supabaseClient";
 import "./styles1.css";
 import { Capacitor } from "@capacitor/core";
 import { processPhotoMetadata } from "./metadataUtils";
-import { Camera, CameraResultType, CameraSource } from "@capacitor/camera";
+import { Camera, CameraResultType } from "@capacitor/camera";
 import {
-  saveFolders,
   filterItems,
   exportGalleryZip,
   importGalleryZip,
@@ -47,7 +45,7 @@ import LandingPage1 from "./LandingPage1";
 import TipsModal from "./TipsModal";
 import { Haptics, ImpactStyle } from "@capacitor/haptics";
 import debouncePkg from "lodash.debounce";
-import QuickPinchZoom from "react-quick-pinch-zoom";
+
 /* ---------- AUTH COMPONENT ---------- */
 
 // Add this helper function outside your Auth component to generate a safe nonce string
@@ -62,9 +60,6 @@ const generateNonce = (length = 32) => {
 };
 
 const debounce = debouncePkg.default || debouncePkg;
-
-const makeTransform = ({ x, y, scale }) =>
-  `translate3d(${x}px, ${y}px, 0) scale(${scale})`;
 
 function getSafeImageSrc(src) {
   if (!src) return "";
@@ -433,7 +428,7 @@ function ZoomOverlay({ data, item, updateNotes, onClose }) {
   const containerRef = useRef(null);
 
   const [localNotes, setLocalNotes] = useState(item?.notes || "");
-  const [isSuccessClosing, setIsSuccessClosing] = useState(false);
+  const [isSuccessClosing, _setIsSuccessClosing] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [isImageLoaded, setIsImageLoaded] = useState(false);
 
