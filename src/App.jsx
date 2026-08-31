@@ -923,7 +923,7 @@ const DraggableCard = memo(function DraggableCard({
             className="meta-header"
             style={{ fontSize: "10px", color: "#64748b", marginBottom: "10px" }}
           >
-            <span>{item.location_name || "Unknown Location"}</span>
+            <span>{item.location_description || "Unknown Location"}</span>
             <span style={{ margin: "0 5px" }}>•</span>
             <span>
               {item.created_at
