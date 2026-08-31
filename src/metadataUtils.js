@@ -2,39 +2,27 @@ import exifr from "exifr/dist/full.umd.js";
 
 export const getCityFromCoords = async (lat, lon) => {
   try {
-    const url = `https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${lat}&lon=${lon}&zoom=12`;
+    const url = `https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=${lat}&longitude=${lon}&localityLanguage=en`;
 
-    const response = await fetch(url, {
-      method: "GET",
-      headers: {
-        Accept: "application/json",
-        "User-Agent": "PhotoFlipApp/1.0 (contact@photoflip.app)",
-      },
-    });
+    const response = await fetch(url);
 
     if (!response.ok) {
-      console.error(
-        `Nominatim API error (${response.status}):`,
-        response.statusText,
-      );
+      console.warn(`Geocoding error (${response.status})`);
       return "Location Unavailable";
     }
 
     const data = await response.json();
-    const a = data.address;
-    if (!a) return "Area Unknown";
 
-    return (
-      a.city ||
-      a.town ||
-      a.municipality ||
-      a.village ||
-      a.suburb ||
-      a.neighbourhood ||
-      a.county ||
-      a.state ||
-      "Unknown Location"
-    );
+    // Extracts City (or Locality) and State/Region code
+    const city = data.city || data.locality || "";
+    const state =
+      data.principalSubdivisionCode || data.principalSubdivision || "";
+
+    const locationParts = [city, state].filter(Boolean);
+
+    return locationParts.length > 0
+      ? locationParts.join(", ")
+      : "Unknown Location";
   } catch (err) {
     console.error("Geocoding failed:", err);
     return "Unknown Location";
