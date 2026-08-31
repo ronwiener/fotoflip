@@ -844,11 +844,19 @@ img {
   }
 }
 /* Expand columns for iPad and Desktop viewports */
+/* Increase minimum card size on larger screens so photos remain legible */
 @media (min-width: 768px) {
   .gallery {
-    grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
-    gap: 16px;
-    padding: 20px 20px 120px 20px !important;
+    /* Changed minmax from 140px to 180px for larger, clearer cards */
+    grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+    gap: 20px;
+    padding: 24px 24px 120px 24px !important;
+  }
+
+  /* Give notes slightly more room on larger screen cards */
+  .notes-display p {
+    font-size: 0.85rem !important;
+    -webkit-line-clamp: 4;
   }
 }
 
@@ -945,6 +953,58 @@ img {
   background: #ffffff;
   display: flex;
   flex-direction: column;
+  justify-content: space-between; /* Keeps meta top, notes center, button bottom */
+  padding: 8px !important; /* Compact padding for small card backs */
+  overflow: hidden; /* Prevents button from overflowing outside the photo */
+  transform-style: preserve-3d;
+  z-index: 2;
+}
+
+/* Ensure notes area shrinks gracefully */
+.notes-content {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0; /* CRITICAL: Allows flex child to shrink below content size */
+  padding: 4px 2px;
+  overflow: hidden;
+}
+
+.notes-display p {
+  font-size: 0.75rem !important;
+  line-height: 1.2 !important;
+  margin: 0;
+  display: -webkit-box;
+  -webkit-line-clamp: 3; /* Clips long notes to 3 lines on small cards */
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+/* Scale down the button so it always fits inside the frame */
+.notes-actions {
+  display: flex;
+  justify-content: center;
+  padding-top: 4px;
+  flex-shrink: 0;
+}
+
+.flip-back-btn {
+  background: #eef2ff;
+  color: var(--primary);
+  border: 1px solid #c7d2fe;
+  border-radius: 99px;
+  padding: 4px 10px !important; /* Compact button padding */
+  font-size: 10px !important; /* Smaller text so button stays small */
+  font-weight: 700;
+  cursor: pointer;
+  white-space: nowrap;
+}
+/*
+.card-back {
+  transform: rotateY(180deg);
+  background: #ffffff;
+  display: flex;
+  flex-direction: column;
   transform-style: preserve-3d;
   z-index: 2;
 }
@@ -972,9 +1032,9 @@ img {
   font-size: 13px;
   font-weight: 700;
   cursor: pointer;
-  pointer-events: auto !important; /* Force clickable */
+  pointer-events: auto !important;
 }
-
+*/
 /* SELECTION INDICATOR */
 .select-indicator.active {
   position: absolute;
