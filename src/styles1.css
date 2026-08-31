@@ -844,19 +844,23 @@ img {
   }
 }
 /* Expand columns for iPad and Desktop viewports */
-/* Increase minimum card size on larger screens so photos remain legible */
+/* --- TABLET & DESKTOP READABILITY (768px+) --- */
 @media (min-width: 768px) {
   .gallery {
-    /* Changed minmax from 140px to 180px for larger, clearer cards */
     grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
     gap: 20px;
     padding: 24px 24px 120px 24px !important;
   }
 
-  /* Give notes slightly more room on larger screen cards */
+  /* Even larger font on bigger screen cards */
   .notes-display p {
-    font-size: 0.85rem !important;
-    -webkit-line-clamp: 4;
+    font-size: 1.25rem !important; /* Extra large note font on desktop */
+    line-height: 1.4 !important;
+    -webkit-line-clamp: 4; /* Shows up to 4 lines on desktop */
+  }
+
+  .meta-header {
+    font-size: 12px !important;
   }
 }
 
@@ -953,48 +957,61 @@ img {
   background: #ffffff;
   display: flex;
   flex-direction: column;
-  justify-content: space-between; /* Keeps meta top, notes center, button bottom */
-  padding: 8px !important; /* Compact padding for small card backs */
-  overflow: hidden; /* Prevents button from overflowing outside the photo */
+  justify-content: space-between;
+  padding: 10px !important;
+  overflow: hidden;
   transform-style: preserve-3d;
   z-index: 2;
 }
 
+.meta-header {
+  font-size: 11px !important; /* Slightly larger header text */
+  font-weight: 600;
+  color: #64748b;
+  margin-bottom: 6px;
+  flex-shrink: 0;
+}
 /* Ensure notes area shrinks gracefully */
 .notes-content {
   display: flex;
   flex-direction: column;
   flex: 1;
-  min-height: 0; /* CRITICAL: Allows flex child to shrink below content size */
-  padding: 4px 2px;
+  min-height: 0; /* Prevents overflow from pushing the button out */
+  padding: 2px 0;
   overflow: hidden;
+  justify-content: center; /* Vertically centers short notes */
 }
 
+/* Larger, high-contrast readable note font for Mobile (3-column view) */
 .notes-display p {
-  font-size: 0.75rem !important;
-  line-height: 1.2 !important;
+  font-family: Georgia, serif;
+  font-style: italic;
+  font-size: 1.05rem !important; /* Bumped up for crisp readability on mobile */
+  line-height: 1.35 !important;
+  color: #0f172a !important; /* Deeper slate color for higher contrast */
   margin: 0;
   display: -webkit-box;
-  -webkit-line-clamp: 3; /* Clips long notes to 3 lines on small cards */
+  -webkit-line-clamp: 3; /* Keeps note truncated cleanly to 3 lines */
   -webkit-box-orient: vertical;
   overflow: hidden;
+  text-overflow: ellipsis;
 }
 
-/* Scale down the button so it always fits inside the frame */
 .notes-actions {
   display: flex;
   justify-content: center;
-  padding-top: 4px;
-  flex-shrink: 0;
+  padding-top: 6px;
+  flex-shrink: 0; /* Guarantees button stays anchored at bottom */
 }
 
+/* Compact, low-profile Flip Back Button */
 .flip-back-btn {
   background: #eef2ff;
   color: var(--primary);
   border: 1px solid #c7d2fe;
   border-radius: 99px;
-  padding: 4px 10px !important; /* Compact button padding */
-  font-size: 10px !important; /* Smaller text so button stays small */
+  padding: 4px 12px !important;
+  font-size: 11px !important;
   font-weight: 700;
   cursor: pointer;
   white-space: nowrap;
