@@ -732,6 +732,44 @@ img {
   height: 32px;
   stroke: white;
 }
+
+/* --- Updated Responsive Grid Gallery --- */
+.gallery {
+  display: grid;
+  /* 3 columns on mobile; scales up on tablets/desktops */
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px; /* Touch space between cards for vertical scrolling */
+  padding: 12px 12px 120px 12px !important;
+
+  overflow-y: auto;
+  touch-action: pan-y;
+  -webkit-overflow-scrolling: touch;
+  isolation: isolate;
+  position: relative;
+  z-index: 1;
+  background: var(--bg-app) !important;
+  pointer-events: auto;
+}
+
+/* Ensure progress bar spans across all 3 grid columns */
+.gallery-upload-status {
+  grid-column: 1 / -1;
+  display: flex;
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  padding: 12px 10px;
+  background: white;
+  border-bottom: 1px solid #e2e8f0;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+  animation: slideInDown 0.3s ease-out;
+}
+
+/*
 .gallery {
   display: flex;
   flex-direction: column;
@@ -747,8 +785,10 @@ img {
   background: var(--bg-app) !important;
   pointer-events: auto;
 }
-
+*/
 /* --- Centered & Styled Upload Status --- */
+
+/*
 .gallery-upload-status {
   display: flex;
   position: sticky;
@@ -764,7 +804,7 @@ img {
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
   animation: slideInDown 0.3s ease-out;
 }
-
+*/
 .gallery-upload-status p {
   margin: 0 0 12px 0;
   font-size: 18px; /* Larger text */
@@ -803,6 +843,15 @@ img {
     opacity: 1;
   }
 }
+/* Expand columns for iPad and Desktop viewports */
+@media (min-width: 768px) {
+  .gallery {
+    grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+    gap: 16px;
+    padding: 20px 20px 120px 20px !important;
+  }
+}
+
 /* ================================================================
    7. DRAGGABLE CARDS & FLIP LOGIC
    ================================================================ */
@@ -817,6 +866,19 @@ img {
   pointer-events: none; /* Passes mouse clicks straight to dnd-kit's wrapper */
 }
 
+/* --- Updated Mini Polaroid Card Dimensions --- */
+.card-wrapper {
+  width: 100%; /* Spans full width of its grid cell */
+  max-width: none; /* Removes the 300px desktop constraint */
+  aspect-ratio: 3 / 4; /* Preserves classic polaroid proportions */
+  margin: 0;
+  position: relative;
+  user-select: none;
+  -webkit-user-select: none;
+  pointer-events: auto;
+  perspective: 1000px;
+}
+/*
 .card-wrapper {
   width: 85%;
   max-width: 300px;
@@ -828,6 +890,7 @@ img {
   pointer-events: auto;
   perspective: 1000px;
 }
+  */
 
 .card-wrapper.selected {
   outline: 4px solid var(--primary);
