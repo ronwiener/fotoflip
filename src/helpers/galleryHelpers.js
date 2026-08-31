@@ -63,6 +63,7 @@ export const filterItems = (items, activeFolder, search) => {
     return matchesFolder;
   });
 };
+
 /* ---------- ZIP EXPORT (Supabase Version) ---------- */
 export async function exportGalleryZip(items, selectedIds) {
   const zip = new JSZip();
@@ -143,7 +144,7 @@ export async function exportGalleryZip(items, selectedIds) {
 </body>
 </html>`;
 
-  zip.file("gallery.json", JSON.stringify(meta, null, 2));
+  // 👇 Removed: zip.file("gallery.json", JSON.stringify(meta, null, 2));
   zip.file("index.html", htmlContent);
 
   // 3. Generate ZIP as Blob
@@ -186,7 +187,6 @@ export async function exportGalleryZip(items, selectedIds) {
     URL.revokeObjectURL(blobUrl);
   }, 100);
 }
-
 export async function importGalleryZip(file, onProgress) {
   try {
     const {
