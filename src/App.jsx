@@ -2051,14 +2051,39 @@ export default function App() {
       const user = session?.user;
       if (!user?.id) throw new Error("No active user session found.");
 
-      // Insert into delete_requests to trigger backend cascade
-      const { error } = await supabase
+      // 1. Fetch all storage paths for this user's items before deleting the DB records
+      const { data: userItems, error: fetchError } = await supabase
+        .from("items")
+        .select("image_path")
+        .eq("user_id", user.id);
+
+      if (fetchError) throw fetchError;
+
+      // 2. Delete the actual image files from your Supabase Storage bucket
+      if (userItems && userItems.length > 0) {
+        const pathsToDelete = userItems
+          .map((item) => item.image_path)
+          .filter(Boolean);
+
+        if (pathsToDelete.length > 0) {
+          const { error: storageError } = await supabase.storage
+            .from("gallery") // Ensure this matches your bucket name
+            .remove(pathsToDelete);
+
+          if (storageError) {
+            console.warn("Storage files cleanup warning:", storageError);
+          }
+        }
+      }
+
+      // 3. Insert into delete_requests to trigger DB row and auth deletion
+      const { error: deleteReqError } = await supabase
         .from("delete_requests")
         .insert([{ id: user.id }]);
 
-      if (error) throw error;
+      if (deleteReqError) throw deleteReqError;
 
-      // Terminate Supabase auth session
+      // 4. Terminate Supabase auth session
       await supabase.auth.signOut();
 
       alert(
