@@ -1419,26 +1419,22 @@ export default function App() {
 
       const compressImage = async (
         fileToCompress,
-        maxDimension = 3840,
-        quality = 0.92,
+        maxDimension = 2048, // 2K resolution is plenty for sharp full-screen displays
+        quality = 0.82, // Sweet spot for WebP compression (60-80% smaller)
       ) => {
         return new Promise((resolve) => {
-          // If file is already safely under 4.5 MB, skip canvas compression completely
-          // This keeps the original file untouched and crystal clear!
-          if (fileToCompress.size < 4.5 * 1024 * 1024)
-            return resolve(fileToCompress);
-
           console.log(
-            "🗜️ [COMPRESSION] File exceeds 4.5MB, processing via canvas...",
+            "🗜️ [COMPRESSION] Optimizing image for gallery performance...",
           );
           const img = new Image();
           const url = URL.createObjectURL(fileToCompress);
           img.src = url;
+
           img.onload = () => {
             URL.revokeObjectURL(url);
             let { width, height } = img;
 
-            // Only downscale if dimensions exceed 4K
+            // Downscale if dimensions exceed maxDimension
             if (width > maxDimension || height > maxDimension) {
               if (width > height) {
                 height = Math.round((height * maxDimension) / width);
@@ -1454,7 +1450,7 @@ export default function App() {
             canvas.height = height;
             const ctx = canvas.getContext("2d");
 
-            // Fill canvas with white background before drawing (prevents black background bug on transparent PNGs)
+            // Fill background to prevent transparent PNG bugs
             ctx.fillStyle = "#FFFFFF";
             ctx.fillRect(0, 0, width, height);
 
@@ -1462,23 +1458,28 @@ export default function App() {
             ctx.imageSmoothingQuality = "high";
             ctx.drawImage(img, 0, 0, width, height);
 
-            // Maintain exact mime-type (PNGs stay PNGs, JPEGs stay JPEGs)
-            const outputType =
-              fileToCompress.type === "image/png" ? "image/png" : "image/jpeg";
+            // Convert to ultra-fast WebP format
+            const outputType = "image/webp";
+            const newFileName =
+              fileToCompress.name.replace(/\.[^/.]+$/, "") + ".webp";
 
             canvas.toBlob(
               (blob) => {
                 if (!blob) return resolve(fileToCompress);
-                const compressedFile = new File([blob], fileToCompress.name, {
+                const compressedFile = new File([blob], newFileName, {
                   type: outputType,
                   lastModified: Date.now(),
                 });
                 console.log(
-                  `✅ [COMPRESSION SUCCESS] Resized (${outputType}) to ${width}x${height} at ${(
+                  `✅ [COMPRESSION SUCCESS] Reduced from ${(
+                    fileToCompress.size /
+                    1024 /
+                    1024
+                  ).toFixed(2)}MB to ${(
                     compressedFile.size /
                     1024 /
                     1024
-                  ).toFixed(2)}MB`,
+                  ).toFixed(2)}MB (${width}x${height} WebP)`,
                 );
                 resolve(compressedFile);
               },
@@ -1486,6 +1487,7 @@ export default function App() {
               quality,
             );
           };
+
           img.onerror = () => resolve(fileToCompress);
         });
       };
