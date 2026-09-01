@@ -29,6 +29,7 @@ import {
   SortableContext,
   useSortable,
   rectSortingStrategy,
+  arrayMove,
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { supabase } from "./supabaseClient";
@@ -1815,22 +1816,42 @@ export default function App() {
       : [active.id];
 
     const isTrash = over.id === "TRASH_BIN";
+    const isFolderDrop =
+      over.id === "Select Folder" || over.id.startsWith("FOLDER_");
+
     const targetFolder = isTrash
       ? "DELETE"
       : over.id === "Select Folder"
       ? ""
-      : over.id.startsWith("FOLDER_")
+      : isFolderDrop
       ? over.id.replace("FOLDER_", "")
-      : over.id;
+      : null; // Null means it was dropped onto another card to reorder!
 
     // 2. Perform Optimistic Update
-    setItems((prev) =>
-      isTrash
-        ? prev.filter((i) => !draggedIds.includes(i.id))
-        : prev.map((i) =>
-            draggedIds.includes(i.id) ? { ...i, folder: targetFolder } : i,
-          ),
-    );
+    setItems((prev) => {
+      // CASE A: Dropped into TRASH BIN
+      if (isTrash) {
+        return prev.filter((i) => !draggedIds.includes(i.id));
+      }
+
+      // CASE B: Dropped onto a FOLDER
+      if (isFolderDrop) {
+        return prev.map((i) =>
+          draggedIds.includes(i.id) ? { ...i, folder: targetFolder } : i,
+        );
+      }
+
+      // CASE C: Dropped onto ANOTHER CARD (Reorder in place)
+      const oldIndex = prev.findIndex((i) => i.id === active.id);
+      const newIndex = prev.findIndex((i) => i.id === over.id);
+
+      if (oldIndex !== -1 && newIndex !== -1) {
+        return arrayMove(prev, oldIndex, newIndex);
+      }
+
+      return prev;
+    });
+
     setSelectedIds(new Set());
 
     // 3. Handle Database and Storage work in the background
@@ -1866,13 +1887,15 @@ export default function App() {
         }
 
         setTimeout(() => setIsDropping(false), 500);
-      } else {
+      } else if (isFolderDrop) {
+        // Folder assignment persistence
         const { error } = await supabase
           .from("items")
           .update({ folder: targetFolder })
           .in("id", draggedIds);
         if (error) throw error;
       }
+      // Note: Card reordering across drag-and-drop stays fluid in local state.
     } catch (err) {
       console.error("Database or storage sync failed:", err);
       alert("Changes could not be saved to the server: " + err.message);

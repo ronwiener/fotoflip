@@ -737,10 +737,9 @@ img {
 .gallery {
   display: grid;
   /* 3 columns on mobile; scales up on tablets/desktops */
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 12px; /* Touch space between cards for vertical scrolling */
-  padding: 12px 12px 120px 12px !important;
-
+  grid-template-columns: repeat(2, 1fr);
+  gap: 16px; /* Touch space between cards for vertical scrolling */
+  padding: 16px 16px 120px 16px !important;
   overflow-y: auto;
   touch-action: pan-y;
   -webkit-overflow-scrolling: touch;
