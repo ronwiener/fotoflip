@@ -2564,7 +2564,9 @@ export default function App() {
                 >
                   <div
                     key={activeFolder + search}
-                    className="gallery"
+                    className={`gallery ${
+                      visibleItems.length === 1 ? "single-item" : ""
+                    }`}
                     ref={galleryRef}
                     onClick={(e) => {
                       if (e.target === galleryRef.current)

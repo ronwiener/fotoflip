@@ -820,6 +820,29 @@ img {
   }
 }
 
+/* --- SINGLE PHOTO HERO VIEW --- */
+
+/* Mobile: Center 1 item and expand comfortable target size */
+.gallery.single-item {
+  display: flex !important;
+  justify-content: center !important;
+  align-items: flex-start !important;
+  padding: 20px 16px 120px 16px !important;
+}
+
+.gallery.single-item .card-wrapper {
+  width: 100%;
+  max-width: 360px; /* Expands single photo nicely on iPhone while keeping margins */
+  aspect-ratio: 3 / 4;
+}
+
+/* Desktop: Make single photo significantly larger */
+@media (min-width: 768px) {
+  .gallery.single-item .card-wrapper {
+    max-width: 520px; /* Large hero view on desktop */
+  }
+}
+
 /* ================================================================
    7. DRAGGABLE CARDS & FLIP LOGIC
    ================================================================ */
