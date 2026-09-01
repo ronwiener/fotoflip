@@ -896,7 +896,14 @@ const DraggableCard = memo(function DraggableCard({
             src={getSafeImageSrc(item.displayURL || item.imageURL)}
             alt=""
             draggable="false"
-            style={{ pointerEvents: "none", userSelect: "none" }}
+            decoding="async"
+            loading="eager"
+            style={{
+              pointerEvents: "none",
+              userSelect: "none",
+              WebkitUserDrag: "none",
+              willChange: "transform",
+            }}
           />
         </div>
 

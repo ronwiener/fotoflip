@@ -768,50 +768,6 @@ img {
   animation: slideInDown 0.3s ease-out;
 }
 
-/*
-.gallery {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 25px;
-  padding: 10px 15px 120px 15px !important;
-  overflow-y: auto;
-  touch-action: pan-y;
-  -webkit-overflow-scrolling: touch;
-  isolation: isolate;
-  position: relative;
-  z-index: 1;
-  background: var(--bg-app) !important;
-  pointer-events: auto;
-}
-*/
-/* --- Centered & Styled Upload Status --- */
-
-/*
-.gallery-upload-status {
-  display: flex;
-  position: sticky;
-  top: 0;
-  z-index: 100;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  width: 100%;
-  padding: 20px 10px;
-  background: white;
-  border-bottom: 1px solid #e2e8f0;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
-  animation: slideInDown 0.3s ease-out;
-}
-*/
-.gallery-upload-status p {
-  margin: 0 0 12px 0;
-  font-size: 18px; /* Larger text */
-  font-weight: 700;
-  color: #1e293b; /* Deep slate */
-  text-align: center;
-}
-
 /* Make the Progress Bar look sleek */
 .progress-bar-container {
   width: 80%;
@@ -855,6 +811,7 @@ img {
   .notes-display p {
     font-size: 1.25rem !important; /* Extra large note font on desktop */
     line-height: 1.4 !important;
+    line-clamp: 4;
     -webkit-line-clamp: 4; /* Shows up to 4 lines on desktop */
   }
 
@@ -888,20 +845,11 @@ img {
   -webkit-user-select: none;
   pointer-events: auto;
   perspective: 1000px;
+
+  /* GPU Hardware Acceleration Updates */
+  will-change: transform;
+  transform: translateZ(0);
 }
-/*
-.card-wrapper {
-  width: 85%;
-  max-width: 300px;
-  aspect-ratio: 3/4;
-  margin: 0 auto;
-  position: relative;
-  user-select: none;
-  -webkit-user-select: none;
-  pointer-events: auto;
-  perspective: 1000px;
-}
-  */
 
 .card-wrapper.selected {
   outline: 4px solid var(--primary);
@@ -936,6 +884,9 @@ img {
   background: white;
   box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
   transform: translateZ(1px);
+  transform-style: preserve-3d;
+  /* GPU Layering for iOS */
+  -webkit-transform-style: preserve-3d;
 }
 
 /* FRONT SIDE STYLING */
@@ -963,13 +914,14 @@ img {
   z-index: 2;
 }
 
-.meta-header {
+meta-header {
   font-size: 11px !important; /* Slightly larger header text */
   font-weight: 600;
   color: #64748b;
   margin-bottom: 6px;
   flex-shrink: 0;
 }
+
 /* Ensure notes area shrinks gracefully */
 .notes-content {
   display: flex;
@@ -990,6 +942,7 @@ img {
   color: #0f172a !important; /* Deeper slate color for higher contrast */
   margin: 0;
   display: -webkit-box;
+  line-clamp: 3;
   -webkit-line-clamp: 3; /* Keeps note truncated cleanly to 3 lines */
   -webkit-box-orient: vertical;
   overflow: hidden;
@@ -1015,42 +968,7 @@ img {
   cursor: pointer;
   white-space: nowrap;
 }
-/*
-.card-back {
-  transform: rotateY(180deg);
-  background: #ffffff;
-  display: flex;
-  flex-direction: column;
-  transform-style: preserve-3d;
-  z-index: 2;
-}
 
-.notes-content {
-  display: flex;
-  flex-direction: column;
-  height: 100%;
-  padding: 10px 15px;
-  transform: translateZ(1px);
-}
-
-.notes-actions {
-  display: flex;
-  justify-content: center;
-  padding-top: 10px;
-}
-
-.flip-back-btn {
-  background: #eef2ff;
-  color: var(--primary);
-  border: 1px solid #c7d2fe;
-  border-radius: 99px;
-  padding: 10px 20px;
-  font-size: 13px;
-  font-weight: 700;
-  cursor: pointer;
-  pointer-events: auto !important;
-}
-*/
 /* SELECTION INDICATOR */
 .select-indicator.active {
   position: absolute;
