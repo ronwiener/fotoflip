@@ -11,6 +11,9 @@ export default function TipsModal({ onClose }) {
               <strong>Tap Image:</strong> Flip to backside
             </li>
             <li>
+              <strong>Double Tap Image:</strong> Zoom in
+            </li>
+            <li>
               <strong>Long Press (0.5s):</strong> Edit image
             </li>
           </ul>
