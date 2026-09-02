@@ -734,10 +734,11 @@ img {
 }
 
 /* --- Updated Responsive Grid Gallery --- */
+
 .gallery {
   display: grid;
-  /* MOBILE DEFAULT: 1 column for iPhone/mobile screens */
-  grid-template-columns: 1fr;
+  /* MOBILE DEFAULT: Force 1 column on mobile screens */
+  grid-template-columns: 1fr !important;
   gap: 20px;
   padding: 16px 16px 120px 16px !important;
   overflow-y: auto;
@@ -748,9 +749,10 @@ img {
   z-index: 1;
   background: var(--bg-app) !important;
   pointer-events: auto;
+  width: 100%;
 }
 
-/* Ensure progress bar spans across all 3 grid columns */
+/* Ensure progress bar spans across all grid columns */
 .gallery-upload-status {
   grid-column: 1 / -1;
   display: flex;
@@ -776,7 +778,6 @@ img {
   background: #f1f5f9;
   border-radius: 99px;
   overflow: hidden;
-  border-radius: 4px;
   margin-top: 8px;
 }
 
@@ -798,13 +799,18 @@ img {
     opacity: 1;
   }
 }
-/* Expand columns for iPad and Desktop viewports */
-/* --- TABLET & DESKTOP READABILITY (768px+) --- */
+
+/* --- TABLET READABILITY (768px+) --- */
 @media (min-width: 768px) {
   .gallery {
-    grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+    grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)) !important;
     gap: 20px;
     padding: 24px 24px 120px 24px !important;
+  }
+
+  .card-wrapper {
+    max-width: none !important;
+    max-height: none !important;
   }
 
   .notes-display p {
@@ -818,10 +824,11 @@ img {
     font-size: 12px !important;
   }
 }
+
 /* --- DESKTOP LAYOUT (1024px+) --- */
 @media (min-width: 1024px) {
   .gallery {
-    grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+    grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)) !important;
     gap: 24px;
     padding: 32px 32px 120px 32px !important;
   }
@@ -836,7 +843,6 @@ img {
 
 /* --- SINGLE PHOTO HERO VIEW --- */
 
-/* Mobile: Center 1 item and expand comfortable target size */
 .gallery.single-item {
   display: flex !important;
   justify-content: center !important;
@@ -846,20 +852,19 @@ img {
 
 .gallery.single-item .card-wrapper {
   width: 100%;
-  max-width: 420px;
+  max-width: 420px !important;
   aspect-ratio: 3 / 4;
 }
 
 @media (min-width: 768px) {
   .gallery.single-item .card-wrapper {
-    max-width: 580px;
+    max-width: 580px !important;
   }
 }
 
 /* ================================================================
-   7. DRAGGABLE CARDS & FLIP LOGIC
+   DRAGGABLE CARDS & FLIP LOGIC
    ================================================================ */
-/* Prevent native desktop image dragging from hijacking dnd-kit */
 
 .gallery img,
 .card-wrapper img,
@@ -867,16 +872,17 @@ img {
   -webkit-user-drag: none;
   user-select: none;
   -webkit-user-select: none;
-  pointer-events: none; /* Passes mouse clicks straight to dnd-kit's wrapper */
+  pointer-events: none;
 }
 
-/* --- Updated Mini Polaroid Card Dimensions --- */
+/* --- Mini Polaroid Card Dimensions --- */
 .card-wrapper {
   width: 100%;
-  max-width: 480px;
+  max-width: 320px !important;
+  max-height: 420px;
   justify-self: center;
   aspect-ratio: 3 / 4;
-  margin: 0;
+  margin: 0 auto;
   position: relative;
   user-select: none;
   -webkit-user-select: none;
@@ -885,12 +891,6 @@ img {
 
   will-change: transform;
   transform: translateZ(0);
-}
-
-@media (min-width: 768px) {
-  .card-wrapper {
-    max-width: none;
-  }
 }
 
 .card-wrapper.selected {
@@ -927,7 +927,6 @@ img {
   box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
   transform: translateZ(1px);
   transform-style: preserve-3d;
-  /* GPU Layering for iOS */
   -webkit-transform-style: preserve-3d;
 }
 
@@ -956,8 +955,8 @@ img {
   z-index: 2;
 }
 
-meta-header {
-  font-size: 11px !important; /* Slightly larger header text */
+.meta-header {
+  font-size: 11px !important;
   font-weight: 600;
   color: #64748b;
   margin-bottom: 6px;
@@ -969,14 +968,14 @@ meta-header {
   display: flex;
   flex-direction: column;
   flex: 1;
-  min-height: 0; /* Prevents overflow from pushing the button out */
+  min-height: 0;
   padding: 2px 0;
   overflow: hidden;
-  justify-content: center; /* Vertically centers short notes */
+  justify-content: center;
 }
 
-/* Larger, high-contrast readable note font for Mobile (3-column view) */
-notes-display p {
+/* High-contrast readable note font for Mobile */
+.notes-display p {
   font-family: Georgia, serif;
   font-style: italic;
   font-size: 1.1rem !important;
@@ -995,7 +994,7 @@ notes-display p {
   display: flex;
   justify-content: center;
   padding-top: 6px;
-  flex-shrink: 0; /* Guarantees button stays anchored at bottom */
+  flex-shrink: 0;
 }
 
 /* Compact, low-profile Flip Back Button */
