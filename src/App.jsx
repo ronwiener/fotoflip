@@ -2078,13 +2078,18 @@ export default function App() {
         }
       }
 
-      // 3. Call the RPC function directly (replaces delete_requests table insert)
+      // 3. Call the RPC function directly to delete DB rows & auth user
       const { error: rpcError } = await supabase.rpc("delete_user_account");
 
       if (rpcError) throw rpcError;
 
-      // 4. Sign out and notify user
-      await supabase.auth.signOut({ scope: "local" });
+      // 4. Safely clear local session state
+      // (Suppresses the expected 403 network warning since the user record is already gone)
+      try {
+        await supabase.auth.signOut({ scope: "local" });
+      } catch (signOutErr) {
+        console.log("Local session cleared after user account removal.");
+      }
 
       alert(
         "Your account and all associated data have been permanently deleted.",
@@ -2104,7 +2109,6 @@ export default function App() {
       setIsLoading(false);
     }
   };
-
   /* ---------- VIEW CONTROLLER ---------- */
   if (!isReady) return null;
 
