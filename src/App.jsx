@@ -2087,7 +2087,7 @@ export default function App() {
       // (Suppresses the expected 403 network warning since the user record is already gone)
       try {
         await supabase.auth.signOut({ scope: "local" });
-      } catch (signOutErr) {
+      } catch {
         console.log("Local session cleared after user account removal.");
       }
 
