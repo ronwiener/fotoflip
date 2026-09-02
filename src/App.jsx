@@ -2084,7 +2084,7 @@ export default function App() {
       if (rpcError) throw rpcError;
 
       // 4. Sign out and notify user
-      await supabase.auth.signOut();
+      await supabase.auth.signOut({ scope: "local" });
 
       alert(
         "Your account and all associated data have been permanently deleted.",
