@@ -740,7 +740,7 @@ img {
   /* MOBILE DEFAULT: Force 1 column on mobile screens */
   grid-template-columns: 1fr !important;
   gap: 20px;
-  padding: 16px 16px 120px 16px !important;
+  padding: 24px 24px 120px 24px !important;
   overflow-y: auto;
   touch-action: pan-y;
   -webkit-overflow-scrolling: touch;
@@ -878,8 +878,8 @@ img {
 /* --- Mini Polaroid Card Dimensions --- */
 .card-wrapper {
   width: 100%;
-  max-width: 320px !important;
-  max-height: 420px;
+  max-width: min(280px, 82vw) !important;
+  max-height: 380px;
   justify-self: center;
   aspect-ratio: 3 / 4;
   margin: 0 auto;
