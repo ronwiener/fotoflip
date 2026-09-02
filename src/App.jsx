@@ -2053,7 +2053,7 @@ export default function App() {
       const user = session?.user;
       if (!user?.id) throw new Error("No active user session found.");
 
-      // 1. Fetch all storage paths for this user's items before deleting the DB records
+      // 1. Fetch image paths for storage cleanup
       const { data: userItems, error: fetchError } = await supabase
         .from("items")
         .select("image_path")
@@ -2061,7 +2061,7 @@ export default function App() {
 
       if (fetchError) throw fetchError;
 
-      // 2. Delete the actual image files from your Supabase Storage bucket
+      // 2. Delete physical image files via the Storage API
       if (userItems && userItems.length > 0) {
         const pathsToDelete = userItems
           .map((item) => item.image_path)
@@ -2069,7 +2069,7 @@ export default function App() {
 
         if (pathsToDelete.length > 0) {
           const { error: storageError } = await supabase.storage
-            .from("gallery") // Ensure this matches your bucket name
+            .from("gallery")
             .remove(pathsToDelete);
 
           if (storageError) {
@@ -2078,14 +2078,12 @@ export default function App() {
         }
       }
 
-      // 3. Insert into delete_requests to trigger DB row and auth deletion
-      const { error: deleteReqError } = await supabase
-        .from("delete_requests")
-        .insert([{ id: user.id }]);
+      // 3. Call the RPC function directly (replaces delete_requests table insert)
+      const { error: rpcError } = await supabase.rpc("delete_user_account");
 
-      if (deleteReqError) throw deleteReqError;
+      if (rpcError) throw rpcError;
 
-      // 4. Terminate Supabase auth session
+      // 4. Sign out and notify user
       await supabase.auth.signOut();
 
       alert(
@@ -2095,7 +2093,7 @@ export default function App() {
       console.error("❌ Deletion error:", err);
       alert("Error: Could not complete deletion. Please contact support.");
     } finally {
-      // Wipe local state & route back to landing screen regardless of outcome
+      // Reset client state
       setSession(null);
       setItems([]);
       setFolders([]);
