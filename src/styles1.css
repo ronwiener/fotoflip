@@ -736,9 +736,9 @@ img {
 /* --- Updated Responsive Grid Gallery --- */
 .gallery {
   display: grid;
-  /* 3 columns on mobile; scales up on tablets/desktops */
-  grid-template-columns: repeat(2, 1fr);
-  gap: 16px; /* Touch space between cards for vertical scrolling */
+  /* MOBILE DEFAULT: 1 column for iPhone/mobile screens */
+  grid-template-columns: 1fr;
+  gap: 20px;
   padding: 16px 16px 120px 16px !important;
   overflow-y: auto;
   touch-action: pan-y;
@@ -802,21 +802,35 @@ img {
 /* --- TABLET & DESKTOP READABILITY (768px+) --- */
 @media (min-width: 768px) {
   .gallery {
-    grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+    grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
     gap: 20px;
     padding: 24px 24px 120px 24px !important;
   }
 
-  /* Even larger font on bigger screen cards */
   .notes-display p {
-    font-size: 1.25rem !important; /* Extra large note font on desktop */
+    font-size: 1.15rem !important;
     line-height: 1.4 !important;
     line-clamp: 4;
-    -webkit-line-clamp: 4; /* Shows up to 4 lines on desktop */
+    -webkit-line-clamp: 4;
   }
 
   .meta-header {
     font-size: 12px !important;
+  }
+}
+/* --- DESKTOP LAYOUT (1024px+) --- */
+@media (min-width: 1024px) {
+  .gallery {
+    grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+    gap: 24px;
+    padding: 32px 32px 120px 32px !important;
+  }
+
+  .notes-display p {
+    font-size: 1.25rem !important;
+    line-height: 1.45 !important;
+    line-clamp: 5;
+    -webkit-line-clamp: 5;
   }
 }
 
@@ -832,14 +846,13 @@ img {
 
 .gallery.single-item .card-wrapper {
   width: 100%;
-  max-width: 360px; /* Expands single photo nicely on iPhone while keeping margins */
+  max-width: 420px;
   aspect-ratio: 3 / 4;
 }
 
-/* Desktop: Make single photo significantly larger */
 @media (min-width: 768px) {
   .gallery.single-item .card-wrapper {
-    max-width: 520px; /* Large hero view on desktop */
+    max-width: 580px;
   }
 }
 
@@ -859,9 +872,10 @@ img {
 
 /* --- Updated Mini Polaroid Card Dimensions --- */
 .card-wrapper {
-  width: 100%; /* Spans full width of its grid cell */
-  max-width: none; /* Removes the 300px desktop constraint */
-  aspect-ratio: 3 / 4; /* Preserves classic polaroid proportions */
+  width: 100%;
+  max-width: 480px;
+  justify-self: center;
+  aspect-ratio: 3 / 4;
   margin: 0;
   position: relative;
   user-select: none;
@@ -869,9 +883,14 @@ img {
   pointer-events: auto;
   perspective: 1000px;
 
-  /* GPU Hardware Acceleration Updates */
   will-change: transform;
   transform: translateZ(0);
+}
+
+@media (min-width: 768px) {
+  .card-wrapper {
+    max-width: none;
+  }
 }
 
 .card-wrapper.selected {
@@ -931,7 +950,7 @@ img {
   display: flex;
   flex-direction: column;
   justify-content: space-between;
-  padding: 10px !important;
+  padding: 14px !important;
   overflow: hidden;
   transform-style: preserve-3d;
   z-index: 2;
@@ -957,16 +976,16 @@ meta-header {
 }
 
 /* Larger, high-contrast readable note font for Mobile (3-column view) */
-.notes-display p {
+notes-display p {
   font-family: Georgia, serif;
   font-style: italic;
-  font-size: 1.05rem !important; /* Bumped up for crisp readability on mobile */
-  line-height: 1.35 !important;
-  color: #0f172a !important; /* Deeper slate color for higher contrast */
+  font-size: 1.1rem !important;
+  line-height: 1.4 !important;
+  color: #0f172a !important;
   margin: 0;
   display: -webkit-box;
-  line-clamp: 3;
-  -webkit-line-clamp: 3; /* Keeps note truncated cleanly to 3 lines */
+  line-clamp: 4;
+  -webkit-line-clamp: 4;
   -webkit-box-orient: vertical;
   overflow: hidden;
   text-overflow: ellipsis;
