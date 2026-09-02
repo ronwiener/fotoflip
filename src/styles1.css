@@ -847,18 +847,20 @@ img {
   display: flex !important;
   justify-content: center !important;
   align-items: flex-start !important;
-  padding: 20px 16px 120px 16px !important;
+  padding: 16px 24px 120px 24px !important;
 }
 
 .gallery.single-item .card-wrapper {
   width: 100%;
-  max-width: 420px !important;
+  max-width: min(300px, 86vw) !important;
+  max-height: 400px;
   aspect-ratio: 3 / 4;
 }
 
 @media (min-width: 768px) {
   .gallery.single-item .card-wrapper {
-    max-width: 580px !important;
+    max-width: 360px !important;
+    max-height: none;
   }
 }
 
