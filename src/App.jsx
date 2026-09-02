@@ -134,6 +134,19 @@ function Auth({ setSession, setView, supabase }) {
   const handleAppleLogin = async () => {
     setLoading(true);
     try {
+      // 1. WEB DEVELOPMENT / NETLIFY HOSTING
+      if (!Capacitor.isNativePlatform()) {
+        const { error } = await supabase.auth.signInWithOAuth({
+          provider: "apple",
+          options: {
+            redirectTo: window.location.origin,
+          },
+        });
+        if (error) throw error;
+        return;
+      }
+
+      // 2. NATIVE DEVICE PLATFORM (iOS)
       const result = await SignInWithApple.authorize({
         clientId: "com.ronwiener.fotoflip",
         redirectURI:
