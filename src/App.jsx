@@ -1913,10 +1913,14 @@ export default function App() {
     const pathsToDelete = isTrash
       ? items
           .filter((i) => draggedIds.includes(i.id))
-          .map((i) => {
-            if (!i.image_path) return null;
-            // Strips any leading "gallery/" bucket prefix or leading slashes
-            return i.image_path.replace(/^gallery\//, "").replace(/^\//, "");
+          .flatMap((i) => {
+            if (!i.image_path) return [];
+            const rawPath = i.image_path.replace(/^\//, "");
+            const cleanPath = rawPath.replace(/^gallery\//, "");
+            const prefixedPath = `gallery/${cleanPath}`;
+
+            // Pass both variants so Supabase removes the object key no matter how it was stored
+            return Array.from(new Set([cleanPath, prefixedPath]));
           })
           .filter((path) => Boolean(path) && typeof path === "string")
       : [];
