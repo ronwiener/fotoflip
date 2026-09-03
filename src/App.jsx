@@ -1626,11 +1626,19 @@ export default function App() {
 
       console.log("👤 [STEP 4] Uploading under User ID:", userId);
 
-      // D. Target Path & Direct Fetch Upload
-      const cleanFileName = targetFile.name
-        ? targetFile.name.replace(/[^a-zA-Z0-9.-]/g, "_")
-        : "photo.jpg";
-      const filePath = `${userId}/${Date.now()}-${cleanFileName}`;
+      // D. Target Path & Direct Fetch Upload (Sanitized Single Source of Truth)
+      const rawFileName = targetFile.name || "photo.jpg";
+
+      // 1. Clean the filename: trim whitespace and replace special chars/spaces with single underscores
+      const cleanFileName = rawFileName
+        .trim()
+        .replace(/[^a-zA-Z0-9.-]/g, "_")
+        .replace(/_+/g, "_");
+
+      // 2. Build canonical sanitized relative path key (userId/timestamp-filename.ext)
+      const filePath = `${userId}/${Date.now()}-${cleanFileName}`
+        .replace(/^gallery\//, "")
+        .replace(/^\//, "");
 
       console.log("📂 [STEP 5] Storage Target Path:", filePath);
 
@@ -1671,7 +1679,7 @@ export default function App() {
         storageData,
       );
 
-      // E. Database Row Insert
+      // E. Database Row Insert (Guaranteed to use the exact same filePath string)
       console.log(
         "📝 [STEP 7] Inserting metadata row into 'items' table via direct fetch...",
       );
@@ -1686,7 +1694,7 @@ export default function App() {
           Prefer: "return=representation",
         },
         body: JSON.stringify({
-          image_path: filePath,
+          image_path: filePath, // 👈 Identical string passed to storage.objects
           user_id: userId,
           folder: activeFolder === "Select Folder" ? "" : activeFolder,
           location_description: metadataString,
@@ -1901,7 +1909,7 @@ export default function App() {
       ? over.id.replace("FOLDER_", "")
       : null; // Null means it was dropped onto another card to reorder!
 
-    // ✅ NEW: Sanitizes paths so Supabase Storage .remove() matches exact keys
+    // ✅ Sanitizes paths so Supabase Storage .remove() matches exact keys
     const pathsToDelete = isTrash
       ? items
           .filter((i) => draggedIds.includes(i.id))
@@ -1947,14 +1955,27 @@ export default function App() {
 
         // Step A: Purge binary files from Supabase Storage Bucket
         if (pathsToDelete.length > 0) {
-          console.log("🗑️ [STORAGE] Purging files:", pathsToDelete);
-          const { error: storageError } = await supabase.storage
-            .from("gallery")
-            .remove(pathsToDelete);
+          console.log(
+            "🗑️ [STORAGE] Attempting removal of paths:",
+            pathsToDelete,
+          );
 
-          // 🛑 PLACEMENT: Throw error here to stop execution before DB delete happens
+          const { data: storageData, error: storageError } =
+            await supabase.storage.from("gallery").remove(pathsToDelete);
+
+          console.log("📦 [STORAGE REMOVE RESPONSE]:", storageData);
+
           if (storageError) {
             throw new Error(`Storage cleanup failed: ${storageError.message}`);
+          }
+
+          // If Supabase Storage API returns an empty array, no file matched the given path!
+          if (!storageData || storageData.length === 0) {
+            throw new Error(
+              `Storage file not found or path key mismatch for: ${pathsToDelete.join(
+                ", ",
+              )}`,
+            );
           }
         }
 
