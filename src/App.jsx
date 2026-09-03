@@ -1952,8 +1952,9 @@ export default function App() {
             .from("gallery")
             .remove(pathsToDelete);
 
+          // 🛑 PLACEMENT: Throw error here to stop execution before DB delete happens
           if (storageError) {
-            console.warn("⚠️ Storage removal warning:", storageError.message);
+            throw new Error(`Storage cleanup failed: ${storageError.message}`);
           }
         }
 
