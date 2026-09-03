@@ -1913,14 +1913,9 @@ export default function App() {
     const pathsToDelete = isTrash
       ? items
           .filter((i) => draggedIds.includes(i.id))
-          .flatMap((i) => {
-            if (!i.image_path) return [];
-            const rawPath = i.image_path.replace(/^\//, "");
-            const cleanPath = rawPath.replace(/^gallery\//, "");
-            const prefixedPath = `gallery/${cleanPath}`;
-
-            // Pass both variants so Supabase removes the object key no matter how it was stored
-            return Array.from(new Set([cleanPath, prefixedPath]));
+          .map((i) => {
+            if (!i.image_path) return null;
+            return i.image_path.replace(/^gallery\//, "").replace(/^\//, "");
           })
           .filter((path) => Boolean(path) && typeof path === "string")
       : [];
@@ -1957,28 +1952,54 @@ export default function App() {
       if (isTrash) {
         setIsDropping(true);
 
-        // Step A: Purge binary files from Supabase Storage Bucket
+        // Step A: Purge binary files from Supabase Storage Bucket via Direct Fetch
         if (pathsToDelete.length > 0) {
           console.log(
             "🗑️ [STORAGE] Attempting removal of paths:",
             pathsToDelete,
           );
 
-          const { data: storageData, error: storageError } =
-            await supabase.storage.from("gallery").remove(pathsToDelete);
+          const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+          const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+          let accessToken = session?.access_token;
 
-          console.log("📦 [STORAGE REMOVE RESPONSE]:", storageData);
-
-          if (storageError) {
-            throw new Error(`Storage cleanup failed: ${storageError.message}`);
+          if (!accessToken) {
+            const { data: authData } = await supabase.auth.getSession();
+            accessToken = authData?.session?.access_token;
           }
 
-          // If Supabase Storage API returns an empty array, no file matched the given path!
-          if (!storageData || storageData.length === 0) {
+          const authToken = accessToken || supabaseAnonKey;
+          const deleteUrl = `${supabaseUrl}/storage/v1/object/gallery`;
+
+          // Direct Storage API DELETE endpoint expects an array of prefixes/paths in JSON body
+          const storageResponse = await fetch(deleteUrl, {
+            method: "DELETE",
+            headers: {
+              Authorization: `Bearer ${authToken}`,
+              apikey: supabaseAnonKey,
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({ prefixes: pathsToDelete }),
+          });
+
+          if (!storageResponse.ok) {
+            const errText = await storageResponse.text();
+            console.error(
+              "❌ Storage DELETE Fetch Error:",
+              storageResponse.status,
+              errText,
+            );
             throw new Error(
-              `Storage file not found or path key mismatch for: ${pathsToDelete.join(
-                ", ",
-              )}`,
+              `Storage cleanup failed (${storageResponse.status}): ${errText}`,
+            );
+          }
+
+          const storageData = await storageResponse.json();
+          console.log("📦 [STORAGE REMOVE RESPONSE]:", storageData);
+
+          if (!storageData || storageData.length === 0) {
+            console.warn(
+              "⚠️ Storage returned empty result. File may have already been removed or path key mismatched.",
             );
           }
         }
