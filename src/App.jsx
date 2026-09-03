@@ -1953,10 +1953,17 @@ export default function App() {
         setIsDropping(true);
 
         // Step A: Purge binary files from Supabase Storage Bucket via Direct Fetch
+        // Step A: Purge binary files from Supabase Storage Bucket via Direct Fetch
         if (pathsToDelete.length > 0) {
+          // Construct both raw path and 'gallery/' prefixed path to guarantee a match in storage.objects
+          const formattedPayloadPaths = pathsToDelete.flatMap((path) => {
+            const clean = path.replace(/^gallery\//, "").replace(/^\//, "");
+            return [clean, `gallery/${clean}`];
+          });
+
           console.log(
-            "🗑️ [STORAGE] Attempting removal of paths:",
-            pathsToDelete,
+            "🗑️ [STORAGE] Sending DELETE for paths:",
+            formattedPayloadPaths,
           );
 
           const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
@@ -1971,7 +1978,6 @@ export default function App() {
           const authToken = accessToken || supabaseAnonKey;
           const deleteUrl = `${supabaseUrl}/storage/v1/object/gallery`;
 
-          // Direct Storage API DELETE endpoint expects an array of prefixes/paths in JSON body
           const storageResponse = await fetch(deleteUrl, {
             method: "DELETE",
             headers: {
@@ -1979,7 +1985,7 @@ export default function App() {
               apikey: supabaseAnonKey,
               "Content-Type": "application/json",
             },
-            body: JSON.stringify({ prefixes: pathsToDelete }),
+            body: JSON.stringify({ prefixes: formattedPayloadPaths }),
           });
 
           if (!storageResponse.ok) {
@@ -1996,12 +2002,6 @@ export default function App() {
 
           const storageData = await storageResponse.json();
           console.log("📦 [STORAGE REMOVE RESPONSE]:", storageData);
-
-          if (!storageData || storageData.length === 0) {
-            console.warn(
-              "⚠️ Storage returned empty result. File may have already been removed or path key mismatched.",
-            );
-          }
         }
 
         // Step B: Purge metadata rows from Supabase Database 'items' Table
