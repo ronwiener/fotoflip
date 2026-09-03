@@ -1901,7 +1901,15 @@ export default function App() {
       ? over.id.replace("FOLDER_", "")
       : null; // Null means it was dropped onto another card to reorder!
 
-    // 2. Perform Optimistic Update
+    // 2. Extract storage file paths BEFORE optimistic state update clears them
+    const pathsToDelete = isTrash
+      ? items
+          .filter((i) => draggedIds.includes(i.id))
+          .map((i) => i.image_path)
+          .filter((path) => Boolean(path) && typeof path === "string")
+      : [];
+
+    // 3. Perform Instant Optimistic UI Update
     setItems((prev) => {
       // CASE A: Dropped into TRASH BIN
       if (isTrash) {
@@ -1928,25 +1936,25 @@ export default function App() {
 
     setSelectedIds(new Set());
 
-    // 3. Handle Database and Storage work in the background
+    // 4. Handle Database & Storage Deletion in the Background
     try {
       if (isTrash) {
         setIsDropping(true);
 
-        const pathsToDelete = items
-          .filter((i) => draggedIds.includes(i.id))
-          .map((i) => i.image_path);
-
+        // Step A: Purge binary files from Supabase Storage Bucket
         if (pathsToDelete.length > 0) {
+          console.log("🗑️ [STORAGE] Purging files:", pathsToDelete);
           const { error: storageError } = await supabase.storage
             .from("gallery")
             .remove(pathsToDelete);
 
           if (storageError) {
-            console.warn("Storage removal warning:", storageError.message);
+            console.warn("⚠️ Storage removal warning:", storageError.message);
           }
         }
 
+        // Step B: Purge metadata rows from Supabase Database 'items' Table
+        console.log("📝 [DATABASE] Deleting rows for IDs:", draggedIds);
         const { error: dbError } = await supabase
           .from("items")
           .delete()
@@ -1954,6 +1962,7 @@ export default function App() {
 
         if (dbError) throw dbError;
 
+        // Step C: Trigger Capacitor Haptic Feedback
         try {
           await Haptics.impact({ style: ImpactStyle.Heavy });
         } catch (e) {
@@ -1967,13 +1976,14 @@ export default function App() {
           .from("items")
           .update({ folder: targetFolder })
           .in("id", draggedIds);
+
         if (error) throw error;
       }
-      // Note: Card reordering across drag-and-drop stays fluid in local state.
     } catch (err) {
-      console.error("Database or storage sync failed:", err);
+      console.error("💥 Database or storage sync failed:", err);
       alert("Changes could not be saved to the server: " + err.message);
 
+      // Rollback local state by re-fetching items from Supabase
       if (session?.user?.id) {
         await fetchItems(session.user.id);
       }
