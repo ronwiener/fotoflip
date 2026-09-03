@@ -1901,11 +1901,15 @@ export default function App() {
       ? over.id.replace("FOLDER_", "")
       : null; // Null means it was dropped onto another card to reorder!
 
-    // 2. Extract storage file paths BEFORE optimistic state update clears them
+    // ✅ NEW: Sanitizes paths so Supabase Storage .remove() matches exact keys
     const pathsToDelete = isTrash
       ? items
           .filter((i) => draggedIds.includes(i.id))
-          .map((i) => i.image_path)
+          .map((i) => {
+            if (!i.image_path) return null;
+            // Strips any leading "gallery/" bucket prefix or leading slashes
+            return i.image_path.replace(/^gallery\//, "").replace(/^\//, "");
+          })
           .filter((path) => Boolean(path) && typeof path === "string")
       : [];
 
