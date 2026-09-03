@@ -1432,12 +1432,12 @@ export default function App() {
 
       const compressImage = async (
         fileToCompress,
-        maxDimension = 2048, // 2K resolution is plenty for sharp full-screen displays
-        quality = 0.82, // Sweet spot for WebP compression (60-80% smaller)
+        maxDimension = 2048,
+        quality = 0.8,
       ) => {
         return new Promise((resolve) => {
           console.log(
-            "🗜️ [COMPRESSION] Optimizing image for gallery performance...",
+            "🗜️ [COMPRESSION] Starting client-side image optimization...",
           );
           const img = new Image();
           const url = URL.createObjectURL(fileToCompress);
@@ -1447,7 +1447,7 @@ export default function App() {
             URL.revokeObjectURL(url);
             let { width, height } = img;
 
-            // Downscale if dimensions exceed maxDimension
+            // Downscale dimensions proportionally
             if (width > maxDimension || height > maxDimension) {
               if (width > height) {
                 height = Math.round((height * maxDimension) / width);
@@ -1463,7 +1463,7 @@ export default function App() {
             canvas.height = height;
             const ctx = canvas.getContext("2d");
 
-            // Fill background to prevent transparent PNG bugs
+            // Solid white background to prevent black/transparent JPEG artifacts
             ctx.fillStyle = "#FFFFFF";
             ctx.fillRect(0, 0, width, height);
 
@@ -1471,37 +1471,77 @@ export default function App() {
             ctx.imageSmoothingQuality = "high";
             ctx.drawImage(img, 0, 0, width, height);
 
-            // Convert to ultra-fast WebP format
-            const outputType = "image/webp";
-            const newFileName =
-              fileToCompress.name.replace(/\.[^/.]+$/, "") + ".webp";
+            // Helper function to export canvas safely
+            const exportCanvas = (type) => {
+              return new Promise((res) => {
+                canvas.toBlob((blob) => res(blob), type, quality);
+              });
+            };
 
-            canvas.toBlob(
-              (blob) => {
-                if (!blob) return resolve(fileToCompress);
-                const compressedFile = new File([blob], newFileName, {
-                  type: outputType,
-                  lastModified: Date.now(),
-                });
-                console.log(
-                  `✅ [COMPRESSION SUCCESS] Reduced from ${(
-                    fileToCompress.size /
-                    1024 /
-                    1024
-                  ).toFixed(2)}MB to ${(
-                    compressedFile.size /
-                    1024 /
-                    1024
-                  ).toFixed(2)}MB (${width}x${height} WebP)`,
+            (async () => {
+              let outputType = "image/jpeg";
+              let ext = ".jpg";
+
+              let blob = await exportCanvas(outputType);
+
+              // Fallback to PNG if JPEG export returns null
+              if (!blob) {
+                console.warn(
+                  "⚠️ Canvas JPEG export returned null. Attempting PNG fallback...",
                 );
-                resolve(compressedFile);
-              },
-              outputType,
-              quality,
-            );
+                outputType = "image/png";
+                ext = ".png";
+                blob = await exportCanvas(outputType);
+              }
+
+              // STRICT CHECK: Reject if canvas fails entirely
+              if (!blob) {
+                console.error(
+                  "❌ [COMPRESSION FAILED] Canvas cannot export blob. Rejecting upload.",
+                );
+                return resolve({
+                  error: true,
+                  reason: "CANVAS_BLOB_EXPORT_FAILED",
+                  message: "Unable to compress image on this device.",
+                });
+              }
+
+              const newFileName =
+                fileToCompress.name.replace(/\.[^/.]+$/, "") + ext;
+              const compressedFile = new File([blob], newFileName, {
+                type: outputType,
+                lastModified: Date.now(),
+              });
+
+              console.log(
+                `✅ [COMPRESSION SUCCESS] Reduced from ${(
+                  fileToCompress.size /
+                  1024 /
+                  1024
+                ).toFixed(2)}MB to ${(
+                  compressedFile.size /
+                  1024 /
+                  1024
+                ).toFixed(2)}MB (${width}x${height} ${outputType})`,
+              );
+
+              resolve(compressedFile);
+            })();
           };
 
-          img.onerror = () => resolve(fileToCompress);
+          // STRICT CHECK: Reject if img element fails to load file (e.g. unsupported HEIC)
+          img.onerror = (err) => {
+            URL.revokeObjectURL(url);
+            console.error(
+              "❌ [COMPRESSION FAILED] Image element failed to load file.",
+              err,
+            );
+            resolve({
+              error: true,
+              reason: "IMAGE_LOAD_FAILED",
+              message: "Failed to decode photo format.",
+            });
+          };
         });
       };
 
@@ -1553,7 +1593,19 @@ export default function App() {
       }
 
       // Run compression step on final image target
-      targetFile = await compressImage(targetFile);
+      const compressedResult = await compressImage(targetFile);
+
+      // Block the upload if compression failed
+      if (compressedResult?.error) {
+        console.error(
+          "⛔ Upload halted to prevent saving uncompressed file:",
+          compressedResult.reason,
+        );
+        alert(`Upload failed: ${compressedResult.message}`);
+        return; // Stops execution before Supabase upload starts!
+      }
+
+      targetFile = compressedResult;
 
       // C. Check Auth Session
       console.log("🔍 [STEP 3] Checking active user session...");
