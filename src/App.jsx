@@ -1952,56 +1952,36 @@ export default function App() {
       if (isTrash) {
         setIsDropping(true);
 
-        // Step A: Purge binary files from Supabase Storage Bucket via Direct Fetch
-        // Step A: Purge binary files from Supabase Storage Bucket via Direct Fetch
+        // Step A: Purge binary files from Supabase Storage Bucket via JS Client SDK
         if (pathsToDelete.length > 0) {
-          // Construct both raw path and 'gallery/' prefixed path to guarantee a match in storage.objects
-          const formattedPayloadPaths = pathsToDelete.flatMap((path) => {
-            const clean = path.replace(/^gallery\//, "").replace(/^\//, "");
-            return [clean, `gallery/${clean}`];
-          });
-
-          console.log(
-            "🗑️ [STORAGE] Sending DELETE for paths:",
-            formattedPayloadPaths,
+          // Normalize paths to be strictly relative to the bucket (strip leading slashes or bucket prefixes)
+          const cleanPaths = pathsToDelete.map((p) =>
+            p.replace(/^gallery\//, "").replace(/^\//, ""),
           );
 
-          const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-          const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
-          let accessToken = session?.access_token;
+          console.log(
+            "🗑️ [STORAGE] Calling remove() for relative paths:",
+            cleanPaths,
+          );
 
-          if (!accessToken) {
-            const { data: authData } = await supabase.auth.getSession();
-            accessToken = authData?.session?.access_token;
-          }
+          const { data: storageData, error: storageError } =
+            await supabase.storage.from("gallery").remove(cleanPaths);
 
-          const authToken = accessToken || supabaseAnonKey;
-          const deleteUrl = `${supabaseUrl}/storage/v1/object/gallery`;
-
-          const storageResponse = await fetch(deleteUrl, {
-            method: "DELETE",
-            headers: {
-              Authorization: `Bearer ${authToken}`,
-              apikey: supabaseAnonKey,
-              "Content-Type": "application/json",
-            },
-            body: JSON.stringify({ prefixes: formattedPayloadPaths }),
-          });
-
-          if (!storageResponse.ok) {
-            const errText = await storageResponse.text();
-            console.error(
-              "❌ Storage DELETE Fetch Error:",
-              storageResponse.status,
-              errText,
-            );
-            throw new Error(
-              `Storage cleanup failed (${storageResponse.status}): ${errText}`,
-            );
-          }
-
-          const storageData = await storageResponse.json();
           console.log("📦 [STORAGE REMOVE RESPONSE]:", storageData);
+
+          if (storageError) {
+            console.error("❌ Storage remove error:", storageError);
+            throw new Error(`Storage cleanup failed: ${storageError.message}`);
+          }
+
+          // If storageData is empty or length === 0, RLS is blocking deletion or path key mismatched!
+          if (!storageData || storageData.length === 0) {
+            throw new Error(
+              `Storage file was not deleted. Check Storage RLS DELETE policies for bucket 'gallery'. Target paths: ${cleanPaths.join(
+                ", ",
+              )}`,
+            );
+          }
         }
 
         // Step B: Purge metadata rows from Supabase Database 'items' Table
