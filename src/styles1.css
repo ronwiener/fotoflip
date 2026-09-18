@@ -940,7 +940,7 @@ img {
 .card-front img {
   width: 100%;
   height: 100%;
-  object-fit: cover;
+  object-fit: contain !important;
   pointer-events: none;
 }
 
@@ -999,17 +999,34 @@ img {
   flex-shrink: 0;
 }
 
-/* Compact, low-profile Flip Back Button */
+/* Substantial, easy-to-tap Flip Back Button */
 .flip-back-btn {
   background: #eef2ff;
   color: var(--primary);
   border: 1px solid #c7d2fe;
   border-radius: 99px;
-  padding: 4px 12px !important;
-  font-size: 11px !important;
+
+  /* Increased tap target & readable text */
+  padding: 8px 18px !important;
+  font-size: 14px !important;
   font-weight: 700;
+  min-height: 38px;
+
+  /* Flex layout to center text/icons cleanly */
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+
   cursor: pointer;
   white-space: nowrap;
+  touch-action: manipulation;
+  transition: transform 0.15s ease, background-color 0.15s ease;
+}
+
+.flip-back-btn:active {
+  transform: scale(0.96);
+  background-color: #e0e7ff;
 }
 
 /* SELECTION INDICATOR */
@@ -1864,19 +1881,24 @@ body:has(.folder-input-overlay) {
 }
 
 .save-pill {
-  display: flex;
-  align-items: center;
   background-color: #22c55e;
-  color: white;
-  padding: 4px 12px;
-  border-radius: 99px;
-  position: absolute;
-  top: 10px;
-  right: 10px;
-  z-index: 9999 !important;
-  font-size: 11px;
-  font-weight: 800;
+  color: #ffffff;
+  z-index: 10;
   pointer-events: none;
+  font-size: 1rem !important;
+  font-weight: 600;
+  padding: 6px 14px;
+  border-radius: 20px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  transition: all 0.2s ease-in-out;
+}
+
+.save-pill.success {
+  background-color: #22c55e !important;
+  color: #ffffff !important;
+  font-size: 1.05rem !important;
 }
 
 @keyframes pillPop {

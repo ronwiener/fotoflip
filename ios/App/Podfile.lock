@@ -11,8 +11,6 @@ PODS:
     - Capacitor
   - CapacitorCommunityAppleSignIn (7.1.0):
     - Capacitor
-  - CapacitorCommunityImageManipulator (8.0.0):
-    - Capacitor
   - CapacitorCordova (7.6.4)
   - CapacitorHaptics (8.0.2):
     - Capacitor
@@ -34,7 +32,6 @@ DEPENDENCIES:
   - "Capacitor (from `../../node_modules/@capacitor/ios`)"
   - "CapacitorCamera (from `../../node_modules/@capacitor/camera`)"
   - "CapacitorCommunityAppleSignIn (from `../../node_modules/@capacitor-community/apple-sign-in`)"
-  - "CapacitorCommunityImageManipulator (from `../../node_modules/@capacitor-community/image-manipulator`)"
   - "CapacitorCordova (from `../../node_modules/@capacitor/ios`)"
   - "CapacitorHaptics (from `../../node_modules/@capacitor/haptics`)"
   - "CapacitorSplashScreen (from `../../node_modules/@capacitor/splash-screen`)"
@@ -54,8 +51,6 @@ EXTERNAL SOURCES:
     :path: "../../node_modules/@capacitor/camera"
   CapacitorCommunityAppleSignIn:
     :path: "../../node_modules/@capacitor-community/apple-sign-in"
-  CapacitorCommunityImageManipulator:
-    :path: "../../node_modules/@capacitor-community/image-manipulator"
   CapacitorCordova:
     :path: "../../node_modules/@capacitor/ios"
   CapacitorHaptics:
@@ -70,7 +65,6 @@ SPEC CHECKSUMS:
   Capacitor: 69dc07ebc6bd064747c5e76922f97e4862d9cc23
   CapacitorCamera: 9e952270be355797f769aa835bb7643a96c871fe
   CapacitorCommunityAppleSignIn: 271cb2860576fd2961508bbfa7a82117d93eadca
-  CapacitorCommunityImageManipulator: ccfadf2250eb4c36bd17473bbe201383af4f7295
   CapacitorCordova: e343e95a672ff73e21a77a80257b52fb609b47d5
   CapacitorHaptics: 296f771ecd89c7a1bd92a7b6826a7d268e2e70f5
   CapacitorSplashScreen: 409eeaaeac603d264f209c0fcb718aa22fe1f7bb
@@ -79,6 +73,6 @@ SPEC CHECKSUMS:
   GTMAppAuth: 0ff230db599948a9ad7470ca667337803b3fc4dd
   GTMSessionFetcher: 3a63d75eecd6aa32c2fc79f578064e1214dfdec2
 
-PODFILE CHECKSUM: 091a751b6147e8068fa8835d37d4b0f7159a7e6c
+PODFILE CHECKSUM: 57c209672ccf815c521264bc1b9e3bf6b729a663
 
 COCOAPODS: 1.16.2

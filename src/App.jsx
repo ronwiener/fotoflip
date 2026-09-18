@@ -47,9 +47,24 @@ import TipsModal from "./TipsModal";
 import { Haptics, ImpactStyle } from "@capacitor/haptics";
 import debouncePkg from "lodash.debounce";
 
+// Standardize default import vs named import behavior across build tools
+const debounce = debouncePkg.default || debouncePkg;
+
+// 1. Declare the debounced function OUTSIDE the component rendering pipeline
+const saveNotesDebounced = debounce(
+  async (id, val, updateNotesFn, setIsSaving) => {
+    if (setIsSaving) setIsSaving(true);
+    if (updateNotesFn) {
+      await updateNotesFn(id, val);
+    }
+    if (setIsSaving) setIsSaving(false);
+  },
+  500,
+);
+
 /* ---------- AUTH COMPONENT ---------- */
 
-// Add this helper function outside your Auth component to generate a safe nonce string
+// Helper functions outside component
 const generateNonce = (length = 32) => {
   const chars =
     "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
@@ -60,15 +75,13 @@ const generateNonce = (length = 32) => {
   return result;
 };
 
-const debounce = debouncePkg.default || debouncePkg;
-
 function getSafeImageSrc(src) {
   if (!src) return "";
   if (src.startsWith("data:") || src.startsWith("blob:")) {
     return src;
   }
-  const separator = src.includes("?") ? "&" : "?";
-  return `${src}${separator}t=${Date.now()}`;
+  // Return the raw URL as-is so the browser can cache it
+  return src;
 }
 
 function Auth({ setSession, setView, supabase }) {
@@ -90,7 +103,6 @@ function Auth({ setSession, setView, supabase }) {
   }, []);
 
   const isEmailValid = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
-
   const isTokenReady = token.length === 6;
 
   const handleRequestOtp = async (e) => {
@@ -148,11 +160,15 @@ function Auth({ setSession, setView, supabase }) {
 
       // 2. NATIVE DEVICE PLATFORM (iOS)
       const result = await SignInWithApple.authorize({
-        clientId: "com.ronwiener.fotoflip",
+        clientId: "com.ronwiener.fotoflip.web", // Services ID matching Supabase setup
         redirectURI:
           "https://cdmlagrsfgevfliyqkrf.supabase.co/auth/v1/callback",
         scopes: "email name",
       });
+
+      if (!result.response || !result.response.identityToken) {
+        throw new Error("No identity token returned from Apple Sign In");
+      }
 
       const { data, error } = await supabase.auth.signInWithIdToken({
         provider: "apple",
@@ -162,7 +178,7 @@ function Auth({ setSession, setView, supabase }) {
       if (error) throw error;
       if (data.session) setSession(data.session);
     } catch (error) {
-      if (error.message !== "user cancelled") {
+      if (error.message !== "user cancelled" && error.code !== "1001") {
         console.error("Apple Auth Error:", error);
       }
     } finally {
@@ -180,7 +196,7 @@ function Auth({ setSession, setView, supabase }) {
           options: {
             redirectTo: window.location.origin,
             queryParams: {
-              prompt: "select_account", // Ensures Google forces the account picker cleanly on web
+              prompt: "select_account",
             },
           },
         });
@@ -442,28 +458,53 @@ function ZoomOverlay({ data, item, updateNotes, onClose }) {
   const containerRef = useRef(null);
 
   const [localNotes, setLocalNotes] = useState(item?.notes || "");
+  const [prevIncomingNotes, setPrevIncomingNotes] = useState(item?.notes);
+
+  // ✅ React-recommended pattern: Adjust state directly during render when prop changes
+  if (item?.notes !== undefined && item.notes !== prevIncomingNotes) {
+    setPrevIncomingNotes(item.notes);
+    setLocalNotes(item.notes);
+  }
   const [isSuccessClosing, _setIsSuccessClosing] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [isImageLoaded, setIsImageLoaded] = useState(false);
 
-  const updateNotesRef = useRef(updateNotes);
+  // 1. Single Event Handler for Notes Textarea
+  const handleNotesChange = (e) => {
+    const val = e.target.value;
+    setLocalNotes(val);
+    saveNotesDebounced(data?.id || item?.id, val, updateNotes, setIsSaving);
+  };
+
+  // 2. Auto-Focus Textarea for Non-Image Notes Overlay
   useEffect(() => {
-    updateNotesRef.current = updateNotes;
-  }, [updateNotes]);
-
-  const debouncedSave = useMemo(
-    () =>
-      debounce(async (id, val) => {
-        setIsSaving(true);
-        if (updateNotesRef.current) {
-          await updateNotesRef.current(id, val);
+    if (
+      data &&
+      data.type !== "img" &&
+      data.type !== "image" &&
+      textareaRef.current
+    ) {
+      const timer = setTimeout(() => {
+        if (textareaRef.current) {
+          textareaRef.current.focus();
+          const len = textareaRef.current.value.length;
+          textareaRef.current.setSelectionRange(len, len);
         }
-        setIsSaving(false);
-      }, 500),
-    [],
-  );
+      }, 150);
+      return () => clearTimeout(timer);
+    }
+  }, [data]);
 
-  // NATIVE PINCH & PAN GESTURE ENGINE
+  // 4. Cancel Pending Debounce Timers on Unmount
+  useEffect(() => {
+    return () => {
+      if (typeof saveNotesDebounced?.cancel === "function") {
+        saveNotesDebounced.cancel();
+      }
+    };
+  }, []);
+
+  // 5. Native Pinch & Pan Gesture Engine
   useEffect(() => {
     const imgEl = imgRef.current;
     const containerEl = containerRef.current;
@@ -474,7 +515,6 @@ function ZoomOverlay({ data, item, updateNotes, onClose }) {
     )
       return;
 
-    // Use a Map to safely track multi-touch pointers across frames
     const activePointers = new Map();
     let prevDiff = -1;
     let scale = 1;
@@ -494,9 +534,7 @@ function ZoomOverlay({ data, item, updateNotes, onClose }) {
     };
 
     const handlePointerDown = (e) => {
-      // Store current pointer coordinates
       activePointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
-
       if (activePointers.size === 1) {
         startX = e.clientX - pointX;
         startY = e.clientY - pointY;
@@ -505,16 +543,11 @@ function ZoomOverlay({ data, item, updateNotes, onClose }) {
 
     const handlePointerMove = (e) => {
       if (!activePointers.has(e.pointerId)) return;
-
-      // Update pointer location
       activePointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
-
       const pointerList = Array.from(activePointers.values());
 
-      // Two-finger PINCH
       if (pointerList.length === 2) {
         const curDiff = getDistance(pointerList[0], pointerList[1]);
-
         if (prevDiff > 0) {
           const delta = curDiff - prevDiff;
           const zoomFactor = delta * 0.008;
@@ -522,9 +555,7 @@ function ZoomOverlay({ data, item, updateNotes, onClose }) {
           applyTransform();
         }
         prevDiff = curDiff;
-      }
-      // One-finger PAN (only when zoomed in)
-      else if (pointerList.length === 1 && scale > 1) {
+      } else if (pointerList.length === 1 && scale > 1) {
         pointX = e.clientX - startX;
         pointY = e.clientY - startY;
         applyTransform();
@@ -538,14 +569,12 @@ function ZoomOverlay({ data, item, updateNotes, onClose }) {
         prevDiff = -1;
       }
 
-      // Reset single-finger pan anchor point if transitioning back to 1 finger
       if (activePointers.size === 1) {
         const remainingPointer = Array.from(activePointers.values())[0];
         startX = remainingPointer.x - pointX;
         startY = remainingPointer.y - pointY;
       }
 
-      // Snap back if unzoomed
       if (scale <= 1) {
         scale = 1;
         pointX = 0;
@@ -554,9 +583,8 @@ function ZoomOverlay({ data, item, updateNotes, onClose }) {
       }
     };
 
-    // Double-tap to quick zoom / reset
     let lastTap = 0;
-    const handleDoubleTap = (e) => {
+    const handleDoubleTap = () => {
       const now = Date.now();
       if (now - lastTap < 300) {
         if (scale > 1) {
@@ -586,57 +614,29 @@ function ZoomOverlay({ data, item, updateNotes, onClose }) {
     };
   }, [data]);
 
-  useEffect(() => {
-    if (item?.notes !== undefined) setLocalNotes(item.notes);
-  }, [item?.notes]);
-
-  useEffect(() => {
-    if (
-      data &&
-      data.type !== "img" &&
-      data.type !== "image" &&
-      textareaRef.current
-    ) {
-      const timer = setTimeout(() => {
-        if (textareaRef.current) {
-          textareaRef.current.focus();
-          const len = textareaRef.current.value.length;
-          textareaRef.current.setSelectionRange(len, len);
-        }
-      }, 150);
-      return () => clearTimeout(timer);
-    }
-  }, [data]);
-
-  useEffect(() => {
-    return () => {
-      if (typeof debouncedSave?.cancel === "function") {
-        debouncedSave.cancel();
-      }
-    };
-  }, [debouncedSave]);
-
   if (!data) return null;
 
-  const executeSaveAndClose = async (e) => {
+  const executeSaveAndClose = (e) => {
     if (e && typeof e.stopPropagation === "function") e.stopPropagation();
-    try {
-      setIsSaving(true);
-      const targetId = data?.id || item?.id;
-      if (
-        typeof updateNotes === "function" &&
-        targetId &&
-        data.type !== "img" &&
-        data.type !== "image"
-      ) {
-        await updateNotes(targetId, localNotes);
-      }
-    } catch (err) {
-      console.error("❌ [ZoomOverlay] Error during final save:", err);
-    } finally {
-      setIsSaving(false);
-      if (typeof onClose === "function") onClose();
+
+    // Cancel pending debounce timer on explicit close
+    if (typeof saveNotesDebounced?.cancel === "function") {
+      saveNotesDebounced.cancel();
     }
+
+    const targetId = data?.id || item?.id;
+    if (
+      typeof updateNotes === "function" &&
+      targetId &&
+      data.type !== "img" &&
+      data.type !== "image"
+    ) {
+      updateNotes(targetId, localNotes).catch((err) => {
+        console.error("❌ [ZoomOverlay] Error during background save:", err);
+      });
+    }
+
+    if (typeof onClose === "function") onClose();
   };
 
   const isImageView = data.type === "img" || data.type === "image";
@@ -656,7 +656,7 @@ function ZoomOverlay({ data, item, updateNotes, onClose }) {
         display: "flex",
         alignItems: "center",
         justifyContent: "center",
-        touchAction: "none", // Prevent native browser scroll/zoom overlay interference
+        touchAction: "none",
       }}
     >
       <div className="overlay-backdrop" />
@@ -677,21 +677,20 @@ function ZoomOverlay({ data, item, updateNotes, onClose }) {
             justifyContent: "center",
           }}
         >
-          {/* Close button - Fixed to viewport with Safe Area padding */}
           <button
             type="button"
             onClick={executeSaveAndClose}
             aria-label="Close"
             style={{
-              position: "fixed", // Keep fixed to screen viewport, independent of image transforms
-              top: "calc(20px + env(safe-area-inset-top, 0px))", // Protect against iPhone notch/dynamic island
+              position: "fixed",
+              top: "calc(20px + env(safe-area-inset-top, 0px))",
               right: "calc(20px + env(safe-area-inset-right, 0px))",
               zIndex: 100005,
               background: "rgba(0, 0, 0, 0.5)",
               color: "#fff",
               border: "1px solid rgba(255, 255, 255, 0.2)",
               borderRadius: "50%",
-              width: 44, // Minimum 44px tap target size for Apple HIG
+              width: 44,
               height: 44,
               fontSize: 22,
               cursor: "pointer",
@@ -720,7 +719,7 @@ function ZoomOverlay({ data, item, updateNotes, onClose }) {
               display: "block",
               userSelect: "none",
               WebkitUserSelect: "none",
-              pointerEvents: "none", // Pass touch events directly to containerRef
+              pointerEvents: "none",
               willChange: "transform",
               transformOrigin: "center center",
               opacity: isImageLoaded ? 1 : 0,
@@ -744,12 +743,7 @@ function ZoomOverlay({ data, item, updateNotes, onClose }) {
             value={localNotes}
             onClick={(e) => e.stopPropagation()}
             onPointerDown={(e) => e.stopPropagation()}
-            onChange={(e) => {
-              const val = e.target.value;
-              setLocalNotes(val);
-              setIsSaving(true);
-              debouncedSave(data.id || item?.id, val);
-            }}
+            onChange={handleNotesChange}
             placeholder="Write notes here..."
           />
 
@@ -1368,6 +1362,10 @@ export default function App() {
       setUploadProgress({ current: i + 1, total });
     }
 
+    if (session?.user?.id) {
+      await fetchItems(session.user.id, session.access_token);
+    }
+
     setImportProgress("");
     setIsLoading(false);
     event.target.value = null;
@@ -1395,6 +1393,10 @@ export default function App() {
           type: "image/jpeg",
         });
         await uploadToGallery(file);
+      }
+
+      if (session?.user?.id) {
+        await fetchItems(session.user.id, session.access_token);
       }
 
       setImportProgress("");
@@ -1721,7 +1723,6 @@ export default function App() {
 
       // F. Refresh UI State
       console.log("🔄 [STEP 8] Refreshing gallery items...");
-      await fetchItems(userId, accessToken);
 
       console.log("✨ [COMPLETE] Upload flow finished successfully!");
     } catch (err) {
@@ -1929,9 +1930,9 @@ export default function App() {
 
       // CASE B: Dropped onto a FOLDER
       if (isFolderDrop) {
-        return prev.map((i) =>
-          draggedIds.includes(i.id) ? { ...i, folder: targetFolder } : i,
-        );
+        // Filter out dragged items so they disappear from the current view stack
+        // and don't leave an empty card slot behind
+        return prev.filter((i) => !draggedIds.includes(i.id));
       }
 
       // CASE C: Dropped onto ANOTHER CARD (Reorder in place)
@@ -2077,6 +2078,66 @@ export default function App() {
       setTimeout(() => setToastMessage(""), 2500);
       // Optional rollback on error
       setFolders((prev) => prev.filter((f) => f !== trimmed));
+    }
+  };
+
+  const handleRenameFolder = async (oldFolderName, newFolderName) => {
+    if (!oldFolderName || !newFolderName) return;
+    const trimmedName = newFolderName.trim();
+
+    // Guard against empty string or identical name
+    if (!trimmedName || oldFolderName === trimmedName) return;
+
+    // 1. Instant Optimistic UI Update (Update local state without lag)
+    setItems((prevItems) =>
+      prevItems.map((item) =>
+        item.folder === oldFolderName ? { ...item, folder: trimmedName } : item,
+      ),
+    );
+
+    // If user is currently viewing the folder being renamed, update activeFolder state
+    if (activeFolder === oldFolderName) {
+      setActiveFolder(trimmedName);
+    }
+
+    // 2. Persist to Supabase Database via REST API
+    try {
+      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+      const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+      const token = session?.access_token || supabaseAnonKey;
+      const userId = session?.user?.id;
+
+      if (!userId) return;
+
+      // Target all items belonging to this user with the old folder name
+      const url = `${supabaseUrl}/rest/v1/items?user_id=eq.${userId}&folder=eq.${encodeURIComponent(
+        oldFolderName,
+      )}`;
+
+      const response = await fetch(url, {
+        method: "PATCH",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          apikey: supabaseAnonKey,
+          "Content-Type": "application/json",
+          Prefer: "return=minimal",
+        },
+        body: JSON.stringify({
+          folder: trimmedName,
+        }),
+      });
+
+      if (!response.ok) {
+        const errText = await response.text();
+        console.error("❌ [Rename Folder Error]:", response.status, errText);
+        alert("Could not rename folder in database.");
+      } else {
+        console.log(
+          `✅ Folder renamed from "${oldFolderName}" to "${trimmedName}"`,
+        );
+      }
+    } catch (err) {
+      console.error("❌ [Rename Folder Crash]:", err.message || err);
     }
   };
 
@@ -2435,6 +2496,32 @@ export default function App() {
                         >
                           <span>📂</span> Add Folder
                         </button>
+                        {/* ✅ RENAME FOLDER BUTTON - Shows only when viewing an active folder */}
+                        {activeFolder && activeFolder !== "All" && (
+                          <button
+                            className="menu-item"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setIsMenuOpen(false);
+                              const newName = window.prompt(
+                                "Enter new folder name:",
+                                activeFolder,
+                              );
+                              if (
+                                newName &&
+                                newName.trim() &&
+                                newName.trim() !== activeFolder
+                              ) {
+                                handleRenameFolder(
+                                  activeFolder,
+                                  newName.trim(),
+                                );
+                              }
+                            }}
+                          >
+                            <span>✏️</span> Rename Folder
+                          </button>
+                        )}
                         {visibleItems.length >= 2 && (
                           <button
                             className="menu-item"
