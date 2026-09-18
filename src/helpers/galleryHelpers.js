@@ -42,19 +42,20 @@ export const filterItems = (items, activeFolder, search) => {
     const itemFolder = (item.folder || "").trim().toLowerCase();
     const currentFolder = (activeFolder || "").trim().toLowerCase();
 
-    // 1. Folder Check
-    // If "Select Folder", "Gallery", or empty, treat as ALL items (or adjust if you want root items only)
+    // 1. Check if we are viewing the Root / Unassigned gallery
     const isRootFolder =
       !currentFolder ||
       currentFolder === "select folder" ||
-      currentFolder === "gallery" ||
-      currentFolder === "all";
+      currentFolder === "gallery";
 
+    // 2. Folder Matching Logic:
+    // If in root view -> ONLY show photos with NO folder assigned (unassigned/inbox)
+    // If inside a specific folder -> ONLY show photos matching that exact folder name
     const matchesFolder = isRootFolder
-      ? true // 👈 Show ALL items when no specific folder filter is active
+      ? itemFolder === ""
       : itemFolder === currentFolder;
 
-    // 2. Search Filter
+    // 3. Search Filter
     if (query) {
       const matchesNotes = item.notes?.toLowerCase().includes(query) || false;
       const matchesLocation =
