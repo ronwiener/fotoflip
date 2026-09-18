@@ -1930,9 +1930,14 @@ export default function App() {
 
       // CASE B: Dropped onto a FOLDER
       if (isFolderDrop) {
-        // Filter out dragged items so they disappear from the current view stack
-        // and don't leave an empty card slot behind
-        return prev.filter((i) => !draggedIds.includes(i.id));
+        // ✅ FIX: Update the folder property on the target items locally
+        // rather than purging them from the items array completely.
+        return prev.map((item) => {
+          if (draggedIds.includes(item.id)) {
+            return { ...item, folder: targetFolder };
+          }
+          return item;
+        });
       }
 
       // CASE C: Dropped onto ANOTHER CARD (Reorder in place)
@@ -1955,7 +1960,6 @@ export default function App() {
 
         // Step A: Purge binary files from Supabase Storage Bucket via JS Client SDK
         if (pathsToDelete.length > 0) {
-          // Normalize paths to be strictly relative to the bucket (strip leading slashes or bucket prefixes)
           const cleanPaths = pathsToDelete.map((p) =>
             p.replace(/^gallery\//, "").replace(/^\//, ""),
           );
@@ -1975,7 +1979,6 @@ export default function App() {
             throw new Error(`Storage cleanup failed: ${storageError.message}`);
           }
 
-          // If storageData is empty or length === 0, RLS is blocking deletion or path key mismatched!
           if (!storageData || storageData.length === 0) {
             throw new Error(
               `Storage file was not deleted. Check Storage RLS DELETE policies for bucket 'gallery'. Target paths: ${cleanPaths.join(
