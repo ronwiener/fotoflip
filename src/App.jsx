@@ -2095,7 +2095,12 @@ export default function App() {
       ),
     );
 
-    // If user is currently viewing the folder being renamed, update activeFolder state
+    // 2. Update folders array state so the folder list updates on screen
+    setFolders((prevFolders) =>
+      prevFolders.map((f) => (f === oldFolderName ? trimmedName : f)),
+    );
+
+    // 3. Update active view filter
     if (activeFolder === oldFolderName) {
       setActiveFolder(trimmedName);
     }

@@ -39,25 +39,28 @@ export const filterItems = (items, activeFolder, search) => {
   const query = search.trim().toLowerCase();
 
   return items.filter((item) => {
-    // 1. Folder Check (Option A: "Select Folder" or empty = show UNASSIGNED items only)
+    const itemFolder = (item.folder || "").trim().toLowerCase();
+    const currentFolder = (activeFolder || "").trim().toLowerCase();
+
+    // 1. Folder Check
+    // If "Select Folder", "Gallery", or empty, treat as ALL items (or adjust if you want root items only)
     const isRootFolder =
-      !activeFolder ||
-      activeFolder === "Select Folder" ||
-      activeFolder === "Gallery";
-    const itemFolder = item.folder || "";
+      !currentFolder ||
+      currentFolder === "select folder" ||
+      currentFolder === "gallery" ||
+      currentFolder === "all";
 
     const matchesFolder = isRootFolder
-      ? itemFolder === "" // 👈 Only show photos NOT assigned to a folder
-      : itemFolder.toLowerCase() === activeFolder.toLowerCase();
+      ? true // 👈 Show ALL items when no specific folder filter is active
+      : itemFolder === currentFolder;
 
-    // 2. Search Override: If user typed in search bar, search globally across notes & locations
+    // 2. Search Filter
     if (query) {
       const matchesNotes = item.notes?.toLowerCase().includes(query) || false;
       const matchesLocation =
         item.location_description?.toLowerCase().includes(query) || false;
 
-      // Allow searching across all items regardless of folder status, or require folder match
-      return matchesNotes || matchesLocation;
+      return matchesFolder && (matchesNotes || matchesLocation);
     }
 
     return matchesFolder;
