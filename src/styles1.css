@@ -867,7 +867,6 @@ img {
 /* ================================================================
    DRAGGABLE CARDS & FLIP LOGIC
    ================================================================ */
-
 .gallery img,
 .card-wrapper img,
 .card-face img {
@@ -891,8 +890,19 @@ img {
   pointer-events: auto;
   perspective: 1000px;
 
-  will-change: transform;
-  transform: translateZ(0);
+  /* 🟢 FIX 1: Creates a strict 2D stacking context layer in WebKit */
+  isolation: isolate;
+  transform-style: flat !important;
+  -webkit-transform-style: flat !important;
+
+  /* 🟢 FIX 2: Ensures flipped card sits strictly on top of the card below it in the DOM */
+  z-index: 1;
+}
+
+/* Elevate flipped wrapper above subsequent DOM siblings */
+.card-wrapper.is-flipped-wrapper,
+.card-wrapper:has(.card.flipped) {
+  z-index: 999 !important;
 }
 
 .card-wrapper.selected {
@@ -907,13 +917,14 @@ img {
   height: 100%;
   position: relative;
   transform-style: preserve-3d;
+  -webkit-transform-style: preserve-3d;
   transition: transform 0.8s cubic-bezier(0.4, 0, 0.2, 1);
   will-change: transform;
 }
 
 .card.flipped {
   transform: rotateY(180deg);
-  transform-style: preserve-3d;
+  -webkit-transform: rotateY(180deg);
 }
 
 .card-face {
@@ -927,14 +938,12 @@ img {
   overflow: hidden;
   background: white;
   box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
-  transform: translateZ(1px);
-  transform-style: preserve-3d;
-  -webkit-transform-style: preserve-3d;
 }
 
 /* FRONT SIDE STYLING */
 .card-front {
   background: #f1f5f9;
+  z-index: 2;
 }
 
 .card-front img {
@@ -947,14 +956,25 @@ img {
 /* BACK SIDE STYLING */
 .card-back {
   transform: rotateY(180deg);
+  -webkit-transform: rotateY(180deg);
   background: #ffffff;
   display: flex;
   flex-direction: column;
   justify-content: space-between;
   padding: 14px !important;
   overflow: hidden;
-  transform-style: preserve-3d;
-  z-index: 2;
+  z-index: 1;
+  -webkit-backface-visibility: hidden !important;
+  backface-visibility: hidden !important;
+}
+
+/* 🟢 FIX 2: Corrected class names to match your .card and .card.flipped HTML structure */
+.card:not(.flipped) .card-back {
+  pointer-events: none !important;
+}
+
+.card.flipped .card-front {
+  pointer-events: none !important;
 }
 
 .meta-header {
@@ -1004,20 +1024,15 @@ img {
   background: #eef2ff;
   color: var(--primary);
   border: 1px solid #c7d2fe;
-  border-radius: 99px;
-
-  /* Increased tap target & readable text */
-  padding: 8px 18px !important;
-  font-size: 14px !important;
-  font-weight: 700;
-  min-height: 38px;
-
-  /* Flex layout to center text/icons cleanly */
+  border-radius: 10px;
+  padding: 12px 20px !important;
+  font-size: 16px !important;
+  font-weight: 600;
+  min-height: 44px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
   gap: 6px;
-
   cursor: pointer;
   white-space: nowrap;
   touch-action: manipulation;

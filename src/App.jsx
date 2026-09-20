@@ -917,6 +917,8 @@ const DraggableCard = memo(function DraggableCard({
         {/* BACK SIDE */}
         <div
           className="card-face card-back"
+          onTouchStart={(e) => e.stopPropagation()}
+          onTouchEnd={(e) => e.stopPropagation()}
           onPointerDown={(e) => e.stopPropagation()}
           onClick={(e) => {
             e.stopPropagation();
@@ -956,12 +958,15 @@ const DraggableCard = memo(function DraggableCard({
             <button
               type="button"
               className="flip-back-btn"
+              onPointerDown={(e) => e.stopPropagation()}
+              onTouchStart={(e) => e.stopPropagation()}
+              onTouchEnd={(e) => e.stopPropagation()}
               onClick={(e) => {
                 e.stopPropagation();
                 onFlip(item.id);
               }}
             >
-              Tap to Flip Back
+              Tap Here to Flip Back
             </button>
           </div>
         </div>
@@ -1195,7 +1200,9 @@ export default function App() {
       const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
       const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
       const token = sessionToken || supabaseAnonKey;
-      const url = `${supabaseUrl}/rest/v1/items?user_id=eq.${userId}&select=*&order=id.desc`;
+
+      // 👈 Changed order=id.desc to order=created_at.desc
+      const url = `${supabaseUrl}/rest/v1/items?user_id=eq.${userId}&select=*&order=created_at.desc`;
 
       const response = await fetch(url, {
         method: "GET",
@@ -1429,7 +1436,7 @@ export default function App() {
         console.warn("⚠️ Metadata extraction failed, continuing:", metaErr);
       }
 
-      // B. Client-Side HEIC/JPEG Compression Helper to Prevent 413 Payload Too Large
+      // B. Client-Side HEIC/JPEG Compression Helper
       let targetFile = file;
 
       const compressImage = async (
@@ -1473,7 +1480,6 @@ export default function App() {
             ctx.imageSmoothingQuality = "high";
             ctx.drawImage(img, 0, 0, width, height);
 
-            // Helper function to export canvas safely
             const exportCanvas = (type) => {
               return new Promise((res) => {
                 canvas.toBlob((blob) => res(blob), type, quality);
@@ -1486,7 +1492,6 @@ export default function App() {
 
               let blob = await exportCanvas(outputType);
 
-              // Fallback to PNG if JPEG export returns null
               if (!blob) {
                 console.warn(
                   "⚠️ Canvas JPEG export returned null. Attempting PNG fallback...",
@@ -1496,7 +1501,6 @@ export default function App() {
                 blob = await exportCanvas(outputType);
               }
 
-              // STRICT CHECK: Reject if canvas fails entirely
               if (!blob) {
                 console.error(
                   "❌ [COMPRESSION FAILED] Canvas cannot export blob. Rejecting upload.",
@@ -1531,7 +1535,6 @@ export default function App() {
             })();
           };
 
-          // STRICT CHECK: Reject if img element fails to load file (e.g. unsupported HEIC)
           img.onerror = (err) => {
             URL.revokeObjectURL(url);
             console.error(
@@ -1547,7 +1550,7 @@ export default function App() {
         });
       };
 
-      // Handle HEIC conversion if present, otherwise compress large JPEGs/PNGs
+      // Handle HEIC conversion if present
       const isHeic =
         file.name.toLowerCase().endsWith(".heic") ||
         file.name.toLowerCase().endsWith(".heif") ||
@@ -1594,17 +1597,16 @@ export default function App() {
         }
       }
 
-      // Run compression step on final image target
+      // Run compression step
       const compressedResult = await compressImage(targetFile);
 
-      // Block the upload if compression failed
       if (compressedResult?.error) {
         console.error(
           "⛔ Upload halted to prevent saving uncompressed file:",
           compressedResult.reason,
         );
         alert(`Upload failed: ${compressedResult.message}`);
-        return; // Stops execution before Supabase upload starts!
+        return;
       }
 
       targetFile = compressedResult;
@@ -1628,16 +1630,14 @@ export default function App() {
 
       console.log("👤 [STEP 4] Uploading under User ID:", userId);
 
-      // D. Target Path & Direct Fetch Upload (Sanitized Single Source of Truth)
+      // D. Target Path & Direct Fetch Upload
       const rawFileName = targetFile.name || "photo.jpg";
 
-      // 1. Clean the filename: trim whitespace and replace special chars/spaces with single underscores
       const cleanFileName = rawFileName
         .trim()
         .replace(/[^a-zA-Z0-9.-]/g, "_")
         .replace(/_+/g, "_");
 
-      // 2. Build canonical sanitized relative path key (userId/timestamp-filename.ext)
       const filePath = `${userId}/${Date.now()}-${cleanFileName}`
         .replace(/^gallery\//, "")
         .replace(/^\//, "");
@@ -1681,9 +1681,19 @@ export default function App() {
         storageData,
       );
 
-      // E. Database Row Insert (Guaranteed to use the exact same filePath string)
+      // E. Target Folder Sanitization
+      // Determine target folder strictly based on activeFolder state
+      const isRootFolder =
+        !activeFolder ||
+        activeFolder === "Select Folder" ||
+        activeFolder === "Gallery" ||
+        activeFolder === "All";
+
+      const targetFolder = isRootFolder ? "" : activeFolder;
+
       console.log(
-        "📝 [STEP 7] Inserting metadata row into 'items' table via direct fetch...",
+        "📝 [STEP 7] Inserting metadata row into 'items' table for folder:",
+        targetFolder || "(Unassigned Gallery)",
       );
 
       const dbUrl = `${supabaseUrl}/rest/v1/items`;
@@ -1696,9 +1706,9 @@ export default function App() {
           Prefer: "return=representation",
         },
         body: JSON.stringify({
-          image_path: filePath, // 👈 Identical string passed to storage.objects
+          image_path: filePath,
           user_id: userId,
-          folder: activeFolder === "Select Folder" ? "" : activeFolder,
+          folder: targetFolder,
           location_description: metadataString,
           notes: "",
         }),
@@ -1723,6 +1733,13 @@ export default function App() {
 
       // F. Refresh UI State
       console.log("🔄 [STEP 8] Refreshing gallery items...");
+
+      if (Array.isArray(dbData) && dbData.length > 0) {
+        const newItem = dbData[0];
+        setItems((prevItems) => [newItem, ...prevItems]);
+      } else if (typeof fetchItems === "function") {
+        await fetchItems(userId);
+      }
 
       console.log("✨ [COMPLETE] Upload flow finished successfully!");
     } catch (err) {
@@ -2451,176 +2468,191 @@ export default function App() {
                 </button>
 
                 {isMenuOpen && (
-                  <div className="dropdown-menu">
-                    {selectedIds.size === 1 && (
-                      <>
-                        <button
-                          className="menu-item"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            const selectedItem = items.find((i) =>
-                              selectedIds.has(i.id),
-                            );
-                            if (selectedItem)
-                              handleSelectEditFromMenu(selectedItem);
-                            setIsMenuOpen(false);
-                          }}
-                        >
-                          <span>📝</span> Edit Photo
-                        </button>
-                        <button
-                          className="menu-item"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setSelectedIds(new Set());
-                            setIsMenuOpen(false);
-                          }}
-                        >
-                          <span>⚪</span> Deselect
-                        </button>
-                      </>
-                    )}
-                    {selectedIds.size > 1 && (
-                      <button
-                        className="menu-item"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setSelectedIds(new Set());
-                          setIsMenuOpen(false);
-                        }}
-                      >
-                        <span>⚪</span> Deselect All ({selectedIds.size})
-                      </button>
-                    )}
-                    {selectedIds.size === 0 && (
-                      <>
-                        <button
-                          className="menu-item"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setIsCreatingFolder(true);
-                            setIsMenuOpen(false);
-                          }}
-                        >
-                          <span>📂</span> Add Folder
-                        </button>
-                        {/* ✅ RENAME FOLDER BUTTON - Shows only when viewing an active folder */}
-                        {activeFolder && activeFolder !== "All" && (
-                          <button
-                            className="menu-item"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              setIsMenuOpen(false);
-                              const newName = window.prompt(
-                                "Enter new folder name:",
-                                activeFolder,
-                              );
-                              if (
-                                newName &&
-                                newName.trim() &&
-                                newName.trim() !== activeFolder
-                              ) {
-                                handleRenameFolder(
-                                  activeFolder,
-                                  newName.trim(),
-                                );
-                              }
-                            }}
-                          >
-                            <span>✏️</span> Rename Folder
-                          </button>
-                        )}
-                        {visibleItems.length >= 2 && (
-                          <button
-                            className="menu-item"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              setSelectedIds(
-                                new Set(visibleItems.map((i) => i.id)),
-                              );
-                              setIsMenuOpen(false);
-                            }}
-                          >
-                            <span style={{ color: "#007aff" }}>🔵</span> Select
-                            All
-                          </button>
-                        )}
-                        <label className="menu-item">
-                          <span>📥</span> Import
-                          <input
-                            type="file"
-                            accept=".zip, image/*"
-                            onChange={async (e) => {
-                              e.stopPropagation();
-                              const file = e.target.files?.[0];
-                              if (!file) return;
-                              setIsMenuOpen(false);
-                              setIsLoading(true);
-                              try {
-                                if (file.name.toLowerCase().endsWith(".zip")) {
-                                  await importGalleryZip(
-                                    file,
-                                    (current, total) => {
-                                      setImportProgress(
-                                        `Importing ${current} of ${total}...`,
-                                      );
-                                    },
-                                  );
-                                } else {
-                                  await uploadToGallery(file);
-                                }
-                              } catch (err) {
-                                console.error("Import failed:", err);
-                              } finally {
-                                setIsLoading(false);
-                                setImportProgress("");
-                                e.target.value = "";
-                              }
-                            }}
-                            hidden
-                          />
-                        </label>
-                      </>
-                    )}
-                    <div
-                      style={{
-                        height: "1px",
-                        background: "#eee",
-                        margin: "4px 0",
-                      }}
-                    />
-                    <button
-                      className="menu-item"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        exportGalleryZip(items, selectedIds);
-                        setIsMenuOpen(false);
-                      }}
-                    >
-                      <span>📤</span> Export{" "}
-                      {selectedIds.size > 0 ? `(${selectedIds.size})` : "All"}
-                    </button>
-                    <button
-                      className="menu-item"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setShowTips(true);
-                        setIsMenuOpen(false);
-                      }}
-                    >
-                      <span>💡</span> Tips & Gestures
-                    </button>
+                  <div
+                    className="dropdown-menu"
+                    style={{
+                      maxHeight: "80vh",
+                      overflowY: "auto",
+                      WebkitOverflowScrolling: "touch",
+                    }}
+                  >
                     {!showManageAccount ? (
-                      <button
-                        className="menu-item"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setShowManageAccount(true);
-                        }}
-                      >
-                        <span>⚙️</span> Manage Account
-                      </button>
+                      /* --- MAIN MENU VIEW --- */
+                      <>
+                        {selectedIds.size === 1 && (
+                          <>
+                            <button
+                              className="menu-item"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                const selectedItem = items.find((i) =>
+                                  selectedIds.has(i.id),
+                                );
+                                if (selectedItem)
+                                  handleSelectEditFromMenu(selectedItem);
+                                setIsMenuOpen(false);
+                              }}
+                            >
+                              <span>📝</span> Edit Photo
+                            </button>
+                            <button
+                              className="menu-item"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setSelectedIds(new Set());
+                                setIsMenuOpen(false);
+                              }}
+                            >
+                              <span>⚪</span> Deselect
+                            </button>
+                          </>
+                        )}
+                        {selectedIds.size > 1 && (
+                          <button
+                            className="menu-item"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setSelectedIds(new Set());
+                              setIsMenuOpen(false);
+                            }}
+                          >
+                            <span>⚪</span> Deselect All ({selectedIds.size})
+                          </button>
+                        )}
+                        {selectedIds.size === 0 && (
+                          <>
+                            <button
+                              className="menu-item"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setIsCreatingFolder(true);
+                                setIsMenuOpen(false);
+                              }}
+                            >
+                              <span>📂</span> Add Folder
+                            </button>
+                            {activeFolder && activeFolder !== "All" && (
+                              <button
+                                className="menu-item"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setIsMenuOpen(false);
+                                  const newName = window.prompt(
+                                    "Enter new folder name:",
+                                    activeFolder,
+                                  );
+                                  if (
+                                    newName &&
+                                    newName.trim() &&
+                                    newName.trim() !== activeFolder
+                                  ) {
+                                    handleRenameFolder(
+                                      activeFolder,
+                                      newName.trim(),
+                                    );
+                                  }
+                                }}
+                              >
+                                <span>✏️</span> Rename Folder
+                              </button>
+                            )}
+                            {visibleItems.length >= 2 && (
+                              <button
+                                className="menu-item"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setSelectedIds(
+                                    new Set(visibleItems.map((i) => i.id)),
+                                  );
+                                  setIsMenuOpen(false);
+                                }}
+                              >
+                                <span style={{ color: "#007aff" }}>🔵</span>{" "}
+                                Select All
+                              </button>
+                            )}
+                            <label className="menu-item">
+                              <span>📥</span> Import
+                              <input
+                                type="file"
+                                accept=".zip, image/*"
+                                onChange={async (e) => {
+                                  e.stopPropagation();
+                                  const file = e.target.files?.[0];
+                                  if (!file) return;
+                                  setIsMenuOpen(false);
+                                  setIsLoading(true);
+                                  try {
+                                    if (
+                                      file.name.toLowerCase().endsWith(".zip")
+                                    ) {
+                                      await importGalleryZip(
+                                        file,
+                                        (current, total) => {
+                                          setImportProgress(
+                                            `Importing ${current} of ${total}...`,
+                                          );
+                                        },
+                                      );
+                                    } else {
+                                      await uploadToGallery(file);
+                                    }
+                                  } catch (err) {
+                                    console.error("Import failed:", err);
+                                  } finally {
+                                    setIsLoading(false);
+                                    setImportProgress("");
+                                    e.target.value = "";
+                                  }
+                                }}
+                                hidden
+                              />
+                            </label>
+                          </>
+                        )}
+                        <div
+                          style={{
+                            height: "1px",
+                            background: "#eee",
+                            margin: "4px 0",
+                          }}
+                        />
+                        <button
+                          className="menu-item"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            exportGalleryZip(items, selectedIds);
+                            setIsMenuOpen(false);
+                          }}
+                        >
+                          <span>📤</span> Export{" "}
+                          {selectedIds.size > 0
+                            ? `(${selectedIds.size})`
+                            : "All"}
+                        </button>
+                        <button
+                          className="menu-item"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setShowTips(true);
+                            setIsMenuOpen(false);
+                          }}
+                        >
+                          <span>💡</span> Tips & Gestures
+                        </button>
+
+                        <button
+                          className="menu-item"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setShowManageAccount(true);
+                          }}
+                        >
+                          <span>⚙️</span> Manage Account
+                        </button>
+                      </>
                     ) : (
+                      /* --- MANAGE ACCOUNT SUB-VIEW --- */
                       <>
                         <button
                           className="menu-item"
@@ -2628,9 +2660,17 @@ export default function App() {
                             e.stopPropagation();
                             setShowManageAccount(false);
                           }}
+                          style={{ fontWeight: "600" }}
                         >
                           <span>⬅️</span> Back
                         </button>
+                        <div
+                          style={{
+                            height: "1px",
+                            background: "#eee",
+                            margin: "4px 0",
+                          }}
+                        />
                         <button
                           className="menu-item logout-item"
                           onClick={(e) => {
@@ -2648,8 +2688,9 @@ export default function App() {
                             e.stopPropagation();
                             setIsMenuOpen(false);
                             setShowManageAccount(false);
-                            handleDeleteAccount(); // Triggers showDeleteModal(true)
+                            handleDeleteAccount();
                           }}
+                          style={{ color: "#ef4444" }}
                         >
                           <span>🗑️</span> Delete Account
                         </button>
