@@ -37,12 +37,13 @@ import "./styles1.css";
 import { Capacitor } from "@capacitor/core";
 import { processPhotoMetadata } from "./metadataUtils";
 import { Camera, CameraResultType } from "@capacitor/camera";
+import { SpeechRecognition } from "@capacitor-community/speech-recognition";
 import {
   filterItems,
   exportGalleryZip,
   importGalleryZip,
 } from "./helpers/galleryHelpers";
-import LandingPage1 from "./LandingPage1";
+import LandingPage from "./LandingPage";
 import TipsModal from "./TipsModal";
 import { Haptics, ImpactStyle } from "@capacitor/haptics";
 import debouncePkg from "lodash.debounce";
@@ -765,12 +766,14 @@ function ZoomOverlay({ data, item, updateNotes, onClose }) {
   );
 }
 
+// 2. FIXED DRAGGABLE CARD COMPONENT
 const DraggableCard = memo(function DraggableCard({
   item,
   isSelected,
   selectedIds,
   onToggleSelect,
   onFlip,
+  updateNotes,
   onZoom,
 }) {
   const {
@@ -782,17 +785,20 @@ const DraggableCard = memo(function DraggableCard({
     isDragging,
   } = useSortable({
     id: item.id,
-    disabled: item.flipped, // Disable dragging when flipped
+    disabled: item.flipped,
   });
-
+  const [isListening, setIsListening] = useState(false);
+  const [isSpeaking, setIsSpeaking] = useState(false);
+  const [speechProgress, setSpeechProgress] = React.useState(0);
   const longPressTimer = useRef(null);
   const isLongPressActive = useRef(false);
   const tapStartRef = useRef({ x: 0, y: 0 });
-
   const lastTapRef = useRef(0);
   const flipTimeoutRef = useRef(null);
+  const isPointerDownRef = useRef(false);
+  const recognitionRef = React.useRef(null);
+  const speechIntervalRef = React.useRef(null);
 
-  // Separate long-press cleanup from flip-timer cleanup
   const clearLongPress = () => {
     if (longPressTimer.current) {
       clearTimeout(longPressTimer.current);
@@ -807,7 +813,20 @@ const DraggableCard = memo(function DraggableCard({
     }
   };
 
+  useEffect(() => {
+    return () => {
+      clearLongPress();
+      clearFlipTimer();
+    };
+  }, []);
+
   const handlePointerDown = (e) => {
+    if (item.flipped) {
+      e.stopPropagation();
+      return;
+    }
+
+    isPointerDownRef.current = true;
     isLongPressActive.current = false;
     tapStartRef.current = { x: e.clientX, y: e.clientY };
 
@@ -826,7 +845,6 @@ const DraggableCard = memo(function DraggableCard({
             void 0;
           }
         }
-
         onToggleSelect(item.id);
         isLongPressActive.current = true;
       }, 350);
@@ -834,14 +852,15 @@ const DraggableCard = memo(function DraggableCard({
   };
 
   const handlePointerUp = (e) => {
-    // Only cancel long-press here so single-tap flip timers can survive release!
+    if (item.flipped || !isPointerDownRef.current) return;
+    isPointerDownRef.current = false;
+
     clearLongPress();
 
     if (!isLongPressActive.current) {
       const deltaX = Math.abs(e.clientX - tapStartRef.current.x);
       const deltaY = Math.abs(e.clientY - tapStartRef.current.y);
 
-      // Verify tap wasn't a drag gesture
       if (deltaX < 10 && deltaY < 10) {
         if (selectedIds.size > 0) {
           onToggleSelect(item.id);
@@ -850,7 +869,6 @@ const DraggableCard = memo(function DraggableCard({
           const timeSinceLastTap = now - lastTapRef.current;
 
           if (timeSinceLastTap < 300 && timeSinceLastTap > 0) {
-            // 🔍 DOUBLE TAP: Clear pending flip and open Zoom Overlay
             clearFlipTimer();
             lastTapRef.current = 0;
 
@@ -860,7 +878,6 @@ const DraggableCard = memo(function DraggableCard({
               url: item.displayURL || item.imageURL,
             });
           } else {
-            // 🔄 SINGLE TAP: Wait 250ms to verify it's not a double tap, then flip
             lastTapRef.current = now;
             clearFlipTimer();
 
@@ -874,18 +891,212 @@ const DraggableCard = memo(function DraggableCard({
     }
   };
 
+  const handlePointerMove = (e) => {
+    if (!isPointerDownRef.current) return;
+    const deltaX = Math.abs(e.clientX - tapStartRef.current.x);
+    const deltaY = Math.abs(e.clientY - tapStartRef.current.y);
+
+    if (deltaX > 8 || deltaY > 8) {
+      clearLongPress();
+    }
+  };
+
+  // ✅ Clean transform application to prevent 3D Backface leakage
   const style = {
-    transform: CSS.Transform.toString(transform),
-    transition,
-    zIndex: isDragging ? 1000 : item.flipped ? 10 : 1,
+    transform: transform ? CSS.Transform.toString(transform) : undefined,
+    transition: isDragging ? transition : undefined,
+    zIndex: isDragging ? 1000 : item.flipped ? 100 : 1,
     touchAction: item.flipped ? "auto" : "none",
   };
+
+  const handleToggleDictation = async (cardId) => {
+    try {
+      const SpeechRecognition =
+        window.SpeechRecognition || window.webkitSpeechRecognition;
+
+      if (!SpeechRecognition) {
+        alert("Speech recognition is not supported in this browser.");
+        return;
+      }
+
+      // 1. If currently listening, stop recognition and clean up ref
+      if (isListening) {
+        if (recognitionRef.current) {
+          recognitionRef.current.stop();
+          recognitionRef.current = null;
+        }
+        setIsListening(false);
+        return;
+      }
+
+      // 2. Stop any active text-to-speech playback and clear interval timer
+      if (typeof window !== "undefined" && "speechSynthesis" in window) {
+        window.speechSynthesis.cancel();
+      }
+      if (speechIntervalRef?.current) {
+        clearInterval(speechIntervalRef.current);
+        speechIntervalRef.current = null;
+      }
+      if (typeof setIsSpeaking === "function") {
+        setIsSpeaking(false);
+      }
+      if (typeof setSpeechProgress === "function") {
+        setSpeechProgress(0);
+      }
+
+      // 3. Clear pending card flip timers
+      if (typeof clearFlipTimer === "function") {
+        clearFlipTimer();
+      }
+
+      // 4. Initialize and start new speech recognition instance
+      const recognition = new SpeechRecognition();
+      recognitionRef.current = recognition;
+
+      recognition.continuous = false;
+      recognition.interimResults = false;
+      recognition.lang = "en-US";
+
+      recognition.onstart = () => {
+        setIsListening(true);
+      };
+
+      recognition.onend = () => {
+        setIsListening(false);
+        recognitionRef.current = null;
+      };
+
+      recognition.onerror = (err) => {
+        console.error("Speech recognition error:", err);
+        setIsListening(false);
+        recognitionRef.current = null;
+      };
+
+      recognition.onresult = (event) => {
+        const transcript = event.results[0]?.[0]?.transcript;
+        if (transcript && transcript.trim()) {
+          const updatedNotes = item.notes
+            ? `${item.notes}\n${transcript.trim()}`
+            : transcript.trim();
+
+          if (typeof updateNotes === "function") {
+            updateNotes(cardId, updatedNotes);
+          }
+        }
+      };
+
+      recognition.start();
+    } catch (err) {
+      console.error("Error starting speech recognition:", err);
+      setIsListening(false);
+      recognitionRef.current = null;
+    }
+  };
+  // Helper to format remaining or total time
+  const getFormattedAudioDuration = (text, progressPercent = 0) => {
+    if (!text) return "(0:00)";
+    const words = text.trim().split(/\s+/).filter(Boolean).length;
+    const totalSeconds = Math.max(1, Math.ceil(words / 2.5));
+
+    // When speaking, count down remaining time based on progress
+    const remainingSeconds = isSpeaking
+      ? Math.max(0, Math.ceil(totalSeconds * (1 - progressPercent / 100)))
+      : totalSeconds;
+
+    const mins = Math.floor(remainingSeconds / 60);
+    const secs = remainingSeconds % 60;
+    return `(${mins}:${secs.toString().padStart(2, "0")})`;
+  };
+
+  const handleToggleSpeakNotes = () => {
+    if (typeof window === "undefined" || !("speechSynthesis" in window)) {
+      console.warn("Text-to-speech is not supported on this browser.");
+      return;
+    }
+
+    if (typeof clearFlipTimer === "function") {
+      clearFlipTimer();
+    }
+
+    if (speechIntervalRef.current) {
+      clearInterval(speechIntervalRef.current);
+      speechIntervalRef.current = null;
+    }
+
+    if (isSpeaking) {
+      window.speechSynthesis.cancel();
+      setIsSpeaking(false);
+      setSpeechProgress(0);
+      return;
+    }
+
+    const textToRead = item.notes?.trim();
+    if (!textToRead) return;
+
+    window.speechSynthesis.cancel();
+
+    const utterance = new SpeechSynthesisUtterance(textToRead);
+    utterance.rate = 0.95;
+    utterance.pitch = 1.0;
+
+    const words = textToRead.split(/\s+/).filter(Boolean).length;
+    const estimatedDurationMs = Math.max(1, Math.ceil(words / 2.5)) * 1000;
+
+    utterance.onstart = () => {
+      setIsSpeaking(true);
+      setSpeechProgress(0);
+
+      const startTime = Date.now();
+      speechIntervalRef.current = setInterval(() => {
+        const elapsed = Date.now() - startTime;
+        const progress = Math.min(100, (elapsed / estimatedDurationMs) * 100);
+        setSpeechProgress(progress);
+
+        if (progress >= 100) {
+          clearInterval(speechIntervalRef.current);
+          speechIntervalRef.current = null;
+        }
+      }, 100);
+    };
+
+    utterance.onend = () => {
+      setIsSpeaking(false);
+      setSpeechProgress(0);
+      if (speechIntervalRef.current) {
+        clearInterval(speechIntervalRef.current);
+        speechIntervalRef.current = null;
+      }
+    };
+
+    utterance.onerror = (e) => {
+      console.error("SpeechSynthesis error:", e);
+      setIsSpeaking(false);
+      setSpeechProgress(0);
+      if (speechIntervalRef.current) {
+        clearInterval(speechIntervalRef.current);
+        speechIntervalRef.current = null;
+      }
+    };
+
+    window.speechSynthesis.speak(utterance);
+  };
+
+  // 3. Stop audio if card unmounts or component updates
+  useEffect(() => {
+    return () => {
+      if (typeof window !== "undefined" && "speechSynthesis" in window) {
+        window.speechSynthesis.cancel();
+      }
+    };
+  }, []);
 
   return (
     <div
       ref={setNodeRef}
       style={style}
-      className={`card-wrapper ${isSelected ? "selected" : ""}`}
+      className={`card-wrapper ${isSelected ? "selected" : ""} ${
+        item.flipped ? "is-flipped-wrapper" : ""
+      }`}
     >
       <div className={`card ${item.flipped ? "flipped" : ""}`}>
         {/* FRONT SIDE */}
@@ -894,11 +1105,169 @@ const DraggableCard = memo(function DraggableCard({
           {...(!item.flipped ? { ...attributes, ...listeners } : {})}
           onPointerDown={handlePointerDown}
           onPointerUp={handlePointerUp}
-          onPointerLeave={clearLongPress}
+          onPointerMove={handlePointerMove}
           onPointerCancel={clearLongPress}
           onClick={(e) => e.stopPropagation()}
+          style={{
+            pointerEvents: item.flipped ? "none" : "auto",
+          }}
         >
-          {isSelected && <div className="select-indicator active">✓</div>}
+          {/* Top Badges Container (Selection Checkmark + Morphing Mic) */}
+          {isSelected && (
+            <div
+              className="card-badges-container"
+              onPointerDown={(e) => e.stopPropagation()}
+              onPointerUp={(e) => e.stopPropagation()}
+              onClick={(e) => e.stopPropagation()}
+              style={{
+                position: "absolute",
+                top: "10px",
+                left: "10px",
+                zIndex: 20,
+                display: "flex",
+                flexDirection: "row",
+                gap: "8px",
+                alignItems: "center",
+                pointerEvents: "auto",
+              }}
+            >
+              {/* 1. Selection Checkmark */}
+              <div
+                className="select-indicator active"
+                style={{
+                  width: "32px",
+                  height: "32px",
+                  borderRadius: "50%",
+                  backgroundColor: "#007aff",
+                  color: "#ffffff",
+                  border: "2px solid #ffffff",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  fontSize: "16px",
+                  fontWeight: "900",
+                  boxShadow: "0 3px 8px rgba(0, 0, 0, 0.3)",
+                  flexShrink: 0,
+                }}
+              >
+                ✓
+              </div>
+
+              {/* 2. Morphing Dictation Mic / Stop Button */}
+              <button
+                type="button"
+                className={`mic-dictate-btn ${isListening ? "listening" : ""}`}
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  handleToggleDictation(item.id);
+                }}
+                aria-label={isListening ? "Stop dictation" : "Start dictation"}
+                style={{
+                  width: "32px",
+                  height: "32px",
+                  borderRadius: "50%",
+                  backgroundColor: isListening ? "#ef4444" : "#007aff",
+                  color: "#ffffff",
+                  border: "2px solid #ffffff",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  fontSize: "15px",
+                  cursor: "pointer",
+                  backdropFilter: "blur(8px)",
+                  WebkitBackdropFilter: "blur(8px)",
+                  boxShadow: "0 3px 8px rgba(0, 0, 0, 0.3)",
+                  flexShrink: 0,
+                  transition: "all 0.2s ease",
+                }}
+              >
+                {isListening ? "⏹️" : "🎤"}
+              </button>
+            </div>
+          )}
+
+          {/* Bottom Audio Playback Bar */}
+          {Boolean(item.notes && item.notes.trim().length > 0) && (
+            <div
+              className="card-audio-bar"
+              onPointerDown={(e) => e.stopPropagation()}
+              onPointerUp={(e) => e.stopPropagation()}
+              onClick={(e) => e.stopPropagation()}
+            >
+              {/* Subdued Translucent Audio Pill */}
+              <button
+                type="button"
+                className={`audio-pill-btn ${isSpeaking ? "speaking" : ""}`}
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  handleToggleSpeakNotes();
+                }}
+                aria-label={isSpeaking ? "Stop listening" : "Listen note"}
+              >
+                {/* Dynamic Progress Fill */}
+                {isSpeaking && (
+                  <span
+                    className="audio-progress-bar"
+                    style={{ width: `${speechProgress}%` }}
+                  />
+                )}
+
+                {/* Button Content */}
+                <span className="audio-pill-content">
+                  <span style={{ fontSize: "11px", lineHeight: 1 }}>
+                    {isSpeaking ? "⏹" : "▶"}
+                  </span>
+                  <span
+                    style={{ letterSpacing: "0.2px", whiteSpace: "nowrap" }}
+                  >
+                    Listen{" "}
+                    {getFormattedAudioDuration(item.notes, speechProgress)}
+                  </span>
+                </span>
+              </button>
+
+              {/* Scaled-Down Trash Can */}
+              <button
+                type="button"
+                className="clear-note-btn"
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  if (typeof updateNotes === "function") {
+                    updateNotes(item.id, "");
+                  }
+                  if (isSpeaking) {
+                    window.speechSynthesis?.cancel();
+                    if (speechIntervalRef.current) {
+                      clearInterval(speechIntervalRef.current);
+                      speechIntervalRef.current = null;
+                    }
+                    setIsSpeaking(false);
+                    setSpeechProgress(0);
+                  }
+                }}
+                aria-label="Delete voice note"
+                title="Delete note"
+              >
+                <svg
+                  width="14"
+                  height="14"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                >
+                  <polyline points="3 6 5 6 21 6" />
+                  <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
+                </svg>
+              </button>
+            </div>
+          )}
+
           <img
             src={getSafeImageSrc(item.displayURL || item.imageURL)}
             alt=""
@@ -909,7 +1278,6 @@ const DraggableCard = memo(function DraggableCard({
               pointerEvents: "none",
               userSelect: "none",
               WebkitUserDrag: "none",
-              willChange: "transform",
             }}
           />
         </div>
@@ -917,52 +1285,51 @@ const DraggableCard = memo(function DraggableCard({
         {/* BACK SIDE */}
         <div
           className="card-face card-back"
-          onTouchStart={(e) => e.stopPropagation()}
-          onTouchEnd={(e) => e.stopPropagation()}
-          onPointerDown={(e) => e.stopPropagation()}
-          onClick={(e) => {
-            e.stopPropagation();
-            onZoom({ id: item.id, type: "notes", url: item.imageURL });
-          }}
           style={{
             transform: "rotateY(180deg)",
-            padding: "15px",
+            padding: "15px 15px 20px 15px",
             display: "flex",
             flexDirection: "column",
+            pointerEvents: item.flipped ? "auto" : "none",
           }}
         >
           <div
-            className="meta-header"
-            style={{ fontSize: "10px", color: "#64748b", marginBottom: "10px" }}
+            className="notes-content"
+            style={{
+              flex: 1,
+              cursor: "pointer",
+              overflowY: "auto",
+              WebkitOverflowScrolling: "touch",
+            }}
+            onClick={(e) => {
+              e.stopPropagation();
+              onZoom({ id: item.id, type: "notes", url: item.imageURL });
+            }}
           >
-            <span>{item.location_description || "Unknown Location"}</span>
-            <span style={{ margin: "0 5px" }}>•</span>
-          </div>
-          <div className="notes-content" style={{ flex: 1 }}>
-            <div className="notes-display">
-              <p
-                style={{
-                  fontFamily: "Georgia, serif",
-                  fontStyle: "italic",
-                  fontSize: "1.2rem",
-                  color: "#1e293b",
-                  lineHeight: "1.5",
-                }}
-              >
-                {item.notes || "Tap here to write notes..."}
-              </p>
-            </div>
+            <p
+              style={{
+                fontFamily: "Georgia, serif",
+                fontStyle: "italic",
+                fontSize: "1.2rem",
+                color: "#1e293b",
+                lineHeight: "1.5",
+                margin: 0,
+                whiteSpace: "pre-wrap",
+                wordBreak: "break-word",
+              }}
+            >
+              {item.notes || "Tap here to write notes..."}
+            </p>
           </div>
 
           <div className="notes-actions">
             <button
               type="button"
               className="flip-back-btn"
-              onPointerDown={(e) => e.stopPropagation()}
-              onTouchStart={(e) => e.stopPropagation()}
-              onTouchEnd={(e) => e.stopPropagation()}
               onClick={(e) => {
+                e.preventDefault();
                 e.stopPropagation();
+                clearFlipTimer();
                 onFlip(item.id);
               }}
             >
@@ -979,27 +1346,41 @@ const addImageBuffer = (imageUrl) => {
   return new Promise((resolve) => {
     const img = new Image();
     img.crossOrigin = "anonymous";
-    img.onload = () => {
-      const canvas = document.createElement("canvas");
-      const ctx = canvas.getContext("2d");
 
-      // 10% buffer on all sides
-      const buffer = 0.04;
-      canvas.width = img.width * (1 + buffer * 2);
-      canvas.height = img.height * (1 + buffer * 2);
+    img.onload = async () => {
+      try {
+        // Force native WebKit frame decoding before canvas rendering
+        if ("decode" in img) {
+          await img.decode();
+        }
 
-      // Match the background to your card color (White)
-      ctx.fillStyle = "#ffffff";
-      ctx.fillRect(0, 0, canvas.width, canvas.height);
+        const buffer = 0.04; // 4% padding
+        const canvas = document.createElement("canvas");
+        canvas.width = Math.round(img.width * (1 + buffer * 2));
+        canvas.height = Math.round(img.height * (1 + buffer * 2));
 
-      // Center the image
-      const x = (canvas.width - img.width) / 2;
-      const y = (canvas.height - img.height) / 2;
-      ctx.drawImage(img, x, y);
+        const ctx = canvas.getContext("2d", { colorSpace: "srgb" });
 
-      resolve(canvas.toDataURL("image/jpeg", 0.9));
+        // Card background match
+        ctx.fillStyle = "#ffffff";
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+        // Center image
+        const x = (canvas.width - img.width) / 2;
+        const y = (canvas.height - img.height) / 2;
+        ctx.drawImage(img, x, y);
+
+        resolve(canvas.toDataURL("image/jpeg", 0.9));
+      } catch (err) {
+        console.warn(
+          "⚠️ addImageBuffer frame decode failed, falling back to original URL:",
+          err,
+        );
+        resolve(imageUrl);
+      }
     };
-    img.onerror = () => resolve(imageUrl); // Fallback if it fails
+
+    img.onerror = () => resolve(imageUrl); // Fallback if image fails to load
     img.src = imageUrl;
   });
 };
@@ -1201,7 +1582,6 @@ export default function App() {
       const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
       const token = sessionToken || supabaseAnonKey;
 
-      // 👈 Changed order=id.desc to order=created_at.desc
       const url = `${supabaseUrl}/rest/v1/items?user_id=eq.${userId}&select=*&order=created_at.desc`;
 
       const response = await fetch(url, {
@@ -1221,7 +1601,6 @@ export default function App() {
 
       const data = await response.json();
 
-      // Format data and construct full public imageURL for DraggableCard
       const formattedItems = data.map((item) => ({
         id: item.id,
         image_path: item.image_path,
@@ -1237,7 +1616,15 @@ export default function App() {
         created_at: item.created_at,
       }));
 
-      setItems(formattedItems);
+      // Safe State Update: Prevent unnecessary re-renders if JSON content hasn't changed
+      setItems((prevItems) => {
+        const isIdentical =
+          JSON.stringify(prevItems) === JSON.stringify(formattedItems);
+        if (isIdentical) {
+          return prevItems; // Retain existing array reference to stop re-render loop
+        }
+        return formattedItems;
+      });
     } catch (err) {
       console.error("❌ [fetchItems CRASHED]:", err.message || err);
     }
@@ -1369,10 +1756,7 @@ export default function App() {
       setUploadProgress({ current: i + 1, total });
     }
 
-    if (session?.user?.id) {
-      await fetchItems(session.user.id, session.access_token);
-    }
-
+    // Removed redundant fetchItems call here since uploadToGallery updates setItems formatted
     setImportProgress("");
     setIsLoading(false);
     event.target.value = null;
@@ -1389,27 +1773,40 @@ export default function App() {
         resultType: CameraResultType.Uri,
       });
 
+      if (!image.photos || image.photos.length === 0) return;
+
       setIsLoading(true);
       const total = image.photos.length;
 
       for (let i = 0; i < total; i++) {
         setImportProgress(`Importing ${i + 1} of ${total}...`);
-        const response = await fetch(image.photos[i].webPath);
-        const blob = await response.blob();
-        const file = new File([blob], `photo-${Date.now()}.jpg`, {
-          type: "image/jpeg",
-        });
-        await uploadToGallery(file);
-      }
 
-      if (session?.user?.id) {
-        await fetchItems(session.user.id, session.access_token);
+        const photo = image.photos[i];
+
+        // Fetch direct Capacitor local file URI to get clean blob
+        const response = await fetch(photo.webPath);
+        const blob = await response.blob();
+
+        const ext = photo.format ? `.${photo.format}` : ".jpg";
+        const file = new File([blob], `photo-${Date.now()}-${i}${ext}`, {
+          type: blob.type || "image/jpeg",
+        });
+
+        await uploadToGallery(file);
       }
 
       setImportProgress("");
       setIsLoading(false);
     } catch (err) {
-      console.error("Native Import failed:", err);
+      if (
+        err?.message?.includes("User cancelled") ||
+        err === "User cancelled photos app"
+      ) {
+        console.log("ℹ️ Native photo selection cancelled by user.");
+      } else {
+        console.error("❌ Native Import failed:", err);
+      }
+      setImportProgress("");
       setIsLoading(false);
     }
   };
@@ -1444,110 +1841,154 @@ export default function App() {
         maxDimension = 2048,
         quality = 0.8,
       ) => {
-        return new Promise((resolve) => {
-          console.log(
-            "🗜️ [COMPRESSION] Starting client-side image optimization...",
-          );
-          const img = new Image();
-          const url = URL.createObjectURL(fileToCompress);
-          img.src = url;
+        console.log(
+          "🗜️ [COMPRESSION] Starting client-side image optimization...",
+        );
 
-          img.onload = () => {
-            URL.revokeObjectURL(url);
-            let { width, height } = img;
+        let imgSource = null;
+        let objectUrl = null;
 
-            // Downscale dimensions proportionally
-            if (width > maxDimension || height > maxDimension) {
-              if (width > height) {
-                height = Math.round((height * maxDimension) / width);
-                width = maxDimension;
-              } else {
-                width = Math.round((width * maxDimension) / height);
-                height = maxDimension;
-              }
-            }
-
-            const canvas = document.createElement("canvas");
-            canvas.width = width;
-            canvas.height = height;
-            const ctx = canvas.getContext("2d");
-
-            // Solid white background to prevent black/transparent JPEG artifacts
-            ctx.fillStyle = "#FFFFFF";
-            ctx.fillRect(0, 0, width, height);
-
-            ctx.imageSmoothingEnabled = true;
-            ctx.imageSmoothingQuality = "high";
-            ctx.drawImage(img, 0, 0, width, height);
-
-            const exportCanvas = (type) => {
-              return new Promise((res) => {
-                canvas.toBlob((blob) => res(blob), type, quality);
+        try {
+          // 1. Primary Method: createImageBitmap bypasses bad embedded JFIF/EXIF thumbnail headers
+          if ("createImageBitmap" in window) {
+            try {
+              imgSource = await createImageBitmap(fileToCompress, {
+                imageOrientation: "none",
+                premultiplyAlpha: "default",
               });
-            };
-
-            (async () => {
-              let outputType = "image/jpeg";
-              let ext = ".jpg";
-
-              let blob = await exportCanvas(outputType);
-
-              if (!blob) {
-                console.warn(
-                  "⚠️ Canvas JPEG export returned null. Attempting PNG fallback...",
-                );
-                outputType = "image/png";
-                ext = ".png";
-                blob = await exportCanvas(outputType);
-              }
-
-              if (!blob) {
-                console.error(
-                  "❌ [COMPRESSION FAILED] Canvas cannot export blob. Rejecting upload.",
-                );
-                return resolve({
-                  error: true,
-                  reason: "CANVAS_BLOB_EXPORT_FAILED",
-                  message: "Unable to compress image on this device.",
-                });
-              }
-
-              const newFileName =
-                fileToCompress.name.replace(/\.[^/.]+$/, "") + ext;
-              const compressedFile = new File([blob], newFileName, {
-                type: outputType,
-                lastModified: Date.now(),
-              });
-
-              console.log(
-                `✅ [COMPRESSION SUCCESS] Reduced from ${(
-                  fileToCompress.size /
-                  1024 /
-                  1024
-                ).toFixed(2)}MB to ${(
-                  compressedFile.size /
-                  1024 /
-                  1024
-                ).toFixed(2)}MB (${width}x${height} ${outputType})`,
+            } catch (bitmapErr) {
+              console.warn(
+                "⚠️ createImageBitmap failed, attempting HTMLImageElement fallback:",
+                bitmapErr,
               );
+            }
+          }
 
-              resolve(compressedFile);
-            })();
-          };
+          // 2. Fallback Method: HTMLImageElement with explicit WebKit img.decode()
+          if (!imgSource) {
+            objectUrl = URL.createObjectURL(fileToCompress);
+            const img = new Image();
+            img.crossOrigin = "anonymous";
+            img.src = objectUrl;
 
-          img.onerror = (err) => {
-            URL.revokeObjectURL(url);
-            console.error(
-              "❌ [COMPRESSION FAILED] Image element failed to load file.",
-              err,
-            );
-            resolve({
-              error: true,
-              reason: "IMAGE_LOAD_FAILED",
-              message: "Failed to decode photo format.",
+            await new Promise((resolve, reject) => {
+              img.onload = async () => {
+                try {
+                  if ("decode" in img) {
+                    await img.decode(); // Asynchronously pre-decode image frames
+                  }
+                  resolve();
+                } catch (decodeErr) {
+                  console.warn(
+                    "⚠️ img.decode() failed, proceeding to canvas draw:",
+                    decodeErr,
+                  );
+                  resolve();
+                }
+              };
+              img.onerror = (err) => reject(err);
             });
+            imgSource = img;
+          }
+
+          // 3. Proportional Dimension Calculation
+          let width = imgSource.width || imgSource.naturalWidth;
+          let height = imgSource.height || imgSource.naturalHeight;
+
+          if (width > maxDimension || height > maxDimension) {
+            if (width > height) {
+              height = Math.round((height * maxDimension) / width);
+              width = maxDimension;
+            } else {
+              width = Math.round((width * maxDimension) / height);
+              height = maxDimension;
+            }
+          }
+
+          // 4. Create Offscreen Canvas with explicit sRGB color space
+          const canvas = document.createElement("canvas");
+          canvas.width = width;
+          canvas.height = height;
+
+          const ctx = canvas.getContext("2d", {
+            willReadFrequently: false,
+            colorSpace: "srgb", // Force sRGB to prevent Display P3 / HEIC decompression crashes
+          });
+
+          if (!ctx) {
+            throw new Error("CANVAS_CONTEXT_FAILED");
+          }
+
+          // Solid background to avoid dark/corrupted transparent artifacts on JPEG export
+          ctx.fillStyle = "#FFFFFF";
+          ctx.fillRect(0, 0, width, height);
+
+          ctx.imageSmoothingEnabled = true;
+          ctx.imageSmoothingQuality = "high";
+          ctx.drawImage(imgSource, 0, 0, width, height);
+
+          // Clean up ImageBitmap memory immediately
+          if (typeof imgSource.close === "function") {
+            imgSource.close();
+          }
+
+          // 5. Export to Blob
+          const exportCanvas = (type) =>
+            new Promise((res) =>
+              canvas.toBlob((blob) => res(blob), type, quality),
+            );
+
+          let outputType = "image/jpeg";
+          let ext = ".jpg";
+          let blob = await exportCanvas(outputType);
+
+          if (!blob) {
+            console.warn(
+              "⚠️ JPEG export returned null. Trying PNG fallback...",
+            );
+            outputType = "image/png";
+            ext = ".png";
+            blob = await exportCanvas(outputType);
+          }
+
+          if (!blob) {
+            return {
+              error: true,
+              reason: "CANVAS_BLOB_EXPORT_FAILED",
+              message: "Unable to compress image on this device.",
+            };
+          }
+
+          const newFileName =
+            fileToCompress.name.replace(/\.[^/.]+$/, "") + ext;
+          const compressedFile = new File([blob], newFileName, {
+            type: outputType,
+            lastModified: Date.now(),
+          });
+
+          console.log(
+            `✅ [COMPRESSION SUCCESS] Reduced from ${(
+              fileToCompress.size /
+              1024 /
+              1024
+            ).toFixed(2)}MB to ${(compressedFile.size / 1024 / 1024).toFixed(
+              2,
+            )}MB (${width}x${height} ${outputType})`,
+          );
+
+          return compressedFile;
+        } catch (err) {
+          console.error("❌ [COMPRESSION FAILED]:", err);
+          return {
+            error: true,
+            reason: "IMAGE_DECODE_FAILED",
+            message: "Failed to decode photo format.",
           };
-        });
+        } finally {
+          if (objectUrl) {
+            URL.revokeObjectURL(objectUrl);
+          }
+        }
       };
 
       // Handle HEIC conversion if present
@@ -1735,10 +2176,27 @@ export default function App() {
       console.log("🔄 [STEP 8] Refreshing gallery items...");
 
       if (Array.isArray(dbData) && dbData.length > 0) {
-        const newItem = dbData[0];
-        setItems((prevItems) => [newItem, ...prevItems]);
+        const item = dbData[0];
+
+        // Format raw database item to match DraggableCard expectations
+        const formattedItem = {
+          id: item.id,
+          image_path: item.image_path,
+          imageURL:
+            item.image_path?.startsWith("http") ||
+            item.image_path?.startsWith("data:")
+              ? item.image_path
+              : `${supabaseUrl}/storage/v1/object/public/gallery/${item.image_path}`,
+          notes: item.notes || "",
+          folder: item.folder || "",
+          flipped: item.flipped || false,
+          location_description: item.location_description || "",
+          created_at: item.created_at,
+        };
+
+        setItems((prevItems) => [formattedItem, ...prevItems]);
       } else if (typeof fetchItems === "function") {
-        await fetchItems(userId);
+        await fetchItems(userId, authToken);
       }
 
       console.log("✨ [COMPLETE] Upload flow finished successfully!");
@@ -1752,23 +2210,69 @@ export default function App() {
   };
 
   const handleFlip = useCallback((id) => {
-    setItems((prev) =>
-      prev.map((i) => {
-        if (i.id === id) {
-          const newFlippedState = !i.flipped;
+    console.log(`\n--- 🔄 FLIP ACTION TRIGGERED FOR ID: ${id} ---`);
 
-          supabase
-            .from("items")
-            .update({ flipped: newFlippedState })
-            .eq("id", id)
-            .then(({ error }) => {
-              if (error) console.error("Flip sync error:", error);
-            });
-          return { ...i, flipped: newFlippedState };
+    setItems((prevItems) => {
+      // 🔍 0. Check for duplicate IDs in the current state snapshot
+      const idCount = prevItems.filter((item) => item.id === id).length;
+      if (idCount > 1) {
+        console.error(
+          `🚨 DUPLICATE ID WARNING: Found ${idCount} items in state with ID "${id}"!`,
+        );
+      }
+
+      // 1. Snapshot status of items before flip
+      const targetItem = prevItems.find((item) => item.id === id);
+      if (!targetItem) {
+        console.warn(`⚠️ [handleFlip] Item with ID ${id} not found in state.`);
+        return prevItems;
+      }
+
+      const nextFlippedState = !targetItem.flipped;
+      console.log(
+        `🎯 Target Match! Toggling ID "${id}" from ${targetItem.flipped} -> ${nextFlippedState}`,
+      );
+
+      // 2. Map new items array safely
+      const nextItems = prevItems.map((item) => {
+        if (item.id === id) {
+          return { ...item, flipped: nextFlippedState };
         }
-        return i;
-      }),
-    );
+        return item; // Returns exact same reference for non-target items
+      });
+
+      // 3. DIAGNOSTIC CHECK: Did more than 1 item change state?
+      const changedItems = nextItems.filter(
+        (item, idx) => item.flipped !== prevItems[idx]?.flipped,
+      );
+
+      console.log(
+        `✅ IDs that changed 'flipped' in React state:`,
+        changedItems.map((i) => i.id),
+      );
+
+      if (changedItems.length > 1) {
+        console.error(
+          `🚨 BUG DETECTED IN STATE! Expected 1 item to change, but ${changedItems.length} items changed state:`,
+          changedItems,
+        );
+      }
+
+      // 4. Fire DB sync safely using the freshly calculated state value
+      supabase
+        .from("items")
+        .update({ flipped: nextFlippedState })
+        .eq("id", id)
+        .then(({ error }) => {
+          if (error) console.error("❌ Flip sync error:", error);
+          else
+            console.log(
+              `💾 Supabase updated ID "${id}" -> flipped: ${nextFlippedState}`,
+            );
+        });
+
+      return nextItems;
+    });
   }, []);
 
   const updateNotes = useCallback(async (id, newNotes) => {
@@ -2308,7 +2812,7 @@ export default function App() {
     return view === "auth" ? (
       <Auth setSession={setSession} setView={setView} supabase={supabase} />
     ) : (
-      <LandingPage1 onEnter={() => setView("auth")} />
+      <LandingPage onEnter={() => setView("auth")} />
     );
   }
 
@@ -2834,7 +3338,6 @@ export default function App() {
                   strategy={rectSortingStrategy}
                 >
                   <div
-                    key={activeFolder + search}
                     className={`gallery ${
                       visibleItems.length === 1 ? "single-item" : ""
                     }`}

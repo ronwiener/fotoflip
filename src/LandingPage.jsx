@@ -1,10 +1,116 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useRef } from "react";
 import heroImage from "../assets/hero-lake.jpg";
 
 const LandingPage = ({ onEnter }) => {
   const [isFlipped, setIsFlipped] = useState(false);
   const [isPrivacyOpen, setPrivacyOpen] = useState(false);
 
+  // Audio Playback & Real-time Highlight States
+  const [isPlaying, setIsPlaying] = useState(false);
+  const [highlightIndex, setHighlightIndex] = useState(-1);
+  const [progress, setProgress] = useState(0);
+
+  const heroQuote =
+    "Sam and Michael boating in the Canadian Rockies. June 2025";
+  const words = heroQuote.split(" ");
+  const utteranceRef = useRef(null);
+
+  // Clean up speech synthesis if component unmounts
+  useEffect(() => {
+    return () => {
+      if ("speechSynthesis" in window) {
+        window.speechSynthesis.cancel();
+      }
+    };
+  }, []);
+
+  // Text-to-Speech Handler
+  const handleTogglePlay = (e) => {
+    e.stopPropagation(); // Prevents flipping the card when clicking the audio pill
+
+    if (!("speechSynthesis" in window)) {
+      alert("Text-to-speech is not supported in this browser.");
+      return;
+    }
+
+    if (isPlaying) {
+      window.speechSynthesis.cancel();
+      setIsPlaying(false);
+      setHighlightIndex(-1);
+      setProgress(0);
+      return;
+    }
+
+    window.speechSynthesis.cancel();
+
+    const utterance = new SpeechSynthesisUtterance(heroQuote);
+    utteranceRef.current = utterance;
+    utterance.rate = 0.95;
+
+    // Real-time word boundary tracking for highlighting & progress bar
+    utterance.onboundary = (event) => {
+      if (event.name === "word") {
+        const charIndex = event.charIndex;
+        let currentLength = 0;
+        let wordIdx = 0;
+
+        for (let i = 0; i < words.length; i++) {
+          if (
+            charIndex >= currentLength &&
+            charIndex < currentLength + words[i].length + 1
+          ) {
+            wordIdx = i;
+            break;
+          }
+          currentLength += words[i].length + 1; // +1 accounts for space separator
+        }
+
+        setHighlightIndex(wordIdx);
+        setProgress(Math.round(((wordIdx + 1) / words.length) * 100));
+      }
+    };
+
+    utterance.onend = () => {
+      setIsPlaying(false);
+      setHighlightIndex(-1);
+      setProgress(0);
+    };
+
+    utterance.onerror = () => {
+      setIsPlaying(false);
+      setHighlightIndex(-1);
+      setProgress(0);
+    };
+
+    setIsPlaying(true);
+    window.speechSynthesis.speak(utterance);
+  };
+
+  // Stop playback when card flips
+  const handleCardFlip = () => {
+    if (isPlaying) {
+      window.speechSynthesis.cancel();
+      setIsPlaying(false);
+      setHighlightIndex(-1);
+      setProgress(0);
+    }
+    setIsFlipped(!isFlipped);
+  };
+
+  // 1. Auto-open privacy modal if URL contains '#privacy' on load or hash change
+  useEffect(() => {
+    const handleHashChange = () => {
+      if (window.location.hash === "#privacy") {
+        setPrivacyOpen(true);
+      }
+    };
+
+    handleHashChange();
+    window.addEventListener("hashchange", handleHashChange);
+    return () => window.removeEventListener("hashchange", handleHashChange);
+  }, []);
+
+  // 2. Card reveal effect timer
   useEffect(() => {
     const timer = setTimeout(() => {
       const cards = document.querySelectorAll(".how-to-card");
@@ -14,8 +120,19 @@ const LandingPage = ({ onEnter }) => {
     return () => clearTimeout(timer);
   }, []);
 
+  // 3. Toggle function to sync state with URL hash
   const togglePrivacy = () => {
-    setPrivacyOpen(!isPrivacyOpen);
+    if (!isPrivacyOpen) {
+      window.location.hash = "privacy";
+      setPrivacyOpen(true);
+    } else {
+      history.pushState(
+        "",
+        document.title,
+        window.location.pathname + window.location.search,
+      );
+      setPrivacyOpen(false);
+    }
   };
 
   return (
@@ -36,8 +153,8 @@ const LandingPage = ({ onEnter }) => {
                 <span className="accent-text">Give them a flip side.</span>
               </h1>
               <p>
-                Flip any photo to write names, dates, and notes that stay with
-                the image forever.
+                Flip any photo to write, dictate, and listen to notes that stay
+                with your images forever.
               </p>
             </div>
 
@@ -46,14 +163,12 @@ const LandingPage = ({ onEnter }) => {
                 className="flip-card-group"
                 role="button"
                 tabIndex="0"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  setIsFlipped(!isFlipped);
-                }}
+                onClick={handleCardFlip}
               >
                 <div
                   className={`flip-card-inner ${isFlipped ? "is-flipped" : ""}`}
                 >
+                  {/* FRONT SIDE (With Image and Audio Playback Pill Overlay) */}
                   <div className="flip-card-front">
                     <img
                       src={heroImage}
@@ -64,23 +179,67 @@ const LandingPage = ({ onEnter }) => {
                         objectFit: "cover",
                       }}
                     />
+
+                    {/* Playback Overlay Control on Card Front */}
+                    <div
+                      className="card-audio-container front-overlay"
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      <button
+                        className={`card-audio-pill ${
+                          isPlaying ? "playing" : ""
+                        }`}
+                        onClick={handleTogglePlay}
+                        aria-label={
+                          isPlaying ? "Stop listening" : "Listen to note"
+                        }
+                      >
+                        <span className="pill-icon">
+                          {isPlaying ? "⏹" : "🔊"}
+                        </span>
+                        <span className="pill-text">
+                          {isPlaying ? "Playing" : "Listen"}
+                        </span>
+                      </button>
+
+                      {isPlaying && (
+                        <div className="audio-progress-bar-bg">
+                          <div
+                            className="audio-progress-bar-fill"
+                            style={{ width: `${progress}%` }}
+                          />
+                        </div>
+                      )}
+                    </div>
                   </div>
 
+                  {/* BACK SIDE (Text Note with Word Highlighting) */}
                   <div className="flip-card-back">
                     <p className="back-quote">
-                      Sam and Michael boating in the Canadian Rockies. June 2025
+                      {words.map((word, index) => (
+                        <span
+                          key={index}
+                          className={`quote-word ${
+                            index === highlightIndex ? "highlighted-word" : ""
+                          }`}
+                        >
+                          {word}{" "}
+                        </span>
+                      ))}
                     </p>
-                    <div className="touch-hint">Tap to Flip Back</div>
+
+                    <div className="touch-hint">Tap anywhere to Flip Back</div>
                   </div>
                 </div>
+
                 {!isFlipped && (
                   <div className="touch-hint-external">
-                    Tap on Image to Flip
+                    Tap Listen to play note or tap Image to Flip
                   </div>
                 )}
                 {isFlipped && (
                   <div className="touch-hint-external">
-                    Everything you write here is instantly searchable.
+                    Everything you write or dictate is instantly searchable.
                   </div>
                 )}
               </div>
@@ -88,28 +247,46 @@ const LandingPage = ({ onEnter }) => {
           </section>
 
           <section className="how-to-section">
-            <h2>Your photos organized and searchable</h2>
+            <h2>Your photos organized, searchable, and note recordable</h2>
             <div className="how-to-grid">
+              <div className="how-to-card">
+                <div className="gesture-icon">🎙️</div>
+                <h3>Note Writing or Voice Dictation</h3>
+                <p>
+                  Upload a photo, tap to flip for note writing or highlight it,
+                  tap the microphone, and record your memories.
+                </p>
+              </div>
+
+              <div className="how-to-card">
+                <div className="gesture-icon">🔊</div>
+                <h3>Audio Listen & Playback</h3>
+                <p>
+                  All notes are audible. Tap the play button and listen to your
+                  memories.
+                </p>
+              </div>
+
               <div className="how-to-card">
                 <div className="gesture-icon">🔍</div>
                 <h3>Power Search</h3>
                 <p>
-                  No more scrolling through thousands of photos. You can now
-                  search for names, dates, places or other details written on
-                  the backside of your photos to find them quickly.
+                  No more scrolling through thousands of photos. Search for
+                  names, dates, places, or any detail written on the flip side
+                  of your photos.
                 </p>
               </div>
-              <div className={"how-to-card"}>
+
+              <div className="how-to-card">
                 <span className="gesture-icon">📁</span>
                 <h3>Smart Folders</h3>
                 <p>
                   Create custom folders for vacations, events, or family
-                  history. Just drag and drop to clear the clutter from your
-                  main gallery.
+                  history. Easily drag and drop to organize your gallery.
                 </p>
               </div>
 
-              <div className={"how-to-card"}>
+              <div className="how-to-card">
                 <div className="gesture-icon">🪄</div>
                 <h3>Editing Feature</h3>
                 <p>
@@ -126,7 +303,6 @@ const LandingPage = ({ onEnter }) => {
             <div className="footer-links">
               <span>PATENT PENDING</span>
               <span className="footer-divider"> | </span>
-              {/* This is the missing button to trigger the modal */}
               <button className="footer-link-btn" onClick={togglePrivacy}>
                 Privacy Policy
               </button>
@@ -139,7 +315,6 @@ const LandingPage = ({ onEnter }) => {
             </div>
             <p className="version-text">v1.0.0</p>
 
-            {/* Move the Modal outside of the inline text flow for better rendering */}
             {isPrivacyOpen && (
               <div className="modal-overlay" onClick={togglePrivacy}>
                 <div
@@ -153,7 +328,7 @@ const LandingPage = ({ onEnter }) => {
                   <div className="modal-body">
                     <h1>Privacy Policy for Photo Flip</h1>
                     <div className="last-updated">
-                      <strong>Last Updated:</strong> April 20, 2026
+                      <strong>Last Updated:</strong> September 24, 2026
                     </div>
 
                     <h2>1. Introduction</h2>
@@ -167,79 +342,85 @@ const LandingPage = ({ onEnter }) => {
                     <h2>2. Data We Collect</h2>
                     <ul>
                       <li>
-                        <strong>Account Information:</strong> When you use "Sign
-                        in with Apple," we collect your email address and name
-                        to create and manage your account.
+                        <strong>Account Information:</strong> When you create an
+                        account via Email or "Sign in with Apple," we collect
+                        your email address and name to manage your account.
                       </li>
                       <li>
-                        <strong>User Content:</strong> We store the photos you
-                        upload and the notes you write (the "flips") to ensure
-                        they are available to you across your devices.
+                        <strong>User Content & Notes:</strong> We store the
+                        photos you upload, written notes, and dictated
+                        transcripts (the "flips") to ensure they are accessible
+                        across your devices.
                       </li>
                       <li>
-                        <strong>Usage Data:</strong> We may collect minimal
-                        technical data (e.g., device type and app version) to
-                        help us troubleshoot bugs and improve performance on
-                        devices like the iPhone 17 Pro.
+                        <strong>Voice & Speech Data:</strong> When you use voice
+                        dictation, your speech is processed locally or via
+                        standard on-device speech recognition. Audio recordings
+                        are converted to text and are not stored as raw audio
+                        files on our servers.
+                      </li>
+                      <li>
+                        <strong>Usage Data:</strong> Minimal technical metrics
+                        (e.g., device model, OS version) are used to fix bugs
+                        and maintain performance.
                       </li>
                     </ul>
 
                     <h2>3. How We Use Your Data</h2>
                     <p>
-                      We use your data solely to provide the core services of
-                      Photo Flip, including:
+                      We use your data solely to deliver Photo Flip services,
+                      including:
                     </p>
                     <ul>
-                      <li>Authenticating your identity via Apple.</li>
+                      <li>Authenticating your user account.</li>
                       <li>
-                        Storing and retrieving your personal photo gallery and
-                        notes via our secure backend (Supabase).
+                        Storing and syncing your photo galleries and notes via
+                        secure backend services (Supabase).
                       </li>
-                      <li>Providing customer support when requested.</li>
+                      <li>
+                        Providing voice transcription and playback capabilities.
+                      </li>
+                      <li>Responding to customer support inquiries.</li>
                     </ul>
                     <p>
                       <strong>
-                        We do not sell your data to third parties or use your
-                        photos for advertising.
+                        We do not sell your data, speech data, or photos to
+                        third parties or advertisers.
                       </strong>
                     </p>
 
                     <h2>4. Data Storage and Security</h2>
                     <p>
                       Your data is stored securely using Supabase cloud
-                      services. We implement industry-standard security measures
-                      to protect your information. Your photos remain your
-                      property, and we do not access them unless required for
-                      technical support requested by you.
+                      infrastructure. We employ industry-standard encryption to
+                      safeguard your information. Your photos and notes remain
+                      strictly your property.
                     </p>
 
                     <h2>5. Your Rights and Data Deletion</h2>
                     <p>
-                      You have the right to access, modify, or delete your
-                      personal data.
+                      You retain full ownership and control of your personal
+                      data.
                     </p>
                     <ul>
                       <li>
-                        <strong>Account Deletion:</strong> You may delete your
-                        account and all associated data (photos and notes)
-                        directly within the App Settings or by contacting us at
+                        <strong>Account Deletion:</strong> You can delete your
+                        account and all associated cards, notes, and photos in
+                        App Settings or by contacting{" "}
                         <a href="mailto:photoflipsupport@gmail.com">
                           photoflipsupport@gmail.com
                         </a>
                         .
                       </li>
                       <li>
-                        <strong>Apple Sign-In:</strong> You can manage or revoke
-                        app access through your Apple ID settings.
+                        <strong>Apple Sign-In:</strong> Manage permissions
+                        directly in your Apple ID settings.
                       </li>
                     </ul>
 
                     <h2>6. Contact Us</h2>
                     <div className="contact">
-                      <p>
-                        If you have any questions about this Privacy Policy,
-                        please contact us at:
-                      </p>
+                      <p>For any privacy inquiries, reach out to us at:</p>
                       <p>
                         <strong>Email:</strong>{" "}
                         <a href="mailto:photoflipsupport@gmail.com">
