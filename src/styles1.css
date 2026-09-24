@@ -2262,15 +2262,17 @@ body:has(.folder-input-overlay) {
 .flip-card-back {
   position: relative;
   overflow: hidden;
-  backface-visibility: hidden; /* Prevents back side from leaking through front and vice versa */
+  backface-visibility: hidden;
   -webkit-backface-visibility: hidden;
+  transform-style: preserve-3d;
+  -webkit-transform-style: preserve-3d;
 }
 
 .card-audio-container.front-overlay {
   position: absolute;
   bottom: 1rem;
   left: 50%;
-  transform: translateX(-50%);
+  transform: translateX(-50%) translateZ(1px); /* Key fix: forces front overlay onto the 3D plane above the front face */
   z-index: 10;
   margin-top: 0;
   width: auto;
