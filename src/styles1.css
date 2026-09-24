@@ -2258,9 +2258,12 @@ body:has(.folder-input-overlay) {
 }
 
 /* Card Front Overlay Positioning */
-.flip-card-front {
+.flip-card-front,
+.flip-card-back {
   position: relative;
   overflow: hidden;
+  backface-visibility: hidden; /* Prevents back side from leaking through front and vice versa */
+  -webkit-backface-visibility: hidden;
 }
 
 .card-audio-container.front-overlay {
@@ -2311,6 +2314,8 @@ body:has(.folder-input-overlay) {
   transition: background-color 0.2s ease, border-color 0.2s ease,
     color 0.2s ease;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
 }
 
 .card-audio-pill.playing {
