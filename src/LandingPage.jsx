@@ -1,98 +1,92 @@
-import React, { useEffect, useState, useRef } from "react";
+import React, { useEffect, useState } from "react";
 import heroImage from "../assets/hero-lake.jpg";
+import { useSpeech } from "./context/useSpeech";
 
 const LandingPage = ({ onEnter }) => {
   const [isFlipped, setIsFlipped] = useState(false);
   const [isPrivacyOpen, setPrivacyOpen] = useState(false);
 
-  // Audio Playback & Real-time Highlight States
-  const [isPlaying, setIsPlaying] = useState(false);
-  const [highlightIndex, setHighlightIndex] = useState(-1);
-  const [progress, setProgress] = useState(0);
+  // Consume shared speech state from provider
+  const { toggleSpeak, stop, isPlaying, highlightIndex, progress } =
+    useSpeech();
 
   const heroQuote =
-    "Sam and Michael boating in the Canadian Rockies. June 2025";
+    "Sam and Michael boating in the Canadian Rockies. June of 2025";
   const words = heroQuote.split(" ");
-  const utteranceRef = useRef(null);
 
-  // Clean up speech synthesis if component unmounts
+  // Diagnostic Log on Context
+  useEffect(() => {
+    console.log("[SpeechContext Check]", {
+      hasToggleSpeak: typeof toggleSpeak === "function",
+      hasStop: typeof stop === "function",
+      isPlaying,
+    });
+  }, [toggleSpeak, stop, isPlaying]);
+
+  // Stop TTS playback safely if the component unmounts
   useEffect(() => {
     return () => {
-      if ("speechSynthesis" in window) {
-        window.speechSynthesis.cancel();
+      if (isPlaying && typeof stop === "function") {
+        console.log("[LandingPage] Unmounting while playing, calling stop()");
+        stop();
       }
     };
-  }, []);
+  }, [isPlaying, stop]);
 
   // Text-to-Speech Handler
   const handleTogglePlay = (e) => {
-    e.stopPropagation(); // Prevents flipping the card when clicking the audio pill
+    console.log("[handleTogglePlay] Event fired!", {
+      eventType: e.type,
+      target: e.target,
+      currentTarget: e.currentTarget,
+    });
 
-    if (!("speechSynthesis" in window)) {
-      alert("Text-to-speech is not supported in this browser.");
-      return;
+    e.stopPropagation();
+    console.log("[handleTogglePlay] e.stopPropagation() executed");
+
+    console.log("[handleTogglePlay] State evaluation:", {
+      isPlaying,
+      typeofStop: typeof stop,
+      typeofToggleSpeak: typeof toggleSpeak,
+    });
+
+    // Unmute / unlock WebKit speech synthesis queue if paused or locked
+    if (typeof window !== "undefined" && "speechSynthesis" in window) {
+      if (window.speechSynthesis.paused) {
+        window.speechSynthesis.resume();
+      }
     }
 
     if (isPlaying) {
-      window.speechSynthesis.cancel();
-      setIsPlaying(false);
-      setHighlightIndex(-1);
-      setProgress(0);
-      return;
-    }
-
-    window.speechSynthesis.cancel();
-
-    const utterance = new SpeechSynthesisUtterance(heroQuote);
-    utteranceRef.current = utterance;
-    utterance.rate = 0.95;
-
-    // Real-time word boundary tracking for highlighting & progress bar
-    utterance.onboundary = (event) => {
-      if (event.name === "word") {
-        const charIndex = event.charIndex;
-        let currentLength = 0;
-        let wordIdx = 0;
-
-        for (let i = 0; i < words.length; i++) {
-          if (
-            charIndex >= currentLength &&
-            charIndex < currentLength + words[i].length + 1
-          ) {
-            wordIdx = i;
-            break;
-          }
-          currentLength += words[i].length + 1; // +1 accounts for space separator
-        }
-
-        setHighlightIndex(wordIdx);
-        setProgress(Math.round(((wordIdx + 1) / words.length) * 100));
+      if (typeof stop === "function") {
+        console.log("[handleTogglePlay] Invoking stop()");
+        stop();
+      } else {
+        console.warn(
+          "[handleTogglePlay] isPlaying is true, but stop is not a function",
+        );
       }
-    };
-
-    utterance.onend = () => {
-      setIsPlaying(false);
-      setHighlightIndex(-1);
-      setProgress(0);
-    };
-
-    utterance.onerror = () => {
-      setIsPlaying(false);
-      setHighlightIndex(-1);
-      setProgress(0);
-    };
-
-    setIsPlaying(true);
-    window.speechSynthesis.speak(utterance);
+    } else {
+      if (typeof toggleSpeak === "function") {
+        console.log(
+          "[handleTogglePlay] Invoking toggleSpeak() with string payload:",
+          heroQuote,
+        );
+        // Pass heroQuote directly as a string to match SpeechProvider(textToSpeak, cardId) signature
+        toggleSpeak(heroQuote, "hero-demo-card");
+      } else {
+        console.error(
+          "[handleTogglePlay] Failed to trigger playback: toggleSpeak is not a function",
+        );
+      }
+    }
   };
 
   // Stop playback when card flips
   const handleCardFlip = () => {
-    if (isPlaying) {
-      window.speechSynthesis.cancel();
-      setIsPlaying(false);
-      setHighlightIndex(-1);
-      setProgress(0);
+    console.log("[handleCardFlip] Card clicked to flip");
+    if (isPlaying && typeof stop === "function") {
+      stop();
     }
     setIsFlipped(!isFlipped);
   };
@@ -139,7 +133,13 @@ const LandingPage = ({ onEnter }) => {
     <div className="landing-page-container">
       <nav className="landing-nav">
         <div className="landing-logo">PhotoFlip</div>
-        <button className="landing-login-btn" onClick={onEnter}>
+        <button
+          className="landing-login-btn"
+          onClick={() => {
+            if (isPlaying && typeof stop === "function") stop();
+            onEnter();
+          }}
+        >
           Get Started
         </button>
       </nav>
@@ -183,7 +183,12 @@ const LandingPage = ({ onEnter }) => {
                     {/* Playback Overlay Control on Card Front */}
                     <div
                       className="card-audio-container front-overlay"
-                      onClick={(e) => e.stopPropagation()}
+                      onClick={(e) => {
+                        console.log(
+                          "[card-audio-container] Click trapped & stopped propagation",
+                        );
+                        e.stopPropagation();
+                      }}
                     >
                       <button
                         className={`card-audio-pill ${
@@ -220,7 +225,9 @@ const LandingPage = ({ onEnter }) => {
                         <span
                           key={index}
                           className={`quote-word ${
-                            index === highlightIndex ? "highlighted-word" : ""
+                            isPlaying && highlightIndex === index
+                              ? "is-highlighted"
+                              : ""
                           }`}
                         >
                           {word}{" "}

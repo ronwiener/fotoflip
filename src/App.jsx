@@ -37,7 +37,7 @@ import "./styles1.css";
 import { Capacitor } from "@capacitor/core";
 import { processPhotoMetadata } from "./metadataUtils";
 import { Camera, CameraResultType } from "@capacitor/camera";
-import { SpeechRecognition } from "@capacitor-community/speech-recognition";
+import { useSpeech } from "./context/useSpeech";
 import {
   filterItems,
   exportGalleryZip,
@@ -766,7 +766,6 @@ function ZoomOverlay({ data, item, updateNotes, onClose }) {
   );
 }
 
-// 2. FIXED DRAGGABLE CARD COMPONENT
 const DraggableCard = memo(function DraggableCard({
   item,
   isSelected,
@@ -787,17 +786,28 @@ const DraggableCard = memo(function DraggableCard({
     id: item.id,
     disabled: item.flipped,
   });
-  const [isListening, setIsListening] = useState(false);
-  const [isSpeaking, setIsSpeaking] = useState(false);
-  const [speechProgress, setSpeechProgress] = React.useState(0);
+
+  const {
+    isSpeaking,
+    isListening,
+    activeCardId,
+    speechProgress,
+    getFormattedDuration,
+    toggleSpeak,
+    cancelSpeech,
+    toggleDictation,
+  } = useSpeech();
+
+  const isThisCardSpeaking = isSpeaking && activeCardId === item.id;
+  const isThisCardListening = isListening && activeCardId === item.id;
+  const formattedDuration = getFormattedDuration(item.notes);
+
   const longPressTimer = useRef(null);
   const isLongPressActive = useRef(false);
   const tapStartRef = useRef({ x: 0, y: 0 });
   const lastTapRef = useRef(0);
   const flipTimeoutRef = useRef(null);
   const isPointerDownRef = useRef(false);
-  const recognitionRef = React.useRef(null);
-  const speechIntervalRef = React.useRef(null);
 
   const clearLongPress = () => {
     if (longPressTimer.current) {
@@ -901,194 +911,12 @@ const DraggableCard = memo(function DraggableCard({
     }
   };
 
-  // ✅ Clean transform application to prevent 3D Backface leakage
   const style = {
     transform: transform ? CSS.Transform.toString(transform) : undefined,
     transition: isDragging ? transition : undefined,
     zIndex: isDragging ? 1000 : item.flipped ? 100 : 1,
     touchAction: item.flipped ? "auto" : "none",
   };
-
-  const handleToggleDictation = async (cardId) => {
-    try {
-      const SpeechRecognition =
-        window.SpeechRecognition || window.webkitSpeechRecognition;
-
-      if (!SpeechRecognition) {
-        alert("Speech recognition is not supported in this browser.");
-        return;
-      }
-
-      // 1. If currently listening, stop recognition and clean up ref
-      if (isListening) {
-        if (recognitionRef.current) {
-          recognitionRef.current.stop();
-          recognitionRef.current = null;
-        }
-        setIsListening(false);
-        return;
-      }
-
-      // 2. Stop any active text-to-speech playback and clear interval timer
-      if (typeof window !== "undefined" && "speechSynthesis" in window) {
-        window.speechSynthesis.cancel();
-      }
-      if (speechIntervalRef?.current) {
-        clearInterval(speechIntervalRef.current);
-        speechIntervalRef.current = null;
-      }
-      if (typeof setIsSpeaking === "function") {
-        setIsSpeaking(false);
-      }
-      if (typeof setSpeechProgress === "function") {
-        setSpeechProgress(0);
-      }
-
-      // 3. Clear pending card flip timers
-      if (typeof clearFlipTimer === "function") {
-        clearFlipTimer();
-      }
-
-      // 4. Initialize and start new speech recognition instance
-      const recognition = new SpeechRecognition();
-      recognitionRef.current = recognition;
-
-      recognition.continuous = false;
-      recognition.interimResults = false;
-      recognition.lang = "en-US";
-
-      recognition.onstart = () => {
-        setIsListening(true);
-      };
-
-      recognition.onend = () => {
-        setIsListening(false);
-        recognitionRef.current = null;
-      };
-
-      recognition.onerror = (err) => {
-        console.error("Speech recognition error:", err);
-        setIsListening(false);
-        recognitionRef.current = null;
-      };
-
-      recognition.onresult = (event) => {
-        const transcript = event.results[0]?.[0]?.transcript;
-        if (transcript && transcript.trim()) {
-          const updatedNotes = item.notes
-            ? `${item.notes}\n${transcript.trim()}`
-            : transcript.trim();
-
-          if (typeof updateNotes === "function") {
-            updateNotes(cardId, updatedNotes);
-          }
-        }
-      };
-
-      recognition.start();
-    } catch (err) {
-      console.error("Error starting speech recognition:", err);
-      setIsListening(false);
-      recognitionRef.current = null;
-    }
-  };
-  // Helper to format remaining or total time
-  const getFormattedAudioDuration = (text, progressPercent = 0) => {
-    if (!text) return "(0:00)";
-    const words = text.trim().split(/\s+/).filter(Boolean).length;
-    const totalSeconds = Math.max(1, Math.ceil(words / 2.5));
-
-    // When speaking, count down remaining time based on progress
-    const remainingSeconds = isSpeaking
-      ? Math.max(0, Math.ceil(totalSeconds * (1 - progressPercent / 100)))
-      : totalSeconds;
-
-    const mins = Math.floor(remainingSeconds / 60);
-    const secs = remainingSeconds % 60;
-    return `(${mins}:${secs.toString().padStart(2, "0")})`;
-  };
-
-  const handleToggleSpeakNotes = () => {
-    if (typeof window === "undefined" || !("speechSynthesis" in window)) {
-      console.warn("Text-to-speech is not supported on this browser.");
-      return;
-    }
-
-    if (typeof clearFlipTimer === "function") {
-      clearFlipTimer();
-    }
-
-    if (speechIntervalRef.current) {
-      clearInterval(speechIntervalRef.current);
-      speechIntervalRef.current = null;
-    }
-
-    if (isSpeaking) {
-      window.speechSynthesis.cancel();
-      setIsSpeaking(false);
-      setSpeechProgress(0);
-      return;
-    }
-
-    const textToRead = item.notes?.trim();
-    if (!textToRead) return;
-
-    window.speechSynthesis.cancel();
-
-    const utterance = new SpeechSynthesisUtterance(textToRead);
-    utterance.rate = 0.95;
-    utterance.pitch = 1.0;
-
-    const words = textToRead.split(/\s+/).filter(Boolean).length;
-    const estimatedDurationMs = Math.max(1, Math.ceil(words / 2.5)) * 1000;
-
-    utterance.onstart = () => {
-      setIsSpeaking(true);
-      setSpeechProgress(0);
-
-      const startTime = Date.now();
-      speechIntervalRef.current = setInterval(() => {
-        const elapsed = Date.now() - startTime;
-        const progress = Math.min(100, (elapsed / estimatedDurationMs) * 100);
-        setSpeechProgress(progress);
-
-        if (progress >= 100) {
-          clearInterval(speechIntervalRef.current);
-          speechIntervalRef.current = null;
-        }
-      }, 100);
-    };
-
-    utterance.onend = () => {
-      setIsSpeaking(false);
-      setSpeechProgress(0);
-      if (speechIntervalRef.current) {
-        clearInterval(speechIntervalRef.current);
-        speechIntervalRef.current = null;
-      }
-    };
-
-    utterance.onerror = (e) => {
-      console.error("SpeechSynthesis error:", e);
-      setIsSpeaking(false);
-      setSpeechProgress(0);
-      if (speechIntervalRef.current) {
-        clearInterval(speechIntervalRef.current);
-        speechIntervalRef.current = null;
-      }
-    };
-
-    window.speechSynthesis.speak(utterance);
-  };
-
-  // 3. Stop audio if card unmounts or component updates
-  useEffect(() => {
-    return () => {
-      if (typeof window !== "undefined" && "speechSynthesis" in window) {
-        window.speechSynthesis.cancel();
-      }
-    };
-  }, []);
 
   return (
     <div
@@ -1108,11 +936,8 @@ const DraggableCard = memo(function DraggableCard({
           onPointerMove={handlePointerMove}
           onPointerCancel={clearLongPress}
           onClick={(e) => e.stopPropagation()}
-          style={{
-            pointerEvents: item.flipped ? "none" : "auto",
-          }}
+          style={{ pointerEvents: item.flipped ? "none" : "auto" }}
         >
-          {/* Top Badges Container (Selection Checkmark + Morphing Mic) */}
           {isSelected && (
             <div
               className="card-badges-container"
@@ -1131,7 +956,6 @@ const DraggableCard = memo(function DraggableCard({
                 pointerEvents: "auto",
               }}
             >
-              {/* 1. Selection Checkmark */}
               <div
                 className="select-indicator active"
                 style={{
@@ -1153,21 +977,28 @@ const DraggableCard = memo(function DraggableCard({
                 ✓
               </div>
 
-              {/* 2. Morphing Dictation Mic / Stop Button */}
+              {/* Dictation Button */}
               <button
                 type="button"
-                className={`mic-dictate-btn ${isListening ? "listening" : ""}`}
+                className={`mic-dictate-btn ${
+                  isThisCardListening ? "listening" : ""
+                }`}
                 onClick={(e) => {
                   e.preventDefault();
                   e.stopPropagation();
-                  handleToggleDictation(item.id);
+                  toggleDictation(
+                    (newText) => updateNotes(item.id, newText),
+                    item.id,
+                  );
                 }}
-                aria-label={isListening ? "Stop dictation" : "Start dictation"}
+                aria-label={
+                  isThisCardListening ? "Stop dictation" : "Start dictation"
+                }
                 style={{
                   width: "32px",
                   height: "32px",
                   borderRadius: "50%",
-                  backgroundColor: isListening ? "#ef4444" : "#007aff",
+                  backgroundColor: isThisCardListening ? "#ef4444" : "#007aff",
                   color: "#ffffff",
                   border: "2px solid #ffffff",
                   display: "flex",
@@ -1182,12 +1013,12 @@ const DraggableCard = memo(function DraggableCard({
                   transition: "all 0.2s ease",
                 }}
               >
-                {isListening ? "⏹️" : "🎤"}
+                {isThisCardListening ? "⏹️" : "🎤"}
               </button>
             </div>
           )}
 
-          {/* Bottom Audio Playback Bar */}
+          {/* Audio Playback Bar */}
           {Boolean(item.notes && item.notes.trim().length > 0) && (
             <div
               className="card-audio-bar"
@@ -1195,40 +1026,29 @@ const DraggableCard = memo(function DraggableCard({
               onPointerUp={(e) => e.stopPropagation()}
               onClick={(e) => e.stopPropagation()}
             >
-              {/* Subdued Translucent Audio Pill */}
               <button
                 type="button"
-                className={`audio-pill-btn ${isSpeaking ? "speaking" : ""}`}
+                className={`audio-pill-btn ${
+                  isThisCardSpeaking ? "speaking" : ""
+                }`}
                 onClick={(e) => {
                   e.preventDefault();
                   e.stopPropagation();
-                  handleToggleSpeakNotes();
+                  clearFlipTimer();
+                  toggleSpeak(item.notes, item.id);
                 }}
-                aria-label={isSpeaking ? "Stop listening" : "Listen note"}
               >
-                {/* Dynamic Progress Fill */}
-                {isSpeaking && (
+                {isThisCardSpeaking && (
                   <span
                     className="audio-progress-bar"
                     style={{ width: `${speechProgress}%` }}
                   />
                 )}
-
-                {/* Button Content */}
                 <span className="audio-pill-content">
-                  <span style={{ fontSize: "11px", lineHeight: 1 }}>
-                    {isSpeaking ? "⏹" : "▶"}
-                  </span>
-                  <span
-                    style={{ letterSpacing: "0.2px", whiteSpace: "nowrap" }}
-                  >
-                    Listen{" "}
-                    {getFormattedAudioDuration(item.notes, speechProgress)}
-                  </span>
+                  <span>{isThisCardSpeaking ? "⏹" : "▶"}</span>
+                  <span>Listen {formattedDuration}</span>
                 </span>
               </button>
-
-              {/* Scaled-Down Trash Can */}
               <button
                 type="button"
                 className="clear-note-btn"
@@ -1238,15 +1058,7 @@ const DraggableCard = memo(function DraggableCard({
                   if (typeof updateNotes === "function") {
                     updateNotes(item.id, "");
                   }
-                  if (isSpeaking) {
-                    window.speechSynthesis?.cancel();
-                    if (speechIntervalRef.current) {
-                      clearInterval(speechIntervalRef.current);
-                      speechIntervalRef.current = null;
-                    }
-                    setIsSpeaking(false);
-                    setSpeechProgress(0);
-                  }
+                  cancelSpeech();
                 }}
                 aria-label="Delete voice note"
                 title="Delete note"
