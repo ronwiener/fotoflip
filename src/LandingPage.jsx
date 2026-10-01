@@ -67,6 +67,14 @@ const LandingPage = ({ onEnter }) => {
         );
       }
     } else {
+      // Guard against missing, empty, or whitespace-only quote strings
+      if (!heroQuote || heroQuote.trim().length === 0) {
+        console.warn(
+          "[handleTogglePlay] Speech payload is empty; aborting speak call.",
+        );
+        return;
+      }
+
       if (typeof toggleSpeak === "function") {
         console.log(
           "[handleTogglePlay] Invoking toggleSpeak() with string payload:",
