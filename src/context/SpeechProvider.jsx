@@ -172,6 +172,7 @@ export function SpeechProvider({ children }) {
       if (isListening) {
         try {
           await SpeechRecognition.stop();
+          await SpeechRecognition.removeAllListeners();
         } catch (e) {
           console.error("Error stopping dictation:", e);
         } finally {
@@ -182,18 +183,35 @@ export function SpeechProvider({ children }) {
       }
 
       try {
-        const { hasPermission } = await SpeechRecognition.checkPermissions();
-        if (!hasPermission) {
-          const permissionStatus = await SpeechRecognition.requestPermissions();
-          if (permissionStatus.speechRecognition !== "granted") {
-            console.warn("Speech recognition permission denied");
+        // 1. Verify / request permissions with standard Capacitor API signature
+        const status = await SpeechRecognition.checkPermissions();
+
+        if (status.speechRecognition !== "granted") {
+          const reqStatus = await SpeechRecognition.requestPermissions();
+          if (reqStatus.speechRecognition !== "granted") {
+            console.warn("Speech recognition permission denied by user");
             return;
           }
         }
 
+        // 2. Remove previous listeners
+        await SpeechRecognition.removeAllListeners();
+
+        // 3. Attach partial results listener
+        await SpeechRecognition.addListener("partialResults", (data) => {
+          if (
+            data.matches &&
+            data.matches.length > 0 &&
+            typeof onTranscript === "function"
+          ) {
+            onTranscript(data.matches[0]);
+          }
+        });
+
         setIsListening(true);
         setActiveCardId(cardId);
 
+        // 4. Start native plugin speech recognition
         await SpeechRecognition.start({
           language: "en-US",
           maxResults: 1,
@@ -201,14 +219,9 @@ export function SpeechProvider({ children }) {
           partialResults: true,
           popup: false,
         });
-
-        SpeechRecognition.addListener("partialResults", (data) => {
-          if (data.matches && data.matches.length > 0 && onTranscript) {
-            onTranscript(data.matches[0]);
-          }
-        });
       } catch (error) {
         console.error("Dictation error:", error);
+        await SpeechRecognition.removeAllListeners();
         setIsListening(false);
         setActiveCardId(null);
       }

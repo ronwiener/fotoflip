@@ -8,13 +8,18 @@ export default function TipsModal({ onClose }) {
           <h3>Gestures</h3>
           <ul>
             <li>
-              <strong>Tap Image:</strong> Flip to backside
+              <strong>Single Tap Image:</strong> Flip to backside
             </li>
             <li>
               <strong>Double Tap Image:</strong> Zoom in
             </li>
             <li>
-              <strong>Long Press (0.5s):</strong> Edit image
+              <strong>Microphone Icon:</strong> Tap to dictate note on flip
+              side, flip back to tap stop button
+            </li>
+            <li>
+              <strong>Long Press (0.5s):</strong> Select Image to open Edit from
+              menu
             </li>
           </ul>
         </div>

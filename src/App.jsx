@@ -18,8 +18,7 @@ import FilerobotImageEditor, {
 import {
   DndContext,
   closestCenter,
-  TouchSensor,
-  MouseSensor,
+  PointerSensor,
   useSensor,
   useSensors,
   DragOverlay,
@@ -784,7 +783,7 @@ const DraggableCard = memo(function DraggableCard({
     isDragging,
   } = useSortable({
     id: item.id,
-    disabled: item.flipped,
+    disabled: item.flipped || isSelected,
   });
 
   const {
@@ -802,17 +801,23 @@ const DraggableCard = memo(function DraggableCard({
   const isThisCardListening = isListening && activeCardId === item.id;
   const formattedDuration = getFormattedDuration(item.notes);
 
+  const zoomTimerRef = useRef(null);
   const longPressTimer = useRef(null);
   const isLongPressActive = useRef(false);
   const tapStartRef = useRef({ x: 0, y: 0 });
   const lastTapRef = useRef(0);
   const flipTimeoutRef = useRef(null);
   const isPointerDownRef = useRef(false);
+  const micBtnRef = useRef(null);
 
-  const clearLongPress = () => {
+  const clearTimers = () => {
     if (longPressTimer.current) {
       clearTimeout(longPressTimer.current);
       longPressTimer.current = null;
+    }
+    if (zoomTimerRef.current) {
+      clearTimeout(zoomTimerRef.current);
+      zoomTimerRef.current = null;
     }
   };
 
@@ -825,14 +830,58 @@ const DraggableCard = memo(function DraggableCard({
 
   useEffect(() => {
     return () => {
-      clearLongPress();
+      clearTimers();
       clearFlipTimer();
     };
   }, []);
 
-  const handlePointerDown = (e) => {
-    if (item.flipped) {
+  // 🟢 NATIVE CAPTURE LISTENER FOR MIC BUTTON
+  useEffect(() => {
+    const btn = micBtnRef.current;
+    if (!btn) return;
+
+    const handleNativeTap = (e) => {
       e.stopPropagation();
+      e.stopImmediatePropagation();
+      if (e.cancelable) e.preventDefault();
+
+      console.log(
+        "🎙️ [NATIVE CAPTURE SUCCESS] Mic tap registered for card ID:",
+        item.id,
+      );
+
+      try {
+        toggleDictation((newText) => {
+          console.log("🎙️ [NATIVE CAPTURE] New text received:", newText);
+          updateNotes(item.id, newText);
+        }, item.id);
+      } catch (err) {
+        console.error("🔴 [NATIVE CAPTURE] Dictation error:", err);
+      }
+    };
+
+    btn.addEventListener("pointerdown", handleNativeTap, { capture: true });
+    btn.addEventListener("touchstart", handleNativeTap, { capture: true });
+    btn.addEventListener("click", handleNativeTap, { capture: true });
+
+    return () => {
+      btn.removeEventListener("pointerdown", handleNativeTap, {
+        capture: true,
+      });
+      btn.removeEventListener("touchstart", handleNativeTap, { capture: true });
+      btn.removeEventListener("click", handleNativeTap, { capture: true });
+    };
+  }, [item.id, toggleDictation, updateNotes]);
+
+  const handlePointerDown = (e) => {
+    // Stop flip & zoom gesture timers when tapping mic, audio controls, or selection indicators
+    if (
+      item.flipped ||
+      e.target.closest("button") ||
+      e.target.closest(".card-badges-container") ||
+      e.target.closest(".card-audio-bar") ||
+      e.target.closest(".mic-dictate-btn")
+    ) {
       return;
     }
 
@@ -840,10 +889,16 @@ const DraggableCard = memo(function DraggableCard({
     isLongPressActive.current = false;
     tapStartRef.current = { x: e.clientX, y: e.clientY };
 
-    clearLongPress();
+    clearTimers();
 
     if (selectedIds.size === 0 && !item.flipped) {
       longPressTimer.current = setTimeout(() => {
+        isLongPressActive.current = true;
+        if (zoomTimerRef.current) {
+          clearTimeout(zoomTimerRef.current);
+          zoomTimerRef.current = null;
+        }
+
         if (
           typeof navigator !== "undefined" &&
           navigator.vibrate &&
@@ -851,21 +906,47 @@ const DraggableCard = memo(function DraggableCard({
         ) {
           try {
             navigator.vibrate(50);
-          } catch {
-            void 0;
-          }
+          } catch {}
         }
         onToggleSelect(item.id);
-        isLongPressActive.current = true;
       }, 350);
+    }
+
+    if (selectedIds.size === 0) {
+      zoomTimerRef.current = setTimeout(() => {
+        if (!isLongPressActive.current && typeof onZoom === "function") {
+          isLongPressActive.current = true;
+          if (typeof navigator !== "undefined" && navigator.vibrate) {
+            try {
+              navigator.vibrate(40);
+            } catch {}
+          }
+          onZoom({
+            id: item.id,
+            type: "img",
+            url: item.displayURL || item.imageURL,
+          });
+        }
+      }, 400);
+    }
+  };
+
+  const handlePointerMove = (e) => {
+    if (!isPointerDownRef.current) return;
+
+    const deltaX = Math.abs(e.clientX - tapStartRef.current.x);
+    const deltaY = Math.abs(e.clientY - tapStartRef.current.y);
+
+    if (deltaX > 8 || deltaY > 8) {
+      clearTimers();
     }
   };
 
   const handlePointerUp = (e) => {
+    clearTimers();
+
     if (item.flipped || !isPointerDownRef.current) return;
     isPointerDownRef.current = false;
-
-    clearLongPress();
 
     if (!isLongPressActive.current) {
       const deltaX = Math.abs(e.clientX - tapStartRef.current.x);
@@ -884,7 +965,7 @@ const DraggableCard = memo(function DraggableCard({
 
             onZoom({
               id: item.id,
-              type: "image",
+              type: "img",
               url: item.displayURL || item.imageURL,
             });
           } else {
@@ -898,16 +979,6 @@ const DraggableCard = memo(function DraggableCard({
           }
         }
       }
-    }
-  };
-
-  const handlePointerMove = (e) => {
-    if (!isPointerDownRef.current) return;
-    const deltaX = Math.abs(e.clientX - tapStartRef.current.x);
-    const deltaY = Math.abs(e.clientY - tapStartRef.current.y);
-
-    if (deltaX > 8 || deltaY > 8) {
-      clearLongPress();
     }
   };
 
@@ -934,33 +1005,29 @@ const DraggableCard = memo(function DraggableCard({
           onPointerDown={handlePointerDown}
           onPointerUp={handlePointerUp}
           onPointerMove={handlePointerMove}
-          onPointerCancel={clearLongPress}
+          onPointerCancel={clearTimers}
           onClick={(e) => e.stopPropagation()}
           style={{ pointerEvents: item.flipped ? "none" : "auto" }}
         >
-          {isSelected && (
-            <div
-              className="card-badges-container"
-              onPointerDown={(e) => e.stopPropagation()}
-              onPointerUp={(e) => e.stopPropagation()}
-              onClick={(e) => e.stopPropagation()}
-              style={{
-                position: "absolute",
-                top: "10px",
-                left: "10px",
-                zIndex: 20,
-                display: "flex",
-                flexDirection: "row",
-                gap: "8px",
-                alignItems: "center",
-                pointerEvents: "auto",
-              }}
-            >
+          {/* 🟢 ALWAYS RENDER BADGES CONTAINER SO THE MIC BUTTON IS AVAILABLE IN DOM */}
+          <div
+            className="card-badges-container"
+            data-no-dnd="true"
+            onTouchStartCapture={(e) => e.stopPropagation()}
+            onPointerDownCapture={(e) => e.stopPropagation()}
+            onMouseDownCapture={(e) => e.stopPropagation()}
+            onPointerDown={(e) => e.stopPropagation()}
+            onPointerUp={(e) => e.stopPropagation()}
+            onClick={(e) => e.stopPropagation()}
+          >
+            {isSelected && (
               <div
                 className="select-indicator active"
                 style={{
-                  width: "32px",
-                  height: "32px",
+                  width: "38px",
+                  height: "38px",
+                  minWidth: "38px",
+                  minHeight: "38px",
                   borderRadius: "50%",
                   backgroundColor: "#007aff",
                   color: "#ffffff",
@@ -968,60 +1035,38 @@ const DraggableCard = memo(function DraggableCard({
                   display: "flex",
                   alignItems: "center",
                   justifyContent: "center",
-                  fontSize: "16px",
+                  fontSize: "18px",
                   fontWeight: "900",
                   boxShadow: "0 3px 8px rgba(0, 0, 0, 0.3)",
                   flexShrink: 0,
+                  userSelect: "none",
+                  WebkitUserSelect: "none",
                 }}
               >
                 ✓
               </div>
+            )}
 
-              {/* Dictation Button */}
-              <button
-                type="button"
-                className={`mic-dictate-btn ${
-                  isThisCardListening ? "listening" : ""
-                }`}
-                onClick={(e) => {
-                  e.preventDefault();
-                  e.stopPropagation();
-                  toggleDictation(
-                    (newText) => updateNotes(item.id, newText),
-                    item.id,
-                  );
-                }}
-                aria-label={
-                  isThisCardListening ? "Stop dictation" : "Start dictation"
-                }
-                style={{
-                  width: "32px",
-                  height: "32px",
-                  borderRadius: "50%",
-                  backgroundColor: isThisCardListening ? "#ef4444" : "#007aff",
-                  color: "#ffffff",
-                  border: "2px solid #ffffff",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  fontSize: "15px",
-                  cursor: "pointer",
-                  backdropFilter: "blur(8px)",
-                  WebkitBackdropFilter: "blur(8px)",
-                  boxShadow: "0 3px 8px rgba(0, 0, 0, 0.3)",
-                  flexShrink: 0,
-                  transition: "all 0.2s ease",
-                }}
-              >
-                {isThisCardListening ? "⏹️" : "🎤"}
-              </button>
-            </div>
-          )}
+            {/* Dictation Mic Button */}
+            <button
+              ref={micBtnRef}
+              type="button"
+              className={`mic-dictate-btn ${
+                isThisCardListening ? "listening" : ""
+              }`}
+              aria-label={
+                isThisCardListening ? "Stop dictation" : "Start dictation"
+              }
+            >
+              {isThisCardListening ? "⏹" : "🎤"}
+            </button>
+          </div>
 
           {/* Audio Playback Bar */}
           {Boolean(item.notes && item.notes.trim().length > 0) && (
             <div
               className="card-audio-bar"
+              onPointerDownCapture={(e) => e.stopPropagation()}
               onPointerDown={(e) => e.stopPropagation()}
               onPointerUp={(e) => e.stopPropagation()}
               onClick={(e) => e.stopPropagation()}
@@ -1087,6 +1132,9 @@ const DraggableCard = memo(function DraggableCard({
             decoding="async"
             loading="eager"
             style={{
+              width: "100%",
+              height: "100%",
+              objectFit: "cover",
               pointerEvents: "none",
               userSelect: "none",
               WebkitUserDrag: "none",
@@ -1233,17 +1281,9 @@ export default function App() {
   const isClosingZoomRef = useRef(false);
 
   const sensors = useSensors(
-    useSensor(MouseSensor, {
-      // Requires mouse movement of 5px before starting drag
+    useSensor(PointerSensor, {
       activationConstraint: {
-        distance: 5,
-      },
-    }),
-    useSensor(TouchSensor, {
-      // Uses distance constraint for touch to prevent navigator.vibrate interventions
-      // and allow normal scrolling/clicking without hijacking taps
-      activationConstraint: {
-        distance: 8,
+        distance: 8, // Requires 8px movement before initiating drag
       },
     }),
   );

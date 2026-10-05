@@ -886,18 +886,12 @@ img {
   aspect-ratio: 3 / 4;
   margin: 0 auto;
   position: relative;
-
-  /* 🟢 FIX 1: Strict 2D layout containment and clipping */
-  overflow: hidden;
-  isolation: isolate;
   z-index: 1;
-
   /* Touch & Selection settings */
   user-select: none;
   -webkit-user-select: none;
   pointer-events: auto;
 
-  /* 🟢 FIX 2: Perspective belongs here; removed conflicting transform-style */
   perspective: 1000px;
   -webkit-perspective: 1000px;
 }
@@ -944,7 +938,6 @@ img {
   background: white;
   box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
   touch-action: manipulation;
-  /* Removed redundant transform-style on faces to prevent iOS rendering bugs */
 }
 
 /* FRONT SIDE STYLING */
@@ -1094,6 +1087,23 @@ img {
   flex-shrink: 0;
   transition: transform 0.15s ease, background-color 0.2s ease,
     box-shadow 0.2s ease;
+}
+
+.mic-dictate-btn.listening {
+  background-color: #ff3b30;
+  animation: pulse 1.5s infinite;
+}
+
+@keyframes pulse {
+  0% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.08);
+  }
+  100% {
+    transform: scale(1);
+  }
 }
 
 /* ==========================================
