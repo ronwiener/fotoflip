@@ -19,6 +19,7 @@ import {
   DndContext,
   closestCenter,
   PointerSensor,
+  TouchSensor,
   useSensor,
   useSensors,
   DragOverlay,
@@ -783,7 +784,7 @@ const DraggableCard = memo(function DraggableCard({
     isDragging,
   } = useSortable({
     id: item.id,
-    disabled: item.flipped || isSelected,
+    disabled: item.flipped,
   });
 
   const {
@@ -835,7 +836,7 @@ const DraggableCard = memo(function DraggableCard({
     };
   }, []);
 
-  // 🟢 NATIVE CAPTURE LISTENER FOR MIC BUTTON
+  // Native Capture Listener for Dictation Mic Button
   useEffect(() => {
     const btn = micBtnRef.current;
     if (!btn) return;
@@ -845,18 +846,14 @@ const DraggableCard = memo(function DraggableCard({
       e.stopImmediatePropagation();
       if (e.cancelable) e.preventDefault();
 
-      console.log(
-        "🎙️ [NATIVE CAPTURE SUCCESS] Mic tap registered for card ID:",
-        item.id,
-      );
+      console.log("🎙️ [MIC TAP] Card ID:", item.id);
 
       try {
         toggleDictation((newText) => {
-          console.log("🎙️ [NATIVE CAPTURE] New text received:", newText);
           updateNotes(item.id, newText);
         }, item.id);
       } catch (err) {
-        console.error("🔴 [NATIVE CAPTURE] Dictation error:", err);
+        console.error("🔴 Dictation error:", err);
       }
     };
 
@@ -874,11 +871,14 @@ const DraggableCard = memo(function DraggableCard({
   }, [item.id, toggleDictation, updateNotes]);
 
   const handlePointerDown = (e) => {
-    // Stop flip & zoom gesture timers when tapping mic, audio controls, or selection indicators
+    // Forward pointer events to @dnd-kit drag listeners
+    if (listeners?.onPointerDown) {
+      listeners.onPointerDown(e);
+    }
+
     if (
       item.flipped ||
       e.target.closest("button") ||
-      e.target.closest(".card-badges-container") ||
       e.target.closest(".card-audio-bar") ||
       e.target.closest(".mic-dictate-btn")
     ) {
@@ -932,6 +932,10 @@ const DraggableCard = memo(function DraggableCard({
   };
 
   const handlePointerMove = (e) => {
+    if (listeners?.onPointerMove) {
+      listeners.onPointerMove(e);
+    }
+
     if (!isPointerDownRef.current) return;
 
     const deltaX = Math.abs(e.clientX - tapStartRef.current.x);
@@ -943,6 +947,10 @@ const DraggableCard = memo(function DraggableCard({
   };
 
   const handlePointerUp = (e) => {
+    if (listeners?.onPointerUp) {
+      listeners.onPointerUp(e);
+    }
+
     clearTimers();
 
     if (item.flipped || !isPointerDownRef.current) return;
@@ -986,7 +994,7 @@ const DraggableCard = memo(function DraggableCard({
     transform: transform ? CSS.Transform.toString(transform) : undefined,
     transition: isDragging ? transition : undefined,
     zIndex: isDragging ? 1000 : item.flipped ? 100 : 1,
-    touchAction: item.flipped ? "auto" : "none",
+    opacity: isDragging ? 0.6 : 1,
   };
 
   return (
@@ -1001,28 +1009,29 @@ const DraggableCard = memo(function DraggableCard({
         {/* FRONT SIDE */}
         <div
           className="card-face card-front"
-          {...(!item.flipped ? { ...attributes, ...listeners } : {})}
+          {...(!item.flipped ? attributes : {})}
           onPointerDown={handlePointerDown}
           onPointerUp={handlePointerUp}
           onPointerMove={handlePointerMove}
-          onPointerCancel={clearTimers}
-          onClick={(e) => e.stopPropagation()}
-          style={{ pointerEvents: item.flipped ? "none" : "auto" }}
+          onPointerCancel={(e) => {
+            if (listeners?.onPointerCancel) listeners.onPointerCancel(e);
+            clearTimers();
+          }}
+          style={{
+            pointerEvents: item.flipped ? "none" : "auto",
+            touchAction: item.flipped ? "auto" : "none",
+          }}
         >
-          {/* 🟢 ALWAYS RENDER BADGES CONTAINER SO THE MIC BUTTON IS AVAILABLE IN DOM */}
-          <div
-            className="card-badges-container"
-            data-no-dnd="true"
-            onTouchStartCapture={(e) => e.stopPropagation()}
-            onPointerDownCapture={(e) => e.stopPropagation()}
-            onMouseDownCapture={(e) => e.stopPropagation()}
-            onPointerDown={(e) => e.stopPropagation()}
-            onPointerUp={(e) => e.stopPropagation()}
-            onClick={(e) => e.stopPropagation()}
-          >
+          {/* BADGES CONTAINER */}
+          <div className="card-badges-container">
             {isSelected && (
               <div
                 className="select-indicator active"
+                onPointerDown={(e) => e.stopPropagation()}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onToggleSelect(item.id);
+                }}
                 style={{
                   width: "38px",
                   height: "38px",
@@ -1039,8 +1048,7 @@ const DraggableCard = memo(function DraggableCard({
                   fontWeight: "900",
                   boxShadow: "0 3px 8px rgba(0, 0, 0, 0.3)",
                   flexShrink: 0,
-                  userSelect: "none",
-                  WebkitUserSelect: "none",
+                  cursor: "pointer",
                 }}
               >
                 ✓
@@ -1066,9 +1074,7 @@ const DraggableCard = memo(function DraggableCard({
           {Boolean(item.notes && item.notes.trim().length > 0) && (
             <div
               className="card-audio-bar"
-              onPointerDownCapture={(e) => e.stopPropagation()}
               onPointerDown={(e) => e.stopPropagation()}
-              onPointerUp={(e) => e.stopPropagation()}
               onClick={(e) => e.stopPropagation()}
             >
               <button
@@ -1281,9 +1287,17 @@ export default function App() {
   const isClosingZoomRef = useRef(false);
 
   const sensors = useSensors(
+    // Desktop / Mouse dragging
     useSensor(PointerSensor, {
       activationConstraint: {
-        distance: 8, // Requires 8px movement before initiating drag
+        distance: 5, // Starts drag after 5px movement
+      },
+    }),
+    // iOS / Android Touch dragging
+    useSensor(TouchSensor, {
+      activationConstraint: {
+        delay: 150, // Holds for 150ms to distinguish drag from scroll/tap
+        tolerance: 5, // Allows 5px jitter during delay
       },
     }),
   );
