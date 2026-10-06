@@ -68,6 +68,106 @@ export const filterItems = (items, activeFolder, search) => {
   });
 };
 
+/* ---------- Voice Recording (Supabase Version) ---------- */
+
+export const saveVoiceMemoToCard = async (
+  cardId,
+  audioBlob,
+  { session, supabase, setItems },
+) => {
+  console.log(`🎙️ [VOICE MEMO] Starting audio update for Card ID: ${cardId}`);
+
+  try {
+    if (!cardId || !audioBlob) {
+      throw new Error("Missing card ID or audio blob.");
+    }
+
+    // 1. Get Auth Session & Credentials
+    let userId = session?.user?.id;
+    let accessToken = session?.access_token;
+
+    if (!userId || !accessToken) {
+      const { data: authData } = await supabase.auth.getSession();
+      userId = authData?.session?.user?.id;
+      accessToken = authData?.session?.access_token;
+    }
+
+    if (!userId) {
+      alert("Session expired. Please sign in again.");
+      return;
+    }
+
+    const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+    const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+    const authToken = accessToken || supabaseAnonKey;
+
+    // 2. Upload Audio File to 'card-audio' Bucket
+    const timestamp = Date.now();
+    const audioPath = `${userId}/${cardId}-${timestamp}-voice.m4a`;
+    const audioUploadUrl = `${supabaseUrl}/storage/v1/object/card-audio/${audioPath}`;
+
+    console.log("📤 Uploading new audio recording to storage...");
+    const audioResponse = await fetch(audioUploadUrl, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${authToken}`,
+        apikey: supabaseAnonKey,
+        "Content-Type": audioBlob.type || "audio/m4a",
+        "x-upsert": "true",
+      },
+      body: audioBlob,
+    });
+
+    if (!audioResponse.ok) {
+      const errText = await audioResponse.text();
+      throw new Error(
+        `Storage upload failed (${audioResponse.status}): ${errText}`,
+      );
+    }
+
+    const finalAudioUrl = `${supabaseUrl}/storage/v1/object/public/card-audio/${audioPath}`;
+    console.log("✅ Audio file saved to storage:", finalAudioUrl);
+
+    // 3. Update 'audio_url' on Existing Row in 'items' Table
+    console.log("📝 Updating database row with new audio_url...");
+    const dbUrl = `${supabaseUrl}/rest/v1/items?id=eq.${cardId}`;
+    const dbResponse = await fetch(dbUrl, {
+      method: "PATCH",
+      headers: {
+        Authorization: `Bearer ${authToken}`,
+        apikey: supabaseAnonKey,
+        "Content-Type": "application/json",
+        Prefer: "return=representation",
+      },
+      body: JSON.stringify({
+        audio_url: finalAudioUrl,
+      }),
+    });
+
+    if (!dbResponse.ok) {
+      const dbErr = await dbResponse.text();
+      throw new Error(`Database patch failed (${dbResponse.status}): ${dbErr}`);
+    }
+
+    const updatedRows = await dbResponse.json();
+    console.log("🎉 Database updated successfully:", updatedRows);
+
+    // 4. Update Local React State
+    if (typeof setItems === "function") {
+      setItems((prevItems) =>
+        prevItems.map((item) =>
+          item.id === cardId ? { ...item, audio_url: finalAudioUrl } : item,
+        ),
+      );
+    }
+
+    return finalAudioUrl;
+  } catch (err) {
+    console.error("❌ [VOICE MEMO ERROR]:", err.message || err);
+    alert(`Failed to save voice memo: ${err.message || err}`);
+  }
+};
+
 /* ---------- ZIP EXPORT (Supabase Version) ---------- */
 export async function exportGalleryZip(items, selectedIds) {
   const zip = new JSZip();

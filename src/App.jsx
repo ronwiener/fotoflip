@@ -37,11 +37,11 @@ import "./styles1.css";
 import { Capacitor } from "@capacitor/core";
 import { processPhotoMetadata } from "./metadataUtils";
 import { Camera, CameraResultType } from "@capacitor/camera";
-import { useSpeech } from "./context/useSpeech";
 import {
   filterItems,
   exportGalleryZip,
   importGalleryZip,
+  saveVoiceMemoToCard,
 } from "./helpers/galleryHelpers";
 import LandingPage from "./LandingPage";
 import TipsModal from "./TipsModal";
@@ -766,7 +766,14 @@ function ZoomOverlay({ data, item, updateNotes, onClose }) {
   );
 }
 
-const DraggableCard = memo(function DraggableCard({
+import React, { memo, useState, useRef, useEffect } from "react";
+import { useSortable } from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
+
+// Helper fallback for image URLs
+const getSafeImageSrc = (url) => url || "";
+
+export const DraggableCard = memo(function DraggableCard({
   item,
   isSelected,
   selectedIds,
@@ -774,7 +781,9 @@ const DraggableCard = memo(function DraggableCard({
   onFlip,
   updateNotes,
   onZoom,
+  onSaveVoiceMemo,
 }) {
+  // Sortable drag-and-drop hook
   const {
     attributes,
     listeners,
@@ -787,21 +796,20 @@ const DraggableCard = memo(function DraggableCard({
     disabled: item.flipped,
   });
 
-  const {
-    isSpeaking,
-    isListening,
-    activeCardId,
-    speechProgress,
-    getFormattedDuration,
-    toggleSpeak,
-    cancelSpeech,
-    toggleDictation,
-  } = useSpeech();
+  // Voice Memo Recording & Playback States
+  const [isRecording, setIsRecording] = useState(false);
+  const [isSavingAudio, setIsSavingAudio] = useState(false);
+  const [isPlayingAudio, setIsPlayingAudio] = useState(false);
+  const [recordingSeconds, setRecordingSeconds] = useState(0);
 
-  const isThisCardSpeaking = isSpeaking && activeCardId === item.id;
-  const isThisCardListening = isListening && activeCardId === item.id;
-  const formattedDuration = getFormattedDuration(item.notes);
+  // Audio Refs
+  const mediaRecorderRef = useRef(null);
+  const audioChunksRef = useRef([]);
+  const recordingTimerRef = useRef(null);
+  const audioPlayerRef = useRef(null);
+  const micBtnRef = useRef(null);
 
+  // Interaction Timers
   const zoomTimerRef = useRef(null);
   const longPressTimer = useRef(null);
   const isLongPressActive = useRef(false);
@@ -809,7 +817,6 @@ const DraggableCard = memo(function DraggableCard({
   const lastTapRef = useRef(0);
   const flipTimeoutRef = useRef(null);
   const isPointerDownRef = useRef(false);
-  const micBtnRef = useRef(null);
 
   const clearTimers = () => {
     if (longPressTimer.current) {
@@ -829,14 +836,97 @@ const DraggableCard = memo(function DraggableCard({
     }
   };
 
+  // Cleanup on unmount
   useEffect(() => {
     return () => {
       clearTimers();
       clearFlipTimer();
+      if (recordingTimerRef.current) clearInterval(recordingTimerRef.current);
+      if (audioPlayerRef.current) {
+        audioPlayerRef.current.pause();
+        audioPlayerRef.current = null;
+      }
     };
   }, []);
 
-  // Native Capture Listener for Dictation Mic Button
+  // ---------------------------------------------------------------------------
+  // VOICE MEMO RECORDING & PLAYBACK LOGIC
+  // ---------------------------------------------------------------------------
+
+  const startRecording = async () => {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      audioChunksRef.current = [];
+
+      // Prefer m4a/mp4 or webm based on browser support
+      const options = MediaRecorder.isTypeSupported("audio/mp4")
+        ? { mimeType: "audio/mp4" }
+        : MediaRecorder.isTypeSupported("audio/webm")
+        ? { mimeType: "audio/webm" }
+        : {};
+
+      const recorder = new MediaRecorder(stream, options);
+      mediaRecorderRef.current = recorder;
+
+      recorder.ondataavailable = (event) => {
+        if (event.data && event.data.size > 0) {
+          audioChunksRef.current.push(event.data);
+        }
+      };
+
+      recorder.onstop = async () => {
+        // Stop all microphone tracks
+        stream.getTracks().forEach((track) => track.stop());
+
+        const mimeType = recorder.mimeType || "audio/m4a";
+        const audioBlob = new Blob(audioChunksRef.current, { type: mimeType });
+
+        if (audioBlob.size > 0 && typeof onSaveVoiceMemo === "function") {
+          setIsSavingAudio(true);
+          try {
+            await onSaveVoiceMemo(item.id, audioBlob);
+          } catch (err) {
+            console.error("❌ Failed to save audio:", err);
+          } finally {
+            setIsSavingAudio(false);
+          }
+        }
+      };
+
+      recorder.start();
+      setIsRecording(true);
+      setRecordingSeconds(0);
+
+      // Start elapsed timer
+      recordingTimerRef.current = setInterval(() => {
+        setRecordingSeconds((prev) => prev + 1);
+      }, 1000);
+    } catch (err) {
+      console.error("🔴 Microphone access error:", err);
+      alert("Could not access microphone. Please check browser permissions.");
+    }
+  };
+
+  const stopRecording = () => {
+    if (mediaRecorderRef.current && isRecording) {
+      mediaRecorderRef.current.stop();
+      setIsRecording(false);
+      if (recordingTimerRef.current) {
+        clearInterval(recordingTimerRef.current);
+        recordingTimerRef.current = null;
+      }
+    }
+  };
+
+  const handleMicTap = async () => {
+    if (isRecording) {
+      stopRecording();
+    } else {
+      await startRecording();
+    }
+  };
+
+  // Native capture listener for the Mic Button to prevent card flipping/dragging
   useEffect(() => {
     const btn = micBtnRef.current;
     if (!btn) return;
@@ -845,16 +935,7 @@ const DraggableCard = memo(function DraggableCard({
       e.stopPropagation();
       e.stopImmediatePropagation();
       if (e.cancelable) e.preventDefault();
-
-      console.log("🎙️ [MIC TAP] Card ID:", item.id);
-
-      try {
-        toggleDictation((newText) => {
-          updateNotes(item.id, newText);
-        }, item.id);
-      } catch (err) {
-        console.error("🔴 Dictation error:", err);
-      }
+      handleMicTap();
     };
 
     btn.addEventListener("pointerdown", handleNativeTap, { capture: true });
@@ -868,10 +949,36 @@ const DraggableCard = memo(function DraggableCard({
       btn.removeEventListener("touchstart", handleNativeTap, { capture: true });
       btn.removeEventListener("click", handleNativeTap, { capture: true });
     };
-  }, [item.id, toggleDictation, updateNotes]);
+  }, [isRecording, item.id]);
+
+  // Handle Play / Pause for stored audio_url
+  const toggleAudioPlayback = () => {
+    if (!item.audio_url) return;
+
+    if (isPlayingAudio) {
+      if (audioPlayerRef.current) {
+        audioPlayerRef.current.pause();
+      }
+      setIsPlayingAudio(false);
+    } else {
+      if (!audioPlayerRef.current) {
+        audioPlayerRef.current = new Audio(item.audio_url);
+        audioPlayerRef.current.onended = () => setIsPlayingAudio(false);
+        audioPlayerRef.current.onerror = () => setIsPlayingAudio(false);
+      } else {
+        audioPlayerRef.current.src = item.audio_url;
+      }
+
+      audioPlayerRef.current.play();
+      setIsPlayingAudio(true);
+    }
+  };
+
+  // ---------------------------------------------------------------------------
+  // POINTER & TOUCH HANDLERS FOR CARD DRAG / FLIP / ZOOM
+  // ---------------------------------------------------------------------------
 
   const handlePointerDown = (e) => {
-    // Forward pointer events to @dnd-kit drag listeners
     if (listeners?.onPointerDown) {
       listeners.onPointerDown(e);
     }
@@ -1022,7 +1129,7 @@ const DraggableCard = memo(function DraggableCard({
             touchAction: item.flipped ? "auto" : "none",
           }}
         >
-          {/* BADGES CONTAINER */}
+          {/* BADGES & MIC CONTAINER */}
           <div className="card-badges-container">
             {isSelected && (
               <div
@@ -1055,23 +1162,50 @@ const DraggableCard = memo(function DraggableCard({
               </div>
             )}
 
-            {/* Dictation Mic Button */}
+            {/* Voice Memo Recording Button */}
             <button
               ref={micBtnRef}
               type="button"
-              className={`mic-dictate-btn ${
-                isThisCardListening ? "listening" : ""
+              className={`mic-dictate-btn ${isRecording ? "listening" : ""} ${
+                isSavingAudio ? "saving" : ""
               }`}
               aria-label={
-                isThisCardListening ? "Stop dictation" : "Start dictation"
+                isSavingAudio
+                  ? "Saving audio..."
+                  : isRecording
+                  ? "Stop recording"
+                  : "Record voice memo"
               }
+              disabled={isSavingAudio}
             >
-              {isThisCardListening ? "⏹" : "🎤"}
+              {isSavingAudio ? "⏳" : isRecording ? "⏹" : "🎤"}
             </button>
           </div>
 
-          {/* Audio Playback Bar */}
-          {Boolean(item.notes && item.notes.trim().length > 0) && (
+          {/* Recording Timer / Status Pill */}
+          {isRecording && (
+            <div
+              className="card-recording-pill"
+              style={{
+                position: "absolute",
+                top: "12px",
+                left: "50%",
+                transform: "translateX(-50%)",
+                backgroundColor: "rgba(220, 38, 38, 0.9)",
+                color: "#fff",
+                padding: "4px 10px",
+                borderRadius: "12px",
+                fontSize: "12px",
+                fontWeight: "bold",
+                zIndex: 20,
+              }}
+            >
+              🔴 {recordingSeconds}s
+            </div>
+          )}
+
+          {/* Stored Audio Playback Bar */}
+          {Boolean(item.audio_url) && !isRecording && (
             <div
               className="card-audio-bar"
               onPointerDown={(e) => e.stopPropagation()}
@@ -1079,54 +1213,18 @@ const DraggableCard = memo(function DraggableCard({
             >
               <button
                 type="button"
-                className={`audio-pill-btn ${
-                  isThisCardSpeaking ? "speaking" : ""
-                }`}
+                className={`audio-pill-btn ${isPlayingAudio ? "speaking" : ""}`}
                 onClick={(e) => {
                   e.preventDefault();
                   e.stopPropagation();
                   clearFlipTimer();
-                  toggleSpeak(item.notes, item.id);
+                  toggleAudioPlayback();
                 }}
               >
-                {isThisCardSpeaking && (
-                  <span
-                    className="audio-progress-bar"
-                    style={{ width: `${speechProgress}%` }}
-                  />
-                )}
                 <span className="audio-pill-content">
-                  <span>{isThisCardSpeaking ? "⏹" : "▶"}</span>
-                  <span>Listen {formattedDuration}</span>
+                  <span>{isPlayingAudio ? "⏹" : "▶"}</span>
+                  <span>{isPlayingAudio ? "Playing Memo" : "Voice Memo"}</span>
                 </span>
-              </button>
-              <button
-                type="button"
-                className="clear-note-btn"
-                onClick={(e) => {
-                  e.preventDefault();
-                  e.stopPropagation();
-                  if (typeof updateNotes === "function") {
-                    updateNotes(item.id, "");
-                  }
-                  cancelSpeech();
-                }}
-                aria-label="Delete voice note"
-                title="Delete note"
-              >
-                <svg
-                  width="14"
-                  height="14"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="2"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                >
-                  <polyline points="3 6 5 6 21 6" />
-                  <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
-                </svg>
               </button>
             </div>
           )}
@@ -1677,8 +1775,11 @@ export default function App() {
     }
   };
 
-  const uploadToGallery = async (file) => {
+  const uploadToGallery = async (file, audioBlob = null) => {
     console.log("🚀 [STEP 1] uploadToGallery called for file:", file.name);
+    if (audioBlob) {
+      console.log("🎙️ [AUDIO PRESET] Voice memo blob detected for upload.");
+    }
 
     try {
       // A. Extract EXIF Metadata First from Original File
@@ -1945,7 +2046,8 @@ export default function App() {
         .replace(/[^a-zA-Z0-9.-]/g, "_")
         .replace(/_+/g, "_");
 
-      const filePath = `${userId}/${Date.now()}-${cleanFileName}`
+      const timestamp = Date.now();
+      const filePath = `${userId}/${timestamp}-${cleanFileName}`
         .replace(/^gallery\//, "")
         .replace(/^\//, "");
 
@@ -1955,8 +2057,48 @@ export default function App() {
       const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
       const authToken = accessToken || supabaseAnonKey;
 
+      // E. Optional Voice Memo Upload to 'card-audio' Bucket
+      let finalAudioUrl = null;
+
+      if (audioBlob) {
+        console.log(
+          "🎙️ [STEP 6A] Uploading voice recording to 'card-audio' bucket...",
+        );
+        const audioPath = `${userId}/${timestamp}-voice.m4a`;
+        const audioUploadUrl = `${supabaseUrl}/storage/v1/object/card-audio/${audioPath}`;
+
+        try {
+          const audioResponse = await fetch(audioUploadUrl, {
+            method: "POST",
+            headers: {
+              Authorization: `Bearer ${authToken}`,
+              apikey: supabaseAnonKey,
+              "Content-Type": audioBlob.type || "audio/m4a",
+              "x-upsert": "true",
+            },
+            body: audioBlob,
+          });
+
+          if (audioResponse.ok) {
+            finalAudioUrl = `${supabaseUrl}/storage/v1/object/public/card-audio/${audioPath}`;
+            console.log(
+              "✅ [STEP 6A SUCCESS] Voice note stored at:",
+              finalAudioUrl,
+            );
+          } else {
+            const audioErr = await audioResponse.text();
+            console.warn(
+              "⚠️ Voice note upload failed, saving photo without audio:",
+              audioErr,
+            );
+          }
+        } catch (audioFetchErr) {
+          console.warn("⚠️ Audio upload network error:", audioFetchErr);
+        }
+      }
+
       console.log(
-        "⏳ [STEP 6] Sending file via direct fetch to Supabase Storage bucket 'gallery'...",
+        "⏳ [STEP 6B] Sending file via direct fetch to Supabase Storage bucket 'gallery'...",
       );
 
       const uploadUrl = `${supabaseUrl}/storage/v1/object/gallery/${filePath}`;
@@ -1974,7 +2116,7 @@ export default function App() {
       if (!uploadResponse.ok) {
         const errText = await uploadResponse.text();
         console.error(
-          "❌ [STEP 6 FAILED] Storage Fetch Error:",
+          "❌ [STEP 6B FAILED] Storage Fetch Error:",
           uploadResponse.status,
           errText,
         );
@@ -1984,11 +2126,11 @@ export default function App() {
 
       const storageData = await uploadResponse.json();
       console.log(
-        "✅ [STEP 6 SUCCESS] File uploaded via direct fetch:",
+        "✅ [STEP 6B SUCCESS] File uploaded via direct fetch:",
         storageData,
       );
 
-      // E. Target Folder Sanitization
+      // F. Target Folder Sanitization
       // Determine target folder strictly based on activeFolder state
       const isRootFolder =
         !activeFolder ||
@@ -2018,6 +2160,7 @@ export default function App() {
           folder: targetFolder,
           location_description: metadataString,
           notes: "",
+          audio_url: finalAudioUrl, // 🟢 Binds audio URL directly to items row
         }),
       });
 
@@ -2038,7 +2181,7 @@ export default function App() {
         dbData,
       );
 
-      // F. Refresh UI State
+      // G. Refresh UI State
       console.log("🔄 [STEP 8] Refreshing gallery items...");
 
       if (Array.isArray(dbData) && dbData.length > 0) {
@@ -2054,6 +2197,7 @@ export default function App() {
               ? item.image_path
               : `${supabaseUrl}/storage/v1/object/public/gallery/${item.image_path}`,
           notes: item.notes || "",
+          audio_url: item.audio_url || null, // 🟢 Provides audio URL to React state
           folder: item.folder || "",
           flipped: item.flipped || false,
           location_description: item.location_description || "",
@@ -2073,6 +2217,14 @@ export default function App() {
       );
       alert(`Upload crashed: ${err.message || err}`);
     }
+  };
+
+  const handleSaveVoiceMemo = async (cardId, audioBlob) => {
+    return await saveVoiceMemoToCard(cardId, audioBlob, {
+      session,
+      supabase,
+      setItems,
+    });
   };
 
   const handleFlip = useCallback((id) => {
@@ -3222,6 +3374,7 @@ export default function App() {
                         isSelected={selectedIds.has(item.id)}
                         onToggleSelect={handleToggleSelect}
                         onFlip={handleFlip}
+                        onSaveVoiceMemo={handleSaveVoiceMemo}
                         onZoom={setZoomData}
                         updateNotes={updateNotes}
                         onEditRequest={handleEditRequest}

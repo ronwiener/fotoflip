@@ -160,10 +160,10 @@ const LandingPage = ({ onEnter }) => {
                 Your photos have a story. <br />
                 <span className="accent-text">Give them a flip side.</span>
               </h1>
-              <p>
-                Flip any photo to write, dictate, and listen to notes that stay
-                with your images forever.
-              </p>
+              <h3>
+                Flip any photo to write or dictate notes that stay with your
+                images forever.
+              </h3>
             </div>
 
             <div className="demo-container">
@@ -249,7 +249,7 @@ const LandingPage = ({ onEnter }) => {
 
                 {!isFlipped && (
                   <div className="touch-hint-external">
-                    Tap Listen to play note or tap Image to Flip
+                    Tap Listen or tap Image to Flip
                   </div>
                 )}
                 {isFlipped && (
@@ -262,14 +262,17 @@ const LandingPage = ({ onEnter }) => {
           </section>
 
           <section className="how-to-section">
-            <h2>Your photos organized, searchable, and note recordable</h2>
+            <h2>
+              Every photo can be searched, organized, and notes recorded in your
+              own voice!
+            </h2>
             <div className="how-to-grid">
               <div className="how-to-card">
                 <div className="gesture-icon">🎙️</div>
                 <h3>Note Writing or Voice Dictation</h3>
                 <p>
-                  Upload a photo, tap to flip for note writing or highlight it,
-                  tap the microphone, and record your memories.
+                  Upload a photo, tap to flip for note writing or tap the
+                  microphone and record your memories.
                 </p>
               </div>
 
