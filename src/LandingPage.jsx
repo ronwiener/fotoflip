@@ -279,10 +279,7 @@ const LandingPage = ({ onEnter }) => {
               <div className="how-to-card">
                 <div className="gesture-icon">🔊</div>
                 <h3>Audio Listen & Playback</h3>
-                <p>
-                  All notes are audible. Tap the play button and listen to your
-                  memories.
-                </p>
+                <p>Tap the play button and listen to your notes.</p>
               </div>
 
               <div className="how-to-card">
