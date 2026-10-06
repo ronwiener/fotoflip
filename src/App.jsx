@@ -773,7 +773,7 @@ import { CSS } from "@dnd-kit/utilities";
 // Helper fallback for image URLs
 const getSafeImageSrc = (url) => url || "";
 
-export const DraggableCard = memo(function DraggableCard({
+const DraggableCard = memo(function DraggableCard({
   item,
   isSelected,
   selectedIds,
