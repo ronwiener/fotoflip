@@ -161,8 +161,8 @@ const LandingPage = ({ onEnter }) => {
                 <span className="accent-text">Give them a flip side.</span>
               </h1>
               <h3>
-                Flip any photo to write or dictate notes that stay with your
-                images forever.
+                Photo Flip preserves both the story behind a photograph and the
+                voice of the person telling it.
               </h3>
             </div>
 
