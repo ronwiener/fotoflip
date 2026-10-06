@@ -766,13 +766,6 @@ function ZoomOverlay({ data, item, updateNotes, onClose }) {
   );
 }
 
-import React, { memo, useState, useRef, useEffect } from "react";
-import { useSortable } from "@dnd-kit/sortable";
-import { CSS } from "@dnd-kit/utilities";
-
-// Helper fallback for image URLs
-const getSafeImageSrc = (url) => url || "";
-
 const DraggableCard = memo(function DraggableCard({
   item,
   isSelected,
@@ -783,7 +776,6 @@ const DraggableCard = memo(function DraggableCard({
   onZoom,
   onSaveVoiceMemo,
 }) {
-  // Sortable drag-and-drop hook
   const {
     attributes,
     listeners,
@@ -796,20 +788,29 @@ const DraggableCard = memo(function DraggableCard({
     disabled: item.flipped,
   });
 
-  // Voice Memo Recording & Playback States
+  // Voice Memo States
   const [isRecording, setIsRecording] = useState(false);
   const [isSavingAudio, setIsSavingAudio] = useState(false);
   const [isPlayingAudio, setIsPlayingAudio] = useState(false);
   const [recordingSeconds, setRecordingSeconds] = useState(0);
 
-  // Audio Refs
+  // Text Note Editing State
+  const [isEditingNote, setIsEditingNote] = useState(false);
+  const [localNoteText, setLocalNoteText] = useState(item.notes || "");
+
+  // Sync local note text with item prop updates
+  useEffect(() => {
+    setLocalNoteText(item.notes || "");
+  }, [item.notes]);
+
+  // Refs
   const mediaRecorderRef = useRef(null);
   const audioChunksRef = useRef([]);
   const recordingTimerRef = useRef(null);
   const audioPlayerRef = useRef(null);
   const micBtnRef = useRef(null);
 
-  // Interaction Timers
+  // Touch & Gesture Timers
   const zoomTimerRef = useRef(null);
   const longPressTimer = useRef(null);
   const isLongPressActive = useRef(false);
@@ -836,7 +837,6 @@ const DraggableCard = memo(function DraggableCard({
     }
   };
 
-  // Cleanup on unmount
   useEffect(() => {
     return () => {
       clearTimers();
@@ -850,7 +850,7 @@ const DraggableCard = memo(function DraggableCard({
   }, []);
 
   // ---------------------------------------------------------------------------
-  // VOICE MEMO RECORDING & PLAYBACK LOGIC
+  // VOICE RECORDING & PLAYBACK LOGIC
   // ---------------------------------------------------------------------------
 
   const startRecording = async () => {
@@ -858,7 +858,6 @@ const DraggableCard = memo(function DraggableCard({
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       audioChunksRef.current = [];
 
-      // Prefer m4a/mp4 or webm based on browser support
       const options = MediaRecorder.isTypeSupported("audio/mp4")
         ? { mimeType: "audio/mp4" }
         : MediaRecorder.isTypeSupported("audio/webm")
@@ -875,9 +874,7 @@ const DraggableCard = memo(function DraggableCard({
       };
 
       recorder.onstop = async () => {
-        // Stop all microphone tracks
         stream.getTracks().forEach((track) => track.stop());
-
         const mimeType = recorder.mimeType || "audio/m4a";
         const audioBlob = new Blob(audioChunksRef.current, { type: mimeType });
 
@@ -886,7 +883,7 @@ const DraggableCard = memo(function DraggableCard({
           try {
             await onSaveVoiceMemo(item.id, audioBlob);
           } catch (err) {
-            console.error("❌ Failed to save audio:", err);
+            console.error("❌ Failed to save voice memo:", err);
           } finally {
             setIsSavingAudio(false);
           }
@@ -897,13 +894,12 @@ const DraggableCard = memo(function DraggableCard({
       setIsRecording(true);
       setRecordingSeconds(0);
 
-      // Start elapsed timer
       recordingTimerRef.current = setInterval(() => {
         setRecordingSeconds((prev) => prev + 1);
       }, 1000);
     } catch (err) {
-      console.error("🔴 Microphone access error:", err);
-      alert("Could not access microphone. Please check browser permissions.");
+      console.error("🔴 Microphone permission error:", err);
+      alert("Could not access microphone. Please check your permissions.");
     }
   };
 
@@ -926,7 +922,7 @@ const DraggableCard = memo(function DraggableCard({
     }
   };
 
-  // Native capture listener for the Mic Button to prevent card flipping/dragging
+  // Capture listener on mic button to block drag/flip gestures during tap
   useEffect(() => {
     const btn = micBtnRef.current;
     if (!btn) return;
@@ -951,14 +947,11 @@ const DraggableCard = memo(function DraggableCard({
     };
   }, [isRecording, item.id]);
 
-  // Handle Play / Pause for stored audio_url
   const toggleAudioPlayback = () => {
     if (!item.audio_url) return;
 
     if (isPlayingAudio) {
-      if (audioPlayerRef.current) {
-        audioPlayerRef.current.pause();
-      }
+      if (audioPlayerRef.current) audioPlayerRef.current.pause();
       setIsPlayingAudio(false);
     } else {
       if (!audioPlayerRef.current) {
@@ -968,14 +961,32 @@ const DraggableCard = memo(function DraggableCard({
       } else {
         audioPlayerRef.current.src = item.audio_url;
       }
-
       audioPlayerRef.current.play();
       setIsPlayingAudio(true);
     }
   };
 
   // ---------------------------------------------------------------------------
-  // POINTER & TOUCH HANDLERS FOR CARD DRAG / FLIP / ZOOM
+  // TEXT NOTE EDITING LOGIC
+  // ---------------------------------------------------------------------------
+
+  const handleSaveNote = () => {
+    setIsEditingNote(false);
+    if (typeof updateNotes === "function") {
+      updateNotes(item.id, localNoteText);
+    }
+  };
+
+  const handleClearNote = (e) => {
+    e.stopPropagation();
+    setLocalNoteText("");
+    if (typeof updateNotes === "function") {
+      updateNotes(item.id, "");
+    }
+  };
+
+  // ---------------------------------------------------------------------------
+  // GESTURE & POINTER HANDLERS
   // ---------------------------------------------------------------------------
 
   const handlePointerDown = (e) => {
@@ -986,6 +997,7 @@ const DraggableCard = memo(function DraggableCard({
     if (
       item.flipped ||
       e.target.closest("button") ||
+      e.target.closest("textarea") ||
       e.target.closest(".card-audio-bar") ||
       e.target.closest(".mic-dictate-btn")
     ) {
@@ -1113,7 +1125,7 @@ const DraggableCard = memo(function DraggableCard({
       }`}
     >
       <div className={`card ${item.flipped ? "flipped" : ""}`}>
-        {/* FRONT SIDE */}
+        {/* FRONT SIDE (IMAGE & VOICE RECORDING) */}
         <div
           className="card-face card-front"
           {...(!item.flipped ? attributes : {})}
@@ -1129,7 +1141,7 @@ const DraggableCard = memo(function DraggableCard({
             touchAction: item.flipped ? "auto" : "none",
           }}
         >
-          {/* BADGES & MIC CONTAINER */}
+          {/* BADGES & MIC BUTTON */}
           <div className="card-badges-container">
             {isSelected && (
               <div
@@ -1162,7 +1174,7 @@ const DraggableCard = memo(function DraggableCard({
               </div>
             )}
 
-            {/* Voice Memo Recording Button */}
+            {/* Microphone Button for Voice Recording */}
             <button
               ref={micBtnRef}
               type="button"
@@ -1182,7 +1194,7 @@ const DraggableCard = memo(function DraggableCard({
             </button>
           </div>
 
-          {/* Recording Timer / Status Pill */}
+          {/* Recording Timer Badge */}
           {isRecording && (
             <div
               className="card-recording-pill"
@@ -1204,7 +1216,7 @@ const DraggableCard = memo(function DraggableCard({
             </div>
           )}
 
-          {/* Stored Audio Playback Bar */}
+          {/* Voice Memo Playback Bar */}
           {Boolean(item.audio_url) && !isRecording && (
             <div
               className="card-audio-bar"
@@ -1246,12 +1258,12 @@ const DraggableCard = memo(function DraggableCard({
           />
         </div>
 
-        {/* BACK SIDE */}
+        {/* BACK SIDE (TEXT WRITING & EDITING) */}
         <div
           className="card-face card-back"
           style={{
             transform: "rotateY(180deg)",
-            padding: "15px 15px 20px 15px",
+            padding: "15px 15px 15px 15px",
             display: "flex",
             flexDirection: "column",
             pointerEvents: item.flipped ? "auto" : "none",
@@ -1261,43 +1273,102 @@ const DraggableCard = memo(function DraggableCard({
             className="notes-content"
             style={{
               flex: 1,
-              cursor: "pointer",
+              display: "flex",
+              flexDirection: "column",
               overflowY: "auto",
               WebkitOverflowScrolling: "touch",
             }}
-            onClick={(e) => {
-              e.stopPropagation();
-              onZoom({ id: item.id, type: "notes", url: item.imageURL });
-            }}
           >
-            <p
-              style={{
-                fontFamily: "Georgia, serif",
-                fontStyle: "italic",
-                fontSize: "1.2rem",
-                color: "#1e293b",
-                lineHeight: "1.5",
-                margin: 0,
-                whiteSpace: "pre-wrap",
-                wordBreak: "break-word",
-              }}
-            >
-              {item.notes || "Tap here to write notes..."}
-            </p>
+            {isEditingNote ? (
+              <textarea
+                value={localNoteText}
+                onChange={(e) => setLocalNoteText(e.target.value)}
+                onBlur={handleSaveNote}
+                autoFocus
+                placeholder="Write your notes here..."
+                style={{
+                  width: "100%",
+                  height: "100%",
+                  minHeight: "120px",
+                  border: "1px solid #cbd5e1",
+                  borderRadius: "8px",
+                  padding: "10px",
+                  fontFamily: "Georgia, serif",
+                  fontSize: "1.1rem",
+                  color: "#1e293b",
+                  resize: "none",
+                  outline: "none",
+                  backgroundColor: "#fff",
+                }}
+                onClick={(e) => e.stopPropagation()}
+                onPointerDown={(e) => e.stopPropagation()}
+              />
+            ) : (
+              <div
+                style={{ flex: 1, cursor: "pointer" }}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setIsEditingNote(true);
+                }}
+              >
+                <p
+                  style={{
+                    fontFamily: "Georgia, serif",
+                    fontStyle: "italic",
+                    fontSize: "1.1rem",
+                    color: item.notes ? "#1e293b" : "#64748b",
+                    lineHeight: "1.5",
+                    margin: 0,
+                    whiteSpace: "pre-wrap",
+                    wordBreak: "break-word",
+                  }}
+                >
+                  {item.notes || "Tap here to write or edit notes..."}
+                </p>
+              </div>
+            )}
           </div>
 
-          <div className="notes-actions">
+          <div
+            className="notes-actions"
+            style={{
+              display: "flex",
+              justifyContent: "space-between",
+              alignItems: "center",
+              gap: "8px",
+              marginTop: "10px",
+            }}
+          >
+            {Boolean(item.notes) && (
+              <button
+                type="button"
+                onClick={handleClearNote}
+                style={{
+                  background: "none",
+                  border: "none",
+                  color: "#ef4444",
+                  fontSize: "0.85rem",
+                  cursor: "pointer",
+                  padding: "4px 8px",
+                }}
+              >
+                Clear Note
+              </button>
+            )}
+
             <button
               type="button"
               className="flip-back-btn"
               onClick={(e) => {
                 e.preventDefault();
                 e.stopPropagation();
+                if (isEditingNote) handleSaveNote();
                 clearFlipTimer();
                 onFlip(item.id);
               }}
+              style={{ marginLeft: "auto" }}
             >
-              Tap Here to Flip Back
+              Flip Back
             </button>
           </div>
         </div>
