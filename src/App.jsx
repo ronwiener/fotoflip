@@ -788,29 +788,32 @@ const DraggableCard = memo(function DraggableCard({
     disabled: item.flipped,
   });
 
-  // Voice Memo States
+  // Voice Recording & Transcription States
   const [isRecording, setIsRecording] = useState(false);
   const [isSavingAudio, setIsSavingAudio] = useState(false);
   const [isPlayingAudio, setIsPlayingAudio] = useState(false);
   const [recordingSeconds, setRecordingSeconds] = useState(0);
 
-  // Text Note Editing State
+  // Text Note State
   const [isEditingNote, setIsEditingNote] = useState(false);
   const [localNoteText, setLocalNoteText] = useState(item.notes || "");
+  const [isTextEdited, setIsTextEdited] = useState(false);
 
-  // Sync local note text with item prop updates
+  // Sync local note text when item.notes updates externally
   useEffect(() => {
     setLocalNoteText(item.notes || "");
   }, [item.notes]);
 
-  // Refs
+  // Audio & Speech Refs
   const mediaRecorderRef = useRef(null);
+  const speechRecognitionRef = useRef(null);
   const audioChunksRef = useRef([]);
   const recordingTimerRef = useRef(null);
   const audioPlayerRef = useRef(null);
   const micBtnRef = useRef(null);
+  const originalRecordedTextRef = useRef(item.notes || "");
 
-  // Touch & Gesture Timers
+  // Interaction Timers
   const zoomTimerRef = useRef(null);
   const longPressTimer = useRef(null);
   const isLongPressActive = useRef(false);
@@ -842,6 +845,9 @@ const DraggableCard = memo(function DraggableCard({
       clearTimers();
       clearFlipTimer();
       if (recordingTimerRef.current) clearInterval(recordingTimerRef.current);
+      if (speechRecognitionRef.current) {
+        speechRecognitionRef.current.stop();
+      }
       if (audioPlayerRef.current) {
         audioPlayerRef.current.pause();
         audioPlayerRef.current = null;
@@ -850,7 +856,7 @@ const DraggableCard = memo(function DraggableCard({
   }, []);
 
   // ---------------------------------------------------------------------------
-  // VOICE RECORDING & PLAYBACK LOGIC
+  // COMBINED VOICE MEMO RECORDING + SPEECH-TO-TEXT TRANSCRIPTION
   // ---------------------------------------------------------------------------
 
   const startRecording = async () => {
@@ -858,6 +864,7 @@ const DraggableCard = memo(function DraggableCard({
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       audioChunksRef.current = [];
 
+      // 1. Configure MediaRecorder for Audio File Storage
       const options = MediaRecorder.isTypeSupported("audio/mp4")
         ? { mimeType: "audio/mp4" }
         : MediaRecorder.isTypeSupported("audio/webm")
@@ -878,18 +885,66 @@ const DraggableCard = memo(function DraggableCard({
         const mimeType = recorder.mimeType || "audio/m4a";
         const audioBlob = new Blob(audioChunksRef.current, { type: mimeType });
 
+        // Update recorded reference string to match current transcribed text
+        originalRecordedTextRef.current = localNoteText;
+        setIsTextEdited(false);
+
         if (audioBlob.size > 0 && typeof onSaveVoiceMemo === "function") {
           setIsSavingAudio(true);
           try {
             await onSaveVoiceMemo(item.id, audioBlob);
           } catch (err) {
-            console.error("❌ Failed to save voice memo:", err);
+            console.error("❌ Failed to save audio file:", err);
           } finally {
             setIsSavingAudio(false);
           }
         }
       };
 
+      // 2. Configure Web Speech API for Real-Time Text Transcription
+      const SpeechRecognition =
+        window.SpeechRecognition || window.webkitSpeechRecognition;
+
+      if (SpeechRecognition) {
+        const recognition = new SpeechRecognition();
+        recognition.continuous = true;
+        recognition.interimResults = true;
+        recognition.lang = "en-US";
+
+        let finalTranscript = localNoteText ? `${localNoteText} ` : "";
+
+        recognition.onresult = (event) => {
+          let currentSessionText = "";
+          for (let i = event.resultIndex; i < event.results.length; i++) {
+            const transcript = event.results[i][0].transcript;
+            if (event.results[i].isFinal) {
+              finalTranscript += `${transcript} `;
+            } else {
+              currentSessionText += transcript;
+            }
+          }
+
+          const combinedText = (finalTranscript + currentSessionText).trim();
+          setLocalNoteText(combinedText);
+
+          if (typeof updateNotes === "function") {
+            updateNotes(item.id, combinedText);
+          }
+        };
+
+        recognition.onerror = (event) => {
+          console.warn("⚠️ Speech recognition error:", event.error);
+        };
+
+        recognition.start();
+        speechRecognitionRef.current = recognition;
+      } else {
+        console.warn(
+          "⚠️ Web Speech API not supported in this browser engine, please type your note on the flip side.",
+        );
+      }
+
+      // 3. Start Recording & Elapsed Timer
       recorder.start();
       setIsRecording(true);
       setRecordingSeconds(0);
@@ -898,19 +953,28 @@ const DraggableCard = memo(function DraggableCard({
         setRecordingSeconds((prev) => prev + 1);
       }, 1000);
     } catch (err) {
-      console.error("🔴 Microphone permission error:", err);
-      alert("Could not access microphone. Please check your permissions.");
+      console.error("🔴 Microphone access error:", err);
+      alert("Could not access microphone. Please check browser permissions.");
     }
   };
 
   const stopRecording = () => {
+    // Stop MediaRecorder audio stream
     if (mediaRecorderRef.current && isRecording) {
       mediaRecorderRef.current.stop();
-      setIsRecording(false);
-      if (recordingTimerRef.current) {
-        clearInterval(recordingTimerRef.current);
-        recordingTimerRef.current = null;
-      }
+    }
+
+    // Stop Web Speech Recognition
+    if (speechRecognitionRef.current) {
+      speechRecognitionRef.current.stop();
+      speechRecognitionRef.current = null;
+    }
+
+    setIsRecording(false);
+
+    if (recordingTimerRef.current) {
+      clearInterval(recordingTimerRef.current);
+      recordingTimerRef.current = null;
     }
   };
 
@@ -922,7 +986,13 @@ const DraggableCard = memo(function DraggableCard({
     }
   };
 
-  // Capture listener on mic button to block drag/flip gestures during tap
+  // 1. Create a ref to store the latest handleMicTap function
+  const handleMicTapRef = useRef();
+
+  // 2. Keep the ref updated with the current handleMicTap function on every render
+  handleMicTapRef.current = handleMicTap;
+
+  // 3. Native Pointer/Touch capture listener for microphone button
   useEffect(() => {
     const btn = micBtnRef.current;
     if (!btn) return;
@@ -931,7 +1001,11 @@ const DraggableCard = memo(function DraggableCard({
       e.stopPropagation();
       e.stopImmediatePropagation();
       if (e.cancelable) e.preventDefault();
-      handleMicTap();
+
+      // Always call the latest handleMicTap function via ref
+      if (handleMicTapRef.current) {
+        handleMicTapRef.current();
+      }
     };
 
     btn.addEventListener("pointerdown", handleNativeTap, { capture: true });
@@ -945,8 +1019,9 @@ const DraggableCard = memo(function DraggableCard({
       btn.removeEventListener("touchstart", handleNativeTap, { capture: true });
       btn.removeEventListener("click", handleNativeTap, { capture: true });
     };
-  }, [isRecording, item.id]);
+  }, []); // Empty dependency array — listener attaches once on mount and detaches on unmount
 
+  // Audio Playback
   const toggleAudioPlayback = () => {
     if (!item.audio_url) return;
 
@@ -967,7 +1042,7 @@ const DraggableCard = memo(function DraggableCard({
   };
 
   // ---------------------------------------------------------------------------
-  // TEXT NOTE EDITING LOGIC
+  // MANUAL NOTE EDITING HANDLERS
   // ---------------------------------------------------------------------------
 
   const handleSaveNote = () => {
@@ -985,8 +1060,21 @@ const DraggableCard = memo(function DraggableCard({
     }
   };
 
+  const handleTextChange = (newText) => {
+    setLocalNoteText(newText);
+    if (
+      item.audio_url &&
+      originalRecordedTextRef.current &&
+      newText !== originalRecordedTextRef.current
+    ) {
+      setIsTextEdited(true);
+    } else {
+      setIsTextEdited(false);
+    }
+  };
+
   // ---------------------------------------------------------------------------
-  // GESTURE & POINTER HANDLERS
+  // CARD DRAG / FLIP / ZOOM POINTER HANDLERS
   // ---------------------------------------------------------------------------
 
   const handlePointerDown = (e) => {
@@ -1125,7 +1213,7 @@ const DraggableCard = memo(function DraggableCard({
       }`}
     >
       <div className={`card ${item.flipped ? "flipped" : ""}`}>
-        {/* FRONT SIDE (IMAGE & VOICE RECORDING) */}
+        {/* FRONT SIDE */}
         <div
           className="card-face card-front"
           {...(!item.flipped ? attributes : {})}
@@ -1174,7 +1262,7 @@ const DraggableCard = memo(function DraggableCard({
               </div>
             )}
 
-            {/* Microphone Button for Voice Recording */}
+            {/* Microphone Button (Starts recording) */}
             <button
               ref={micBtnRef}
               type="button"
@@ -1185,38 +1273,16 @@ const DraggableCard = memo(function DraggableCard({
                 isSavingAudio
                   ? "Saving audio..."
                   : isRecording
-                  ? "Stop recording"
-                  : "Record voice memo"
+                  ? "Recording in progress..."
+                  : "Record voice memo and transcribe"
               }
-              disabled={isSavingAudio}
+              disabled={isSavingAudio || isRecording}
             >
-              {isSavingAudio ? "⏳" : isRecording ? "⏹" : "🎤"}
+              {isSavingAudio ? "⏳" : "🎤"}
             </button>
           </div>
 
-          {/* Recording Timer Badge */}
-          {isRecording && (
-            <div
-              className="card-recording-pill"
-              style={{
-                position: "absolute",
-                top: "12px",
-                left: "50%",
-                transform: "translateX(-50%)",
-                backgroundColor: "rgba(220, 38, 38, 0.9)",
-                color: "#fff",
-                padding: "4px 10px",
-                borderRadius: "12px",
-                fontSize: "12px",
-                fontWeight: "bold",
-                zIndex: 20,
-              }}
-            >
-              🔴 {recordingSeconds}s
-            </div>
-          )}
-
-          {/* Voice Memo Playback Bar */}
+          {/* Voice Memo Playback Bar (Listen / Play Button) */}
           {Boolean(item.audio_url) && !isRecording && (
             <div
               className="card-audio-bar"
@@ -1258,17 +1324,82 @@ const DraggableCard = memo(function DraggableCard({
           />
         </div>
 
-        {/* BACK SIDE (TEXT WRITING & EDITING) */}
+        {/* BACK SIDE (TEXT NOTES & TRANSCRIPTION) */}
         <div
           className="card-face card-back"
           style={{
             transform: "rotateY(180deg)",
-            padding: "15px 15px 15px 15px",
+            padding: "15px",
             display: "flex",
             flexDirection: "column",
             pointerEvents: item.flipped ? "auto" : "none",
           }}
         >
+          {/* RE-RECORD NOTICE BANNER */}
+          {isTextEdited && Boolean(item.audio_url) && !isRecording && (
+            <div
+              style={{
+                backgroundColor: "#fef3c7",
+                color: "#92400e",
+                border: "1px solid #fde68a",
+                borderRadius: "6px",
+                padding: "6px 10px",
+                fontSize: "0.8rem",
+                marginBottom: "8px",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "space-between",
+                flexShrink: 0,
+              }}
+            >
+              <span>⚠️ Text edited — voice memo differs</span>
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  if (isEditingNote) handleSaveNote();
+                  clearFlipTimer();
+                  onFlip(item.id);
+                }}
+                style={{
+                  background: "#b45309",
+                  color: "#fff",
+                  border: "none",
+                  borderRadius: "4px",
+                  padding: "3px 8px",
+                  fontSize: "0.75rem",
+                  fontWeight: "600",
+                  cursor: "pointer",
+                }}
+              >
+                Re-record 🎤
+              </button>
+            </div>
+          )}
+
+          {/* RECORDING STATUS BADGE WITH ANIMATED PULSE */}
+          {isRecording && (
+            <div
+              style={{
+                backgroundColor: "#fee2e2",
+                color: "#dc2626",
+                border: "1px solid #fca5a5",
+                borderRadius: "6px",
+                padding: "6px 10px",
+                fontSize: "0.85rem",
+                fontWeight: "bold",
+                marginBottom: "8px",
+                display: "flex",
+                alignItems: "center",
+                gap: "6px",
+                flexShrink: 0,
+              }}
+            >
+              <span className="animate-pulse">🔴</span>
+              <span>Recording & Transcribing... ({recordingSeconds}s)</span>
+            </div>
+          )}
+
           <div
             className="notes-content"
             style={{
@@ -1282,10 +1413,10 @@ const DraggableCard = memo(function DraggableCard({
             {isEditingNote ? (
               <textarea
                 value={localNoteText}
-                onChange={(e) => setLocalNoteText(e.target.value)}
+                onChange={(e) => handleTextChange(e.target.value)}
                 onBlur={handleSaveNote}
                 autoFocus
-                placeholder="Write your notes here..."
+                placeholder="Write or dictate notes here..."
                 style={{
                   width: "100%",
                   height: "100%",
@@ -1316,14 +1447,17 @@ const DraggableCard = memo(function DraggableCard({
                     fontFamily: "Georgia, serif",
                     fontStyle: "italic",
                     fontSize: "1.1rem",
-                    color: item.notes ? "#1e293b" : "#64748b",
+                    color: localNoteText ? "#1e293b" : "#64748b",
                     lineHeight: "1.5",
                     margin: 0,
                     whiteSpace: "pre-wrap",
                     wordBreak: "break-word",
                   }}
                 >
-                  {item.notes || "Tap here to write or edit notes..."}
+                  {localNoteText ||
+                    (isRecording
+                      ? "Listening... Speak to transcribe live notes."
+                      : "Tap here to edit or tap 🎤 on front to record & transcribe...")}
                 </p>
               </div>
             )}
@@ -1339,21 +1473,34 @@ const DraggableCard = memo(function DraggableCard({
               marginTop: "10px",
             }}
           >
-            {Boolean(item.notes) && (
+            {/* STOP RECORDING BUTTON */}
+            {isRecording ? (
               <button
                 type="button"
-                onClick={handleClearNote}
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  stopRecording();
+                }}
                 style={{
-                  background: "none",
+                  backgroundColor: "#dc2626",
+                  color: "#ffffff",
                   border: "none",
-                  color: "#ef4444",
+                  borderRadius: "6px",
+                  padding: "6px 12px",
                   fontSize: "0.85rem",
+                  fontWeight: "bold",
                   cursor: "pointer",
-                  padding: "4px 8px",
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "4px",
+                  boxShadow: "0 2px 4px rgba(220, 38, 38, 0.2)",
                 }}
               >
-                Clear Note
+                ⏹ Stop Recording
               </button>
+            ) : (
+              <div style={{ flex: 1 }} />
             )}
 
             <button
@@ -1362,6 +1509,7 @@ const DraggableCard = memo(function DraggableCard({
               onClick={(e) => {
                 e.preventDefault();
                 e.stopPropagation();
+                if (isRecording) stopRecording();
                 if (isEditingNote) handleSaveNote();
                 clearFlipTimer();
                 onFlip(item.id);
@@ -1645,6 +1793,7 @@ export default function App() {
             ? item.image_path
             : `${supabaseUrl}/storage/v1/object/public/gallery/${item.image_path}`,
         notes: item.notes || "",
+        audio_url: item.audio_url || null,
         folder: item.folder || "",
         flipped: item.flipped || false,
         location_description: item.location_description || "",
@@ -2364,104 +2513,110 @@ export default function App() {
     });
   }, []);
 
-  const updateNotes = useCallback(async (id, newNotes) => {
-    console.log(
-      "📥 [updateNotes Execution] Item ID:",
-      id,
-      "Content:",
-      newNotes,
-    );
+  // 1. Debounced persistence function (handles fetch + 401 token refresh)
+  const debouncedUpdateNotesSupabase = useRef(
+    debounce(async (id, content) => {
+      console.log("💾 [Persisting Notes to Supabase]", id, content);
 
-    if (!id) {
-      console.error("❌ [updateNotes] Aborting: Missing ID!");
-      return null;
-    }
+      const sendPatchRequest = async (authToken) => {
+        const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+        const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
 
-    // 1. Optimistic Local React State Update
-    setItems((prevItems) =>
-      prevItems.map((item) =>
-        item.id === id ? { ...item, notes: newNotes } : item,
-      ),
-    );
+        return await fetch(`${supabaseUrl}/rest/v1/items?id=eq.${id}`, {
+          method: "PATCH",
+          headers: {
+            Authorization: `Bearer ${authToken}`,
+            apikey: supabaseAnonKey,
+            "Content-Type": "application/json",
+            Prefer: "return=representation",
+          },
+          body: JSON.stringify({ notes: content }),
+        });
+      };
 
-    // Helper function for sending the REST PATCH request
-    const sendPatchRequest = async (authToken) => {
-      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-      const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
-
-      return await fetch(`${supabaseUrl}/rest/v1/items?id=eq.${id}`, {
-        method: "PATCH",
-        headers: {
-          Authorization: `Bearer ${authToken}`,
-          apikey: supabaseAnonKey,
-          "Content-Type": "application/json",
-          Prefer: "return=representation",
-        },
-        body: JSON.stringify({ notes: newNotes }),
-      });
-    };
-
-    // 2. Direct non-blocking REST Call to Persist in Supabase
-    try {
-      const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
-
-      // Fast path: Grab active token synchronously from localStorage
-      let token = supabaseAnonKey;
       try {
-        const storageKey = Object.keys(localStorage).find(
-          (key) => key.startsWith("sb-") && key.endsWith("-auth-token"),
-        );
-        if (storageKey) {
-          const parsed = JSON.parse(localStorage.getItem(storageKey));
-          if (parsed?.access_token) {
-            token = parsed.access_token;
+        const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+
+        // Fast path: Sync read token from localStorage
+        let token = supabaseAnonKey;
+        try {
+          const storageKey = Object.keys(localStorage).find(
+            (key) => key.startsWith("sb-") && key.endsWith("-auth-token"),
+          );
+          if (storageKey) {
+            const parsed = JSON.parse(localStorage.getItem(storageKey));
+            if (parsed?.access_token) {
+              token = parsed.access_token;
+            }
+          }
+        } catch (e) {
+          console.warn("⚠️ Could not read session token from localStorage.");
+        }
+
+        let response = await sendPatchRequest(token);
+
+        // Token refresh fallback if 401
+        if (response.status === 401) {
+          console.warn(
+            "⚠️ [updateNotes] Token expired (401). Refreshing session...",
+          );
+          const { data: sessionData } = await supabase.auth.getSession();
+          const refreshedToken = sessionData?.session?.access_token;
+
+          if (refreshedToken) {
+            response = await sendPatchRequest(refreshedToken);
           }
         }
-      } catch (e) {
-        console.warn(
-          "⚠️ Could not read session token from localStorage, using anon key.",
-        );
-      }
 
-      let response = await sendPatchRequest(token);
-
-      // Bulletproof Fallback: If 401 (expired token), refresh session safely and retry once
-      if (response.status === 401) {
-        console.warn(
-          "⚠️ [updateNotes] Token expired (401). Attempting session refresh...",
-        );
-        const { data: sessionData } = await supabase.auth.getSession();
-        const refreshedToken = sessionData?.session?.access_token;
-
-        if (refreshedToken) {
-          console.log("🔄 [updateNotes] Token refreshed. Retrying request...");
-          response = await sendPatchRequest(refreshedToken);
+        if (!response.ok) {
+          const errText = await response.text();
+          console.error(
+            "❌ [updateNotes REST ERROR]:",
+            response.status,
+            errText,
+          );
+          return;
         }
+
+        const data = await response.json();
+        console.log("✅ [updateNotes REST SUCCESS]:", data);
+
+        if (!data || data.length === 0) {
+          console.warn("⚠️ [RLS Warning]: 0 rows updated in Supabase!");
+        }
+      } catch (err) {
+        console.error("❌ [updateNotes Exception]:", err);
+      }
+    }, 500),
+  ).current;
+
+  // 2. Local update Notes function passed to components
+  const updateNotes = useCallback(
+    (id, newNotes) => {
+      console.log(
+        "📥 [updateNotes Execution] Item ID:",
+        id,
+        "Content:",
+        newNotes,
+      );
+
+      if (!id) {
+        console.error("❌ [updateNotes] Aborting: Missing ID!");
+        return;
       }
 
-      if (!response.ok) {
-        const errText = await response.text();
-        console.error("❌ [updateNotes REST ERROR]:", response.status, errText);
-        throw new Error(
-          `Supabase PATCH failed status ${response.status}: ${errText}`,
-        );
-      }
+      // Step A: Optimistic React state update for instant UI feedback
+      setItems((prevItems) =>
+        prevItems.map((item) =>
+          item.id === id ? { ...item, notes: newNotes } : item,
+        ),
+      );
 
-      const data = await response.json();
-      console.log("✅ [updateNotes REST SUCCESS]:", data);
-
-      if (!data || data.length === 0) {
-        console.warn(
-          "⚠️ [RLS Warning]: 0 rows updated in Supabase! If notes reset on refresh, verify RLS UPDATE policy on 'items' table.",
-        );
-      }
-
-      return data;
-    } catch (err) {
-      console.error("❌ [updateNotes Exception]:", err);
-      throw err;
-    }
-  }, []);
+      // Step B: Trigger debounced backend request
+      debouncedUpdateNotesSupabase(id, newNotes);
+    },
+    [debouncedUpdateNotesSupabase],
+  );
 
   const handleToggleSelect = useCallback((id) => {
     setSelectedIds((prev) => {
